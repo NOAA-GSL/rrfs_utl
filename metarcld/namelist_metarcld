@@ -1,0 +1,5 @@
+&SETUP
+  analysis_time = 2020080318,
+  prepbufrfile='prepbufr',
+  twindin=0.5,
+/
