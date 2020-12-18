@@ -1260,14 +1260,6 @@ program cloudanalysis
      enddo
   enddo
 
-  ges_ql(1,:,nsig)=1.0
-  ges_ql(2,:,nsig)=1.0
-  ges_ql(lon2-1,:,nsig)=2.0
-  ges_ql(lon2,:,nsig)=2.0
-  ges_ql(:,1,nsig)=3.0
-  ges_ql(:,2,nsig)=3.0
-  ges_ql(:,lat2-1,nsig)=4.0
-  ges_ql(:,lat2,nsig)=4.0
 !
 !  update background for analysis results
 !
