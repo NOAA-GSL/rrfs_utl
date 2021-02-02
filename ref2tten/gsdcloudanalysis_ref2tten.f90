@@ -97,11 +97,12 @@ program gsdcloudanalysis_ref2tten
   real(r_single),allocatable :: ges_tten(:,:,:)
   real(r_kind) :: dfi_lhtp
   logical         :: l_tten_for_convection_only
+  logical         :: l_convection_suppress
   real(r_single) :: dfi_radar_latent_heat_time_period
   REAL(r_kind) :: convection_refl_threshold     ! units dBZ
 !
   namelist/setup/ dfi_radar_latent_heat_time_period,convection_refl_threshold, &
-                  l_tten_for_convection_only
+                  l_tten_for_convection_only,l_convection_suppress
 !
 !
   real(r_single),allocatable :: field1(:)
@@ -174,6 +175,7 @@ program gsdcloudanalysis_ref2tten
      dfi_radar_latent_heat_time_period=20.0_r_single
      convection_refl_threshold=28.0_r_kind
      l_tten_for_convection_only=.true.
+     l_convection_suppress=.false.
      Nmsclvl_radar = -999
      iunit_radar=25
      iunit_lightning=26
@@ -425,7 +427,7 @@ program gsdcloudanalysis_ref2tten
            write(6,*) 'ges_tten=',k,maxval(ges_tten(:,:,k)), &
                                  minval(ges_tten(:,:,k))
         enddo
-        ges_tten(:,:,nsig_regional)=ges_tten(:,:,nsig_regional-1)
+        if(.not.l_convection_suppress) ges_tten(:,:,nsig_regional)=ges_tten(:,:,nsig_regional-1)
 
 !
 ! 5.10 update
