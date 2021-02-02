@@ -36,7 +36,7 @@ program gsdcloudanalysis_ref2tten
   use gsi_rfv3io_tten_mod, only: bg_fv3regfilenameg,fv3sar_bg_opt
   use gsi_rfv3io_tten_mod, only: rfv3io_mype
   use gsi_rfv3io_tten_mod, only: gsi_fv3ncdf_read,gsi_fv3ncdf2d_read
-  use gsi_rfv3io_tten_mod, only: gsi_fv3ncdf_write
+  use gsi_rfv3io_tten_mod, only: gsi_fv3ncdf_write,gsi_fv3ncdf_append
   use gsi_rfv3io_tten_mod, only: nlon_regional,nlat_regional,nsig_regional
   use gsi_rfv3io_tten_mod, only: eta1_ll
 
@@ -53,6 +53,8 @@ program gsdcloudanalysis_ref2tten
 ! background
 !
   integer, parameter :: maxcores=1
+  integer, parameter :: timelevel=4
+  integer :: ntime
   integer(i_kind) iyear,imonth,iday,ihour,iminute,isecond
   real(r_single)  pt_regional
   
@@ -97,6 +99,10 @@ program gsdcloudanalysis_ref2tten
   logical         :: l_tten_for_convection_only
   real(r_single) :: dfi_radar_latent_heat_time_period
   REAL(r_kind) :: convection_refl_threshold     ! units dBZ
+!
+  namelist/setup/ dfi_radar_latent_heat_time_period,convection_refl_threshold, &
+                  l_tten_for_convection_only
+!
 !
   real(r_single),allocatable :: field1(:)
 !
@@ -175,6 +181,25 @@ program gsdcloudanalysis_ref2tten
      rad_missing=1
      lightning_missing=1
 
+!
+!  read namelist
+!
+  inquire(file='namelist_ref2tten', EXIST=ifexist )
+  if(ifexist) then
+    open(10,file='namelist_ref2tten',status='old')
+       read(10,setup)
+    close(10)
+    write(*,*) 'Namelist setup are:'
+    write(*,setup)
+  else
+    write(*,*) 'No namelist file exist, use default values'
+    write(*,*) "dfi_radar_latent_heat_time_period=",  &
+                                    dfi_radar_latent_heat_time_period
+    write(*,*) "convection_refl_threshold=",convection_refl_threshold
+    write(*,*) "l_tten_for_convection_only=",l_tten_for_convection_only
+  endif
+
+!
 ! 2.1 read in background fields
 !
 !     t_bk        - 3D background potential temperature (K)
@@ -276,96 +301,98 @@ program gsdcloudanalysis_ref2tten
 
 !     allocate(sat_ctp(nlon_regional,nlat_regional))
 !     sat_ctp=miss_obs_real
-     n=mypeLocal
+     do ntime=1,timelevel
 
-     write(radarfile,'(a,I2.2)') 'RefInGSI3D.dat_',n
-     write(6,*)
-     write(6,*) 'processing ',trim(radarfile)
+        n=ntime
 
-     inquire(file=trim(radarfile), exist=ifexist)
-     if (ifexist) then
-        open(iunit_radar,file=trim(radarfile),form='unformatted',status='old')
-           read(iunit_radar) Nmsclvl_radar,nlon_radar,nlat_radar
-           allocate(ref_mosaic31(nlon_regional,nlat_regional,Nmsclvl_radar))
-           read(iunit_radar) ref_mosaic31
-        close(iunit_radar)
-        write(6,*) 'Nmsclvl_radar,nlon_radar,nlat_radar',  &
+        write(radarfile,'(a,I2.2)') 'RefInGSI3D.dat_',n
+        write(6,*)
+        write(6,*) 'processing ',trim(radarfile)
+
+        inquire(file=trim(radarfile), exist=ifexist)
+        if (ifexist) then
+           open(iunit_radar,file=trim(radarfile),form='unformatted',status='old')
+              read(iunit_radar) Nmsclvl_radar,nlon_radar,nlat_radar
+              allocate(ref_mosaic31(nlon_regional,nlat_regional,Nmsclvl_radar))
+              read(iunit_radar) ref_mosaic31
+           close(iunit_radar)
+           write(6,*) 'Nmsclvl_radar,nlon_radar,nlat_radar',  &
                     Nmsclvl_radar,nlon_radar,nlat_radar
-        do k=1,Nmsclvl_radar
-           write(6,*) 'ref_mosaic31=',k,maxval(ref_mosaic31(:,:,k)), &
+           do k=1,Nmsclvl_radar
+              write(6,*) 'ref_mosaic31=',k,maxval(ref_mosaic31(:,:,k)), &
                                         minval(ref_mosaic31(:,:,k))
-        enddo
-        rad_missing=0
-     endif
-     if (.not.ifexist) then
-        write(6,*) 'WARNING: RADAR FILE MISSING:', radarfile
-        rad_missing=1
-     endif
+           enddo
+           rad_missing=0
+        endif
+        if (.not.ifexist) then
+           write(6,*) 'WARNING: RADAR FILE MISSING:', radarfile
+           rad_missing=1
+        endif
 !
 ! Read in lightning data
 !
-     write(lightningfile,'(a,I2.2)') 'LightningInGSI.dat_',n
-     write(6,*)
-     write(6,*) 'processing ',trim(lightningfile)
+        write(lightningfile,'(a,I2.2)') 'LightningInGSI.dat_',n
+        write(6,*)
+        write(6,*) 'processing ',trim(lightningfile)
 
-     inquire(file=trim(lightningfile), exist=ifexist)
-     if (ifexist) then
-        open(iunit_lightning,file=trim(lightningfile),form='unformatted',status='old')
-           read(iunit_lightning) header1,nlon_lightning,nlat_lightning,numlight,header2,header3
-           allocate(lightning_in(3,numlight))
-           lightning_in=-9999.0_r_single
-           read(iunit_lightning) lightning_in
-        close(iunit_lightning)
-        write(6,*) 'finished read ',trim(lightningfile), numlight
-        allocate(lightning(nlon_regional,nlat_regional))
-        lightning=-9999.0_r_single
-        call read_Lightning2cld(nlon_regional,nlat_regional,numlight,lightning_in,lightning)
-        deallocate(lightning_in)
-        lightning_missing=0
-     endif
-     if(.not.ifexist) then
-        write(6,*) 'WARNING: LIGHTNING FILE MISSING:', lightningfile
-        lightning_missing=1
-     endif
+        inquire(file=trim(lightningfile), exist=ifexist)
+        if (ifexist) then
+           open(iunit_lightning,file=trim(lightningfile),form='unformatted',status='old')
+              read(iunit_lightning) header1,nlon_lightning,nlat_lightning,numlight,header2,header3
+              allocate(lightning_in(3,numlight))
+              lightning_in=-9999.0_r_single
+              read(iunit_lightning) lightning_in
+           close(iunit_lightning)
+           write(6,*) 'finished read ',trim(lightningfile), numlight
+           allocate(lightning(nlon_regional,nlat_regional))
+           lightning=-9999.0_r_single
+           call read_Lightning2cld(nlon_regional,nlat_regional,numlight,lightning_in,lightning)
+           deallocate(lightning_in)
+           lightning_missing=0
+        endif
+        if(.not.ifexist) then
+           write(6,*) 'WARNING: LIGHTNING FILE MISSING:', lightningfile
+           lightning_missing=1
+        endif
 !
 !  2.6 vertical interpolation of radar reflectivity
 !
-     allocate(ref_mos_3d(nlon_regional,nlat_regional,nsig_regional))
-     ref_mos_3d=miss_obs_real
+        allocate(ref_mos_3d(nlon_regional,nlat_regional,nsig_regional))
+        ref_mos_3d=miss_obs_real
 !    EJ: only call this part if radar data are not missing
-     if ( rad_missing == 0 ) then
-        call vinterp_radar_ref(nlon_regional,nlat_regional,nsig_regional,Nmsclvl_radar, &
+        if ( rad_missing == 0 ) then
+           call vinterp_radar_ref(nlon_regional,nlat_regional,nsig_regional,Nmsclvl_radar, &
                           ref_mos_3d,ref_mosaic31,h_bk,zh)
-        deallocate( ref_mosaic31 )
-     endif
-     do k=1,nsig_regional
+           deallocate( ref_mosaic31 )
+        endif
+        do k=1,nsig_regional
            write(6,*) 'vinterp ref_mos_3d=',k,maxval(ref_mos_3d(:,:,k)), &
                                               minval(ref_mos_3d(:,:,k))
-     enddo
+        enddo
 
-     call build_missing_REFcone(nlon_regional,nlat_regional,nsig_regional, &
+        call build_missing_REFcone(nlon_regional,nlat_regional,nsig_regional, &
                                 krad_bot,ref_mos_3d,h_bk,pblh)
-     do k=1,nsig_regional
+        do k=1,nsig_regional
            write(6,*) 'refcon ref_mos_3d=',k,maxval(ref_mos_3d(:,:,k)), &
                                              minval(ref_mos_3d(:,:,k))
-     enddo
+        enddo
 
 !
 ! Convert lightning flash rate to reflectivities 
 !
 !
-     if(lightning_missing == 0) then
-        write(6,*) 'calling convert_lghtn2ref'
+        if(lightning_missing == 0) then
+           write(6,*) 'calling convert_lghtn2ref'
 !    
-        call convert_lghtn2ref(mype,nlon_regional,nlat_regional,nsig_regional,ref_mos_3d,lightning,h_bk)
-        deallocate( lightning )
+           call convert_lghtn2ref(mype,nlon_regional,nlat_regional,nsig_regional,ref_mos_3d,lightning,h_bk)
+           deallocate( lightning )
 
-        write(6,*) 'done adding lightning data'
-        do k=1,nsig_regional
-           write(6,*) 'lightning',k,' ref_mos_3d=',k,maxval(ref_mos_3d(:,:,k)), &
+           write(6,*) 'done adding lightning data'
+           do k=1,nsig_regional
+              write(6,*) 'lightning',k,' ref_mos_3d=',k,maxval(ref_mos_3d(:,:,k)), &
                                                      minval(ref_mos_3d(:,:,k))
-        enddo
-     endif
+           enddo
+        endif
 !
 !
 !     write(6,*) 'calling convert_stcst2ref'
@@ -384,27 +411,35 @@ program gsdcloudanalysis_ref2tten
 !
 ! 4.10 radar temperature tendency for DFI
 !
-     allocate(ges_tten(nlon_regional,nlat_regional,nsig_regional))
-     ges_tten=-20.0_r_kind
-     ges_tten(:,:,nsig_regional)=-10.0_r_kind
+        allocate(ges_tten(nlon_regional,nlat_regional,nsig_regional))
+        ges_tten=-20.0_r_kind
+        ges_tten(:,:,nsig_regional)=-10.0_r_kind
 
-     dfi_lhtp=dfi_radar_latent_heat_time_period
-     call radar_ref2tten(nlon_regional,nlat_regional,nsig_regional,ref_mos_3d,& 
+        dfi_lhtp=dfi_radar_latent_heat_time_period
+        call radar_ref2tten(nlon_regional,nlat_regional,nsig_regional,ref_mos_3d,& 
                      p_bk,t_bk,ges_tten,dfi_lhtp,krad_bot,pblh,  &
                      l_tten_for_convection_only,convection_refl_threshold)
-     deallocate(ref_mos_3d)
-     do k=1,nsig_regional
-        write(6,*) 'ges_tten=',k,maxval(ges_tten(:,:,k)), &
+! for debug only     if(ntime==2) ges_tten=ref_mos_3d
+        deallocate(ref_mos_3d)
+        do k=1,nsig_regional
+           write(6,*) 'ges_tten=',k,maxval(ges_tten(:,:,k)), &
                                  minval(ges_tten(:,:,k))
-     enddo
-     ges_tten(:,:,nsig_regional)=ges_tten(:,:,nsig_regional-1)
+        enddo
+        ges_tten(:,:,nsig_regional)=ges_tten(:,:,nsig_regional-1)
 
 !
 ! 5.10 update
 !
 
-     call gsi_fv3ncdf_write(tracers,'radar_tten',ges_tten,mype_t)
-     deallocate(ges_tten)
+        if(ntime==1) call gsi_fv3ncdf_append(tracers,'radar_tten',ges_tten,mype_t)
+        if(ntime==2) call gsi_fv3ncdf_append(tracers,'radar_tten_2',ges_tten,mype_t)
+        if(ntime==3) call gsi_fv3ncdf_append(tracers,'radar_tten_3',ges_tten,mype_t)
+        if(ntime==4) call gsi_fv3ncdf_append(tracers,'radar_tten_4',ges_tten,mype_t)
+
+! release memory for this time level
+        deallocate(ges_tten)
+
+     enddo  ! ntime
 !
 !  release memory
 !

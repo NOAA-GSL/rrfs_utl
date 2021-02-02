@@ -12,6 +12,8 @@ module gsi_rfv3io_tten_mod
   use netcdf, only: nf90_open,nf90_close,nf90_noerr
   use netcdf, only: nf90_nowrite,nf90_inquire,nf90_inquire_dimension
   use netcdf, only: nf90_inquire_variable
+  use netcdf, only: nf90_redef,nf90_enddef,nf90_def_var,nf90_put_att
+  use netcdf, only: nf90_noerr,nf90_float
 
   implicit none
   integer(i_kind) rfv3io_mype
@@ -51,6 +53,7 @@ module gsi_rfv3io_tten_mod
   public :: gsi_fv3ncdf_read
   public :: gsi_fv3ncdf2d_read
   public :: gsi_fv3ncdf_write
+  public :: gsi_fv3ncdf_append
 
   public :: aeta1_ll,aeta2_ll
   public :: eta1_ll,eta2_ll
@@ -515,6 +518,129 @@ subroutine gsi_fv3ncdf_write(filename,varname,var,mype_io)
     end if !mype_io
 
 end subroutine gsi_fv3ncdf_write
+
+subroutine gsi_fv3ncdf_append(filename,varname,var,mype_io)
+!$$$  subprogram documentation block
+!                .      .    .                                        .
+! subprogram:    gsi_nemsio_write
+!   pgrmmr: wu
+!
+! abstract:
+!
+! program history log:
+!
+!   input argument list:
+!    varu,varv
+!    add_saved
+!    mype     - mpi task id
+!    mype_io
+!
+!   output argument list:
+!
+! attributes:
+!   language: f90
+!   machine:
+!
+!$$$ end documentation block
+
+    implicit none
+
+    real(r_single)   ,intent(in   ) :: var(lon2,lat2,nsig)
+    integer(i_kind),intent(in   ) :: mype_io
+    character(*)   ,intent(in   ) :: varname,filename
+
+    integer(i_kind) :: VarId,gfile_loc
+    integer(i_kind),allocatable,dimension(:)    :: dim_id,dim
+    character(len=128)                          :: name
+    character(len=128),allocatable,dimension(:) :: dim_names
+    integer(i_kind) iret,k,kk,len,ndim
+    integer(i_kind) ndimensions,nvariables,nattributes,unlimiteddimid
+
+    real(r_kind),allocatable,dimension(:,:,:)   :: f3d
+
+    if(rfv3io_mype==mype_io) then
+
+       call check( nf90_open(trim(filename),nf90_write,gfile_loc) )
+
+       iret=nf90_inquire(gfile_loc,ndimensions,nvariables,nattributes,unlimiteddimid)
+       allocate(dim(ndimensions))
+       allocate(dim_names(ndimensions))
+
+       do k=1,ndimensions
+          iret=nf90_inquire_dimension(gfile_loc,k,name,len)
+          dim(k)=len
+          dim_names(k)=name
+          write(*,*) 'dimension=',k,len,name
+       enddo
+
+       iret=nf90_inq_varid(gfile_loc,trim(varname),VarId)
+       if(iret == nf90_NoErr) then
+          iret=nf90_inquire_variable(gfile_loc,VarId,ndims=ndim)
+          if(allocated(dim_id    )) deallocate(dim_id    )
+          allocate(dim_id(ndim))
+          iret=nf90_inquire_variable(gfile_loc,VarId,dimids=dim_id)
+          write(*,*) 'check dimension=',ndim,dim_id
+          print *,'update ',trim(varname),' to ',trim(filename)
+       else ! add a varaible
+          call check( nf90_redef(gfile_loc))
+          if(allocated(dim_id    )) deallocate(dim_id    )
+          if(trim(dim_names(1))=='lon') then
+             ndim=3
+             allocate(dim_id(ndim))
+             dim_id(1)=1
+             dim_id(2)=2
+             dim_id(3)=5
+             call check( nf90_def_var(gfile_loc,trim(varname),nf90_float,(/ dim_id(1), dim_id(2), dim_id(3) /),VarId))
+          else
+             ndim=4
+             allocate(dim_id(ndim))
+             dim_id(1)=1
+             dim_id(2)=2
+             dim_id(3)=3
+             dim_id(4)=4
+             call check( nf90_def_var(gfile_loc,trim(varname),nf90_float,(/ dim_id(1), dim_id(2), dim_id(3), dim_id(4) /),VarId))
+          endif
+          call check( nf90_put_att(gfile_loc, VarId, "long_name",  &
+                         "temperature tendency from reflectivity"))
+          call check( nf90_put_att(gfile_loc, VarId, "units", "k s-1"))
+          call check( nf90_enddef(gfile_loc))
+          print *,'add ',trim(varname),' to ',trim(filename)
+       endif
+
+       if(ndim==3 .or. (ndim==4 .and. dim(dim_id(4))==1) ) then
+          if(allocated(f3d        )) deallocate(f3d        )
+          allocate(f3d(dim(dim_id(1)),dim(dim_id(2)),dim(dim_id(3))))
+
+          if(lon2==dim(dim_id(1)) .and. lat2==dim(dim_id(2))) then
+             if(nsig == dim(dim_id(3))) then
+                do kk=1,nsig
+                   f3d(:,:,nsig-kk+1)=var(:,:,kk)
+                enddo
+             elseif(nsig+1== dim(dim_id(3))) then
+                do kk=1,nsig
+                  f3d(:,:,nsig+1-kk+1)=var(:,:,kk)
+                enddo
+                f3d(:,:,1)=var(:,:,nsig)
+             else
+                write(6,*) 'vertical mismatch=',nsig,nsig+1
+                write(6,*) 'dimension reads in=',dim(dim_id(3))
+                stop 123
+             endif
+          else
+             write(6,*) 'horizontal mismatch=',lon2,lat2
+             write(6,*) 'dimension reads in=',dim(dim_id(1)),dim(dim_id(2))
+             stop 123
+          endif
+       else
+          write(6,*) 'unknow dimension size=',ndim
+       endif
+       print *,'write ',trim(varname),' to ',trim(filename)
+
+       call check( nf90_put_var(gfile_loc,VarId,f3d) )
+       call check( nf90_close(gfile_loc) )
+    end if !mype_io
+
+end subroutine gsi_fv3ncdf_append
 
 subroutine check(status)
     use kinds, only: i_kind

@@ -183,7 +183,7 @@ SUBROUTINE radar_ref2tten(nlon,nlat,nsig,ref_mos_3d,&
              tten_radar(i,j,k) = 0._r_kind
           else if (ref_mos_3d(i,j,k)>=0.001_r_kind) then  ! echo
             iskip=0
-            if (tbk_k>277.15_r_kind .and. ref_mos_3d(i,j,k)<28._r_kind) then
+            if (tbk_k>277.15_r_kind .and. ref_mos_3d(i,j,k)<convection_refl_threshold) then
             iskip=iskip+1
 !           write (6,*)' t is over 277 ',i,j,k,ref_mos_3d(i,j,k)
 !        ALSO, if T > 4C and refl < 28dBZ, again
