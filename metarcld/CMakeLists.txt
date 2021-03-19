@@ -10,6 +10,5 @@ include_directories( ${GSIINC} ${NETCDFINC} )
 set(EXE "process_metarcld.exe")
 add_executable(${EXE} ${src_c} ${src_all} )
 target_link_libraries( ${EXE} ${wrflib} ${wrfframe} ${NETCDFLIB} ${GSILIB} ${LIBW3EMC_UPP} ${LIBW3NCO_UPP} ${LIBBACIO} ${LIBBUFR} ${MPILIB} )
-
-
-
+install(TARGETS ${EXE}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

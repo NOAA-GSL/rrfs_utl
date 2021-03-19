@@ -18,6 +18,5 @@ set(EXE "fv3sar_novarcldana.exe")
 add_executable(${EXE} ${src_all})
 set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 target_link_libraries( ${EXE} ${wrflib} ${NETCDFLIB} ${MPILIB} ${GSDCLOUD_LIBRARY} )
-
-
-
+install(TARGETS ${EXE}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

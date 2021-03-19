@@ -11,6 +11,5 @@ set(EXE "process_larccld.exe")
 add_executable(${EXE} ${src_c} ${src_all} )
 #set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 target_link_libraries( ${EXE} ${wrflib} ${wrfframe} ${NETCDFLIB} ${GSILIB} ${LIBW3EMC_UPP} ${LIBW3NCO_UPP} ${LIBBACIO} ${LIBBUFR} ${MPILIB} )
-
-
-
+install(TARGETS ${EXE}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
