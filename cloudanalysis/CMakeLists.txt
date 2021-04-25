@@ -14,7 +14,7 @@ if(BUILD_GSDCLOUD_ARW)
    set(GSDCLOUD_LIBRARY ${gsdcloud} )
 endif(BUILD_GSDCLOUD_ARW)
 
-set(EXE "fv3sar_novarcldana.exe")
+set(EXE "fv3lam_novarcldana.exe")
 add_executable(${EXE} ${src_all})
 set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 target_link_libraries( ${EXE} ${wrflib} ${NETCDFLIB} ${MPILIB} ${GSDCLOUD_LIBRARY} )

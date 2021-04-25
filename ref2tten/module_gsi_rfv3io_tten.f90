@@ -30,6 +30,7 @@ module gsi_rfv3io_tten_mod
       character(len=:),allocatable :: dynvars   !='fv3_dynvars'
       character(len=:),allocatable :: tracers   !='fv3_tracer'
       character(len=:),allocatable :: sfcdata   !='fv3_sfcdata'
+      character(len=:),allocatable :: phydata   !='fv3_phydata'
       character(len=:),allocatable :: couplerres!='coupler.res'
       contains
       procedure , pass(this):: init=>fv3regfilename_init
@@ -64,12 +65,12 @@ module gsi_rfv3io_tten_mod
 contains
 
   subroutine fv3regfilename_init(this,grid_spec_input,ak_bk_input,dynvars_input,&
-                      tracers_input,sfcdata_input,couplerres_input)
+                      tracers_input,sfcdata_input,phydata_input,couplerres_input)
   implicit None
   class(type_fv3regfilenameg),intent(inout):: this
 
   character(*),optional :: grid_spec_input,ak_bk_input,dynvars_input, &
-                      tracers_input,sfcdata_input,couplerres_input
+                      tracers_input,sfcdata_input,phydata_input,couplerres_input
 
   if(present(grid_spec_input))then
     this%grid_spec=grid_spec_input
@@ -99,6 +100,12 @@ contains
     this%sfcdata=sfcdata_input
   else
     this%sfcdata='fv3_sfcdata'
+  endif
+
+  if(present(phydata_input))then
+    this%phydata=phydata_input
+  else
+    this%phydata='fv3_phydata'
   endif
 
   if(present(couplerres_input))then

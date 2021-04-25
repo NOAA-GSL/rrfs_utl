@@ -128,6 +128,7 @@ program gsdcloudanalysis_ref2tten
   character(len=:),allocatable :: dynvars   !='fv3_dynvars'
   character(len=:),allocatable :: tracers   !='fv3_tracer'
   character(len=:),allocatable :: sfcvars   !='fv3_sfcdata'
+  character(len=:),allocatable :: phyvars   !='fv3_phydata'
 
   logical :: ifexist
 
@@ -168,6 +169,7 @@ program gsdcloudanalysis_ref2tten
      dynvars= bg_fv3regfilenameg%dynvars
      tracers= bg_fv3regfilenameg%tracers
      sfcvars= bg_fv3regfilenameg%sfcdata
+     phyvars= bg_fv3regfilenameg%phydata
 
      call init_constants(.true.)
      call init_constants_derived
@@ -433,10 +435,10 @@ program gsdcloudanalysis_ref2tten
 ! 5.10 update
 !
 
-        if(ntime==1) call gsi_fv3ncdf_append(tracers,'radar_tten',ges_tten,mype_t)
-        if(ntime==2) call gsi_fv3ncdf_append(tracers,'radar_tten_2',ges_tten,mype_t)
-        if(ntime==3) call gsi_fv3ncdf_append(tracers,'radar_tten_3',ges_tten,mype_t)
-        if(ntime==4) call gsi_fv3ncdf_append(tracers,'radar_tten_4',ges_tten,mype_t)
+        if(ntime==1) call gsi_fv3ncdf_append(phyvars,'radar_tten',ges_tten,mype_t)
+        if(ntime==2) call gsi_fv3ncdf_append(phyvars,'radar_tten_2',ges_tten,mype_t)
+        if(ntime==3) call gsi_fv3ncdf_append(phyvars,'radar_tten_3',ges_tten,mype_t)
+        if(ntime==4) call gsi_fv3ncdf_append(phyvars,'radar_tten_4',ges_tten,mype_t)
 
 ! release memory for this time level
         deallocate(ges_tten)
