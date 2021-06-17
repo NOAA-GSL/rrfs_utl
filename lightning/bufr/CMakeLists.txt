@@ -7,6 +7,6 @@ set_source_files_properties(${src_c} PROPERTIES COMPILE_FLAGS ${C_FLAGS})
 include_directories( ${GSIINC} ${NETCDFINC} )
 
 ADD_EXECUTABLE(process_Lightning_bufr.exe ${src_c} ${src_all} )
-TARGET_LINK_LIBRARIES(process_Lightning_bufr.exe ${NETCDFLIB} ${LIBBUFR} ${LIBW3EMC} ${LIBW3NCO} ${CONSTANTS})
+TARGET_LINK_LIBRARIES(process_Lightning_bufr.exe ${NETCDFLIB} ${LIBZ} ${LIBBUFR} ${LIBW3EMC} ${LIBW3NCO} ${CONSTANTS})
 install(TARGETS process_Lightning_bufr.exe
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

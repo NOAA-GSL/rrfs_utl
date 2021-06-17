@@ -17,6 +17,6 @@ endif(BUILD_GSDCLOUD_ARW)
 set(EXE "fv3lam_nonvarcldana.exe")
 add_executable(${EXE} ${src_all})
 set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-target_link_libraries( ${EXE} ${wrflib} ${NETCDFLIB} ${MPILIB} ${GSDCLOUD_LIBRARY} )
+target_link_libraries( ${EXE} ${wrflib} ${NETCDFLIB} ${LIBZ} ${MPILIB} ${GSDCLOUD_LIBRARY} )
 install(TARGETS ${EXE}
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

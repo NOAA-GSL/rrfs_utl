@@ -7,6 +7,6 @@ set_source_files_properties(${src_c} PROPERTIES COMPILE_FLAGS ${C_FLAGS})
 include_directories( ${GSIINC} ${NETCDFINC} )
 
 ADD_EXECUTABLE(process_Lightning_nc.exe process_Lightning.f90 ${src_c} ${src_all} )
-TARGET_LINK_LIBRARIES(process_Lightning_nc.exe ${NETCDFLIB} ${LIBBUFR} ${LIBW3EMC_UPP} ${LIBW3NCO_UPP} ${LIBBACIO} ${MPILIB} ${CONSTANTS})
+TARGET_LINK_LIBRARIES(process_Lightning_nc.exe ${NETCDFLIB} ${LIBZ} ${LIBBUFR} ${LIBW3EMC_UPP} ${LIBW3NCO_UPP} ${LIBBACIO} ${MPILIB} ${CONSTANTS})
 install(TARGETS process_Lightning_nc.exe
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
