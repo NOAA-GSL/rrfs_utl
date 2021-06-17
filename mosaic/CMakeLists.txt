@@ -9,13 +9,15 @@ include_directories( ${GSIINC} ${NETCDFINC} ${G2INC} )
 set(EXE "process_NSSL_mosaic.exe")
 add_executable(${EXE} ${src_all})
 set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-target_link_libraries( ${EXE} ${NETCDFLIB} ${GSILIB} ${LIBG2_WPS} ${LIBG2TMPL} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${MPILIB} ${LIBBUFR} ${LIBBACIO} ${LIBSP} ${LIBIOMP5} )
+set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
+target_link_libraries( ${EXE} ${NETCDFLIB} ${wrflib} ${GSILIB} ${LIBCRTM} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${MPILIB} ${LIBBUFR} ${LIBBACIO} ${LIBSP} ${LIBIOMP5} )
 install(TARGETS ${EXE}
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
 set(EXE "process_NSSL_mosaic_enkf.exe")
 add_executable(${EXE} ${src_all_enkf} process_NSSL_mosaic_to_dart_and_netcdf.f90)
 set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-target_link_libraries( ${EXE} ${NETCDFLIB} ${GSILIB} ${LIBG2_WPS} ${LIBG2TMPL} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${MPILIB} ${LIBBUFR} ${LIBBACIO} ${LIBSP} ${LIBIOMP5} )
+set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
+target_link_libraries( ${EXE} ${NETCDFLIB} ${wrflib} ${GSILIB} ${LIBCRTM} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${MPILIB} ${LIBBUFR} ${LIBBACIO} ${LIBSP} ${LIBIOMP5} )
 install(TARGETS ${EXE}
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
