@@ -70,6 +70,7 @@ SET(G2INC  "$ENV{G2_INC4}")
 
 SET(GSILIB  "${GSIBUILD}/lib/libgsilib_shrd.a")
 SET(wrflib  "${GSIBUILD}/lib/libgsilib_wrf.a")
+SET(wrflibio  "$ENV{WRF_IO_LIB}")
 
 if(HOST-Dell)
   SET(LIBZ      "$ENV{ZLIB_LIBRARIES}/libz.a")
@@ -107,3 +108,4 @@ add_subdirectory(ref2tten)
 add_subdirectory(cloudanalysis)
 add_subdirectory(larccld)
 add_subdirectory(metarcld)
+add_subdirectory(update_sst)
