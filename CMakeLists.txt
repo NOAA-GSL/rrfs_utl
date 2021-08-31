@@ -18,6 +18,8 @@ string(REGEX MATCH "v1"       HOST-Dell  ${HOSTNAME} )
 string(REGEX MATCH "Orion"    HOST-Orion ${HOSTNAME} )
 if(EXISTS /jetmon)
   set(HOST-Jet "True" )
+elseif(EXISTS /ioddev_dell)
+  set(HOST-Dell "True" )
 endif()
 
 ### Do the following to load required compiling modules on Jet
