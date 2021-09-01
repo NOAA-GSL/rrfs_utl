@@ -69,9 +69,9 @@ SUBROUTINE convert_lghtn2ref(mype,nlon,nlat,nsig,ref_mos_3d,lightning,h_bk)
   integer(i_kind) :: maxlvl 
   parameter (maxlvl=31)
   real(r_kind) :: newlvlAll(maxlvl)   ! vertical levels of reflectivity statistic profile
-  DATA newlvlAll/0.2, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, &
-                3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, &
-                9, 10, 11, 12, 13, 14, 15, 16/
+  DATA newlvlAll/200, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, &
+                3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, &
+                9000, 10000, 11000, 12000, 13000, 14000, 15000, 16000/
 
   real(r_kind) :: refprofile_winter(maxlvl,4)   ! statistic reflectivity profile used to  
                                                 ! retrieve vertical ref based on lightning
@@ -155,11 +155,6 @@ SUBROUTINE convert_lghtn2ref(mype,nlon,nlat,nsig,ref_mos_3d,lightning,h_bk)
 !
 !  vertical reflectivity distribution
 !
-  DO k=1,maxlvl
-     newlvlAll(k)=newlvlAll(k)*1000.0_r_kind
-  ENDDO
-
-!  ref_mos_3d=-9999.0
   DO j=2,nlat-1
     DO i=2,nlon-1
       if( dbz_lightning(i,j) > 30 ) then
