@@ -15,6 +15,9 @@ module module_surface
 ! set default to private
   private
   type :: use_surface
+      integer :: nvar
+      integer :: nvar3d
+      character(len=20),allocatable :: var_rrfs(:),var_rap(:)
       integer :: halo
       integer :: nlat,nlon,nlev
       integer :: nlat_target,nlon_target
@@ -23,6 +26,7 @@ module module_surface
     contains
       procedure :: init
       procedure :: build_mapindex
+      procedure :: set_varname
       procedure :: use_sfc
       procedure :: close
   end type use_surface
@@ -31,6 +35,57 @@ module module_surface
 !
 contains
    
+  subroutine set_varname(this)
+!                .      .    .                                       .
+! subprogram:   build_mapindex
+!   prgmmr:
+!
+! abstract:
+!
+! program history log:
+!
+!   input argument list:
+!
+!   output argument list:
+!
+    implicit none
+
+    class(use_surface) :: this
+!
+    this%nvar=7
+    this%nvar3d=3
+!
+    if(allocated(this%var_rrfs)) deallocate(this%var_rrfs)
+    allocate(this%var_rrfs(this%nvar))
+    if(allocated(this%var_rap)) deallocate(this%var_rap)
+    allocate(this%var_rap(this%nvar))
+! Soil moisture: 3D float
+    this%var_rap(1)="SMOIS"
+    this%var_rrfs(1)="smois"  !  double  smc?
+! Soil temperature: 3D float
+    this%var_rap(2)="TSLB"
+    this%var_rrfs(2)="tslb"   ! double stc?
+! Liquid soil water: 3D float
+    this%var_rap(3)="SH2O"
+    this%var_rrfs(3)="sh2o"    ! double slc?
+! SURFACE SKIN TEMPERATURE: 2D float
+    this%var_rap(4)="TSK"
+    this%var_rrfs(4)="tsfc"   ! double tsfcl?
+! SNOW WATER EQUIVALENT: 2D float
+    this%var_rap(5)="SNOW"
+    this%var_rrfs(5)="weasdl"  ! double 
+! PHYSICAL SNOW DEPTH: 2D float
+    this%var_rap(6)="SNOWH"
+    this%var_rrfs(6)="snodl"   !double
+! TEMPERATURE INSIDE SNOW: 2D float
+    this%var_rap(7)="SOILT1"
+    this%var_rrfs(7)="tsnow_land" ! double
+! CANOPY WATER: 2D float
+!    this%var_rap(8)="CANWAT"
+!    this%var_rrfs(8)="cnwat"
+!
+  end subroutine set_varname
+
   subroutine use_sfc(this,rapfile,rrfsfile)
 !                .      .    .                                       .
 ! subprogram:   build_mapindex
@@ -55,11 +110,15 @@ contains
     type(ncio)     :: raphrrr,rrfs
 !
     real(r_single),allocatable,target :: tmp2d4b(:,:)
+    real(r_single),allocatable,target :: tmp3d4b(:,:,:)
     real(r_kind),  allocatable,target :: tmp2d8b(:,:)
+    real(r_kind),  allocatable,target :: tmp3d8b(:,:,:)
 !
     integer  :: nx_rap,ny_rap
     integer  :: nx_rrfs,ny_rrfs,nz_rrfs
     integer  :: i,j,ix,jx
+    character(len=20) :: thisvar_rrfs,thisvar_rap
+    integer  :: k,kx 
 !
 
     nx_rrfs=this%nlon
@@ -69,34 +128,70 @@ contains
     ny_rap=this%nlat_target
 
     call raphrrr%open(trim(rapfile),"r",200)
-    call rrfs%open(trim(rrfsfile),"r",200)
 !
 !
-    allocate(tmp2d4b(nx_rap,ny_rap))
-    call raphrrr%get_var("LANDMASK",nx_rap,ny_rap,tmp2d4b)
+    do k=1,this%nvar
+       thisvar_rrfs=this%var_rrfs(k)
+       thisvar_rap=this%var_rap(k)
+       write(*,*) "=============================================="
+       write(*,'(4a)') "Working to replace rrfs variable ",trim(thisvar_rrfs), &
+                  " from RAP/HRRR ",trim(thisvar_rap)
+       if(k <= this%nvar3d) then
+          allocate(tmp3d4b(nx_rap,ny_rap,nz_rrfs))
+          call raphrrr%get_var(trim(thisvar_rap),nx_rap,ny_rap,nz_rrfs,tmp3d4b)
 
-    allocate(tmp2d8b(nx_rrfs,ny_rrfs))
-    call rrfs%get_var("slmsk",nx_rrfs,ny_rrfs,tmp2d8b)
-    tmp2d8b=2
-    do j=1,ny_rrfs
-      do i=1,nx_rrfs
-         ix=this%index_x(i,j)
-         jx=this%index_y(i,j)
-         if( (ix >= 1 .and. ix <= nx_rap) .and. &
-             (jx >= 1 .and. jx <= ny_rap) ) then
-            tmp2d8b(i,j)=tmp2d4b(ix,jx)
-         endif
-      enddo
+          allocate(tmp3d8b(nx_rrfs,ny_rrfs,nz_rrfs))
+          call rrfs%open(trim(rrfsfile),"r",200)
+          call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,nz_rrfs,tmp3d8b)
+          call rrfs%close()
+
+          do j=1,ny_rrfs
+            do i=1,nx_rrfs
+               ix=this%index_x(i,j)
+               jx=this%index_y(i,j)
+               if( (ix >= 1 .and. ix <= nx_rap) .and. &
+                   (jx >= 1 .and. jx <= ny_rap) ) then
+                  do kx=1,nz_rrfs
+                     tmp3d8b(i,j,kx)=tmp3d4b(ix,jx,kx)
+                  enddo
+               endif
+            enddo
+          enddo
+          deallocate(tmp3d4b)
+
+          call rrfs%open(trim(rrfsfile),"w",200)
+          call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,nz_rrfs,tmp3d8b)
+          deallocate(tmp3d8b)
+          call rrfs%close()
+       else
+          allocate(tmp2d4b(nx_rap,ny_rap))
+          call raphrrr%get_var(trim(thisvar_rap),nx_rap,ny_rap,tmp2d4b)
+
+          allocate(tmp2d8b(nx_rrfs,ny_rrfs))
+          call rrfs%open(trim(rrfsfile),"r",200)
+          call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
+          call rrfs%close()
+
+          do j=1,ny_rrfs
+            do i=1,nx_rrfs
+               ix=this%index_x(i,j)
+               jx=this%index_y(i,j)
+               if( (ix >= 1 .and. ix <= nx_rap) .and. &
+                   (jx >= 1 .and. jx <= ny_rap) ) then
+                  tmp2d8b(i,j)=tmp2d4b(ix,jx)
+               endif
+            enddo
+          enddo
+          deallocate(tmp2d4b)
+
+          call rrfs%open(trim(rrfsfile),"w",200)
+          call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
+          deallocate(tmp2d8b)
+          call rrfs%close()
+       endif
     enddo
-    deallocate(tmp2d4b)
-    call rrfs%close()
-
-    call rrfs%open(trim(rrfsfile),"w",200)
-    call rrfs%replace_var("slmsk",nx_rrfs,ny_rrfs,tmp2d8b)
-    deallocate(tmp2d8b)
 !
     call raphrrr%close()
-    call rrfs%close()
 
   end subroutine use_sfc
 

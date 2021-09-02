@@ -123,6 +123,7 @@ program use_raphrrr_sfc
 ! initial sfc and map index
      call sfc%init(nx_rrfs,ny_rrfs,nz_rrfs,nx_rap,ny_rap,4)
      call sfc%build_mapindex(map,rlon2d_rrfs,rlat2d_rrfs,landmask_rrfs,landmask_raphrrr)
+     call sfc%set_varname()
      call sfc%use_sfc(rapfile,rrfsfile)
      call sfc%close()
 
