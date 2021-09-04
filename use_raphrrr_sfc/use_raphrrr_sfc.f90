@@ -114,7 +114,12 @@ program use_raphrrr_sfc
      do j=1,ny_rap
        do i=1,nx_rap
           landmask_raphrrr(i,j)=int(tmp2d4b(i,j))
-          if(landmask_raphrrr(i,j) >=2 ) landmask_raphrrr(i,j)=1
+       enddo
+     enddo
+     call raphrrr%get_var("SNOW",nx_rap,ny_rap,tmp2d4b)
+     do j=1,ny_rap
+       do i=1,nx_rap
+          if(tmp2d4b(i,j) > 0.01 ) landmask_raphrrr(i,j)=2  ! snow coverage
        enddo
      enddo
      deallocate(tmp2d4b)
