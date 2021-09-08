@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
-file(GLOB src_all grib2_read_mod.f90 netCDFsub_geo.f90  process_SST.f90  sstGlobal2RR.f90  update_SST_netcdf_mass.f90)
+### file(GLOB src_all grib2_read_mod.f90 netCDFsub_geo.f90  process_SST.f90  sstGlobal2RR.f90  update_SST_netcdf_mass.f90 update_SST_netcdf_fv3.f90)
+file(GLOB src_all ${CMAKE_CURRENT_SOURCE_DIR}/*.f90)
 set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 
 include_directories( ${GSIINC} ${G2INC} ${NETCDFINC} )
