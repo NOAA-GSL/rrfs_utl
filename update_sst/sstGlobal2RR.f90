@@ -164,7 +164,7 @@ SUBROUTINE sstGlobal2RR(f,imaskSST,xland,nlon,nlat,xlon,ylat,sstRR)
             sstRR(i,j) = F(IPOINT,JPOINT)
         ELSE
 
-     print *,' Expanded serach for water point'
+!     print *,' Expanded serach for water point'
 !
 !         EXPAND SEARCH RADIUS AND TAKE FIRST WATER TYPE MATCH
 !
