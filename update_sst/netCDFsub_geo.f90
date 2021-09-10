@@ -227,7 +227,7 @@ Subroutine  GET_DIM_ATT_fv3sar_sfcdata(geosngle,LONLEN,LATLEN,LEVLEN)
 
 END SUBROUTINE GET_DIM_ATT_fv3sar_sfcdata
 
-Subroutine  GET_geo_sngl_fv3sar(NCID,mscNlon,mscNlat,mscValueLAT,mscValueLON,mscValueXland,mscValueVtyp)
+Subroutine  GET_geo_sngl_fv3sar(NCID,mscNlon,mscNlat,mscValueLAT,mscValueLON)
 !
 !  Author: Ming Hu, ESRL/GSD
 !  
@@ -240,6 +240,54 @@ Subroutine  GET_geo_sngl_fv3sar(NCID,mscNlon,mscNlat,mscValueLAT,mscValueLON,msc
 !  out:
 !     mscValueLAT
 !     mscValueLON
+!
+  IMPLICIT NONE
+
+  INCLUDE 'netcdf.inc'
+
+  INTEGER ::   mscNlon   ! number of longitude of mosaic data
+  INTEGER ::   mscNlat   ! number of latitude of mosaic data
+
+  INTEGER ::  NCID, STATUS, MSLATID,MSLONID 
+
+  INTEGER ::   NDIMS
+  PARAMETER (NDIMS=3)                  ! number of dimensions
+  INTEGER START(NDIMS), COUNT(NDIMS)
+
+  REAL ::   mscValueLAT(mscNlon,mscNlat,1)
+  REAL ::   mscValueLON(mscNlon,mscNlat,1)
+  INTEGER :: i,j
+
+  START(1)=1
+  START(2)=1
+  START(3)=1
+  COUNT(1)=mscNlon
+  COUNT(2)=mscNlat
+  COUNT(3)=1
+
+  STATUS = NF_INQ_VARID (NCID, 'grid_latt', MSLATID)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR_geo(STATUS)
+  STATUS = NF_GET_VARA_REAL (NCID, MSLATID, START, COUNT, mscValueLAT)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR_geo(STATUS)
+
+  STATUS = NF_INQ_VARID (NCID, 'grid_lont', MSLONID)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR_geo(STATUS)
+  STATUS = NF_GET_VARA_REAL (NCID, MSLONID, START, COUNT, mscValueLON)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR_geo(STATUS)
+
+end subroutine GET_geo_sngl_fv3sar
+
+Subroutine  GET_geo_sngl_fv3sar_xv(NCID,mscNlon,mscNlat,mscValueXland,mscValueVtyp)
+!
+!  Author: Ming Hu, ESRL/GSD
+!  
+!  First written: 12/16/2007.
+!
+!  IN:
+!     mscNlon
+!     mscNlan
+!     NCID
+!  out:
 !     mscValueXland
 !     mscValueVtyp 
 !
@@ -250,14 +298,12 @@ Subroutine  GET_geo_sngl_fv3sar(NCID,mscNlon,mscNlat,mscValueLAT,mscValueLON,msc
   INTEGER ::   mscNlon   ! number of longitude of mosaic data
   INTEGER ::   mscNlat   ! number of latitude of mosaic data
 
-  INTEGER ::  NCID, STATUS, MSLATID,MSLONID, MSXLANDID,MSVTYPID
+  INTEGER ::  NCID, STATUS, MSXLANDID,MSVTYPID
 
   INTEGER ::   NDIMS
   PARAMETER (NDIMS=3)                  ! number of dimensions
   INTEGER START(NDIMS), COUNT(NDIMS)
 
-  REAL ::   mscValueLAT(mscNlon,mscNlat,1)
-  REAL ::   mscValueLON(mscNlon,mscNlat,1)
   REAL ::   mscValueXland(mscNlon,mscNlat,1)
   REAL ::   mscValueVtyp(mscNlon,mscNlat,1)
   INTEGER :: i,j
@@ -269,16 +315,6 @@ Subroutine  GET_geo_sngl_fv3sar(NCID,mscNlon,mscNlat,mscValueLAT,mscValueLON,msc
   COUNT(2)=mscNlat
   COUNT(3)=1
 
-  STATUS = NF_INQ_VARID (NCID, 'geolat', MSLATID)
-  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR_geo(STATUS)
-  STATUS = NF_GET_VARA_REAL (NCID, MSLATID, START, COUNT, mscValueLAT)
-  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR_geo(STATUS)
-
-  STATUS = NF_INQ_VARID (NCID, 'geolon', MSLONID)
-  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR_geo(STATUS)
-  STATUS = NF_GET_VARA_REAL (NCID, MSLONID, START, COUNT, mscValueLON)
-  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR_geo(STATUS)
-
   STATUS = NF_INQ_VARID (NCID, 'slmsk', MSXLANDID)
   IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR_geo(STATUS)
   STATUS = NF_GET_VARA_REAL (NCID, MSXLANDID, START, COUNT, mscValueXland)
@@ -289,4 +325,4 @@ Subroutine  GET_geo_sngl_fv3sar(NCID,mscNlon,mscNlat,mscValueLAT,mscValueLON,msc
   STATUS = NF_GET_VARA_REAL (NCID, MSVTYPID, START, COUNT, mscValueVtyp)
   IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR_geo(STATUS)
 
-end subroutine GET_geo_sngl_fv3sar
+end subroutine GET_geo_sngl_fv3sar_xv
