@@ -48,7 +48,6 @@ subroutine update_SST_netcdf_fv3 (sstRR, glat, glon, nlon, nlat, xland, vegtyp, 
   real  :: glon(nlon,nlat)
   real  :: xland(nlon,nlat)
   real  :: vegtyp(nlon,nlat)
-!  real  :: laked(nlon,nlat)
 
 ! Declare local parameters
 
@@ -75,6 +74,8 @@ subroutine update_SST_netcdf_fv3 (sstRR, glat, glon, nlon, nlat, xland, vegtyp, 
   real(r_single),allocatable::landmask_soilmoisture1(:,:)
   real(r_single),allocatable::lakemask(:,:)
   real(r_single),allocatable::laked(:,:)
+  real(r_single),allocatable::tsea(:,:)
+  real(r_single),allocatable::tsfc(:,:)
 
   real(r_single)    :: time, time1, time2
   real(r_single)    :: a, b
@@ -142,18 +143,40 @@ subroutine update_SST_netcdf_fv3 (sstRR, glat, glon, nlon, nlat, xland, vegtyp, 
   write(6,*) '================================================='
   sfcvars="./sfc_data.nc"
   write(*,*)"nlon_regional, nlat_regional", nlon_regional, nlat_regional
+
   allocate(surftemp(nlon_regional,nlat_regional))
-  call gsi_fv3ncdf2d_read(sfcvars,'tsea','TSEA',surftemp,mype)
+  allocate(tsea(nlon_regional,nlat_regional))
+  allocate(tsfc(nlon_regional,nlat_regional))
+  allocate(temp2m(nlon_regional,nlat_regional))
+  allocate(sst(nlon_regional,nlat_regional))
+  allocate(lu_index(nlon_regional,nlat_regional))
+  allocate(landmask_soilmoisture1(nlon_regional,nlat_regional))
+  allocate(lakemask(nlon_regional,nlat_regional))
+  allocate(laked(nlon_regional,nlat_regional))
+
+  allocate(field2(nlon_regional,nlat_regional))
+!
+  write(6,*) '================================================='
+  call gsi_fv3ncdf2d_read(sfcvars,'tsea','TSEA',field2,mype)
+  sst=field2(:,:)
   write(*,*)'Done with reading TSEA from file ',sfcvars
-  write(6,*)' max,min bck skin temp (K)=',maxval(surftemp),minval(surftemp)
-       write(6,*)'background skin temp(170,170)', surftemp(170,170)
+  write(6,*)' max,min bck skin temp tsea(K)=',maxval(sst),minval(sst)
+       write(6,*)'background skin temp tsea(170,170)', sst(170,170)
        write(6,*)'new  sstRR(170,170)', sstRR(170,170)
-       write(6,*)'Winnipeg skin temp(516,412)', surftemp(516,412)
+       write(6,*)'Winnipeg skin temp tsea(516,412)', sst(516,412)
        write(6,*)'Winnipeg sstRR(516,412)', sstRR(516,412)
 !
   write(6,*) '================================================='
-  allocate(temp2m(nlon_regional,nlat_regional))
-  call gsi_fv3ncdf2d_read(sfcvars,'t2m','T2M',temp2m,mype)
+  call gsi_fv3ncdf2d_read(sfcvars,'tsfc','TSFC',field2,mype)
+  surftemp=field2(:,:)
+  write(*,*)'Done with reading TSFC from file ',sfcvars
+  write(6,*)' max,min bck skin temp tsfc(K)=',maxval(surftemp),minval(surftemp)
+       write(6,*)'background skin temp tsfc(170,170)', surftemp(170,170)
+       write(6,*)'Winnipeg skin temp tsfc(516,412)', surftemp(516,412)
+!
+  write(6,*) '================================================='
+  call gsi_fv3ncdf2d_read(sfcvars,'t2m','T2M',field2,mype)
+  temp2m=field2(:,:)
   write(*,*)'Done with reading T2M from file ',sfcvars
   write(6,*)' max,min bck 2m temp (K)=',maxval(temp2m),minval(temp2m)
        write(6,*)'background t2 temp(292,258)', temp2m(292,258)
@@ -161,7 +184,6 @@ subroutine update_SST_netcdf_fv3 (sstRR, glat, glon, nlon, nlat, xland, vegtyp, 
 !
   write(6,*) '================================================='
 !  rmse_var='LAKE_DEPTH'
-  allocate(laked(nlon_regional,nlat_regional))
   laked=0
   write(6,*)' max,min bck laked (K)=',maxval(laked),minval(laked)
   write(6,*)'laked(170,170)', laked(170,170)
@@ -169,19 +191,16 @@ subroutine update_SST_netcdf_fv3 (sstRR, glat, glon, nlon, nlat, xland, vegtyp, 
 !
   write(6,*) '================================================='
 !  rmse_var='LU_INDEX'
-  allocate(lu_index(nlon_regional,nlat_regional))
-  call gsi_fv3ncdf2d_read(sfcvars,'vtype','VTYPE',lu_index,mype)
+  call gsi_fv3ncdf2d_read(sfcvars,'vtype','VTYPE',field2,mype)
+  lu_index=field2(:,:)
   write(*,*)'Done with reading VTYPE (LU_INDEX) from file ',sfcvars
   write(6,*)' max,min LU_INDEX=',maxval(lu_index),minval(lu_index)
 !
   write(6,*) '================================================='
 !  rmse_var='LAKEMASK'
-  allocate(field2(nlon_regional,nlat_regional))
-  lakemask=field2
   lakemask=0
   write(6,*)' max,min LAKEMASK=',maxval(lakemask),minval(lakemask)
   write(6,*)'Winnipeg lakemask(516,412)', lakemask(516,412)
-  deallocate(field2)
 !
   write(6,*) '================================================='
 !  rmse_var='SMOIS'
@@ -197,7 +216,6 @@ subroutine update_SST_netcdf_fv3 (sstRR, glat, glon, nlon, nlat, xland, vegtyp, 
     write(6,*)' max,min SMOIS=',k, maxval(field3(:,:,k)),minval(field3(:,:,k))
   enddo
   landmask_soilmoisture1=field3(:,:,1)  ! use soil mositure to find water 
-  deallocate(field3)
 
 ! Compute weight for the current date
        juld = julm(imonth) + iday
@@ -271,14 +289,14 @@ if(1==1) then  ! turn off , use GFS SST
        if(in_SF_LAKE_PHYSICS == 0 .and. (vegtyp(i,j)==ilake .or. laked(i,j) .ne. 10.)) then ! the fill value for lake depth is 10.
 ! --- CLM lake model is off, use climatology for several lakes
 ! --- Great Salt Lake, Utah Lake -- Utah
-  !          if (glat(i,j).gt.39.5 .and. glat(i,j).lt.42. .and.  &
-  !             glon(i,j).gt.-114..and. glon(i,j).lt.-111.) then
-  !         write(6,*)'Global data Salt Lake temp',i,j,sstRR(i,j)
-  !          sstRR(i,j) = 273.15 + wght1*salt_lake_lst(mon1)  &
-  !                     +wght2*salt_lake_lst(mon2)
-  !          write(6,*)'Climatology Salt Lake temp',i,j,sstRR(i,j)  &
-  !              ,glat(i,j),glon(i,j)
-  !          end if
+            if (glat(i,j).gt.39.5 .and. glat(i,j).lt.42. .and.  &
+               glon(i,j).gt.-114..and. glon(i,j).lt.-111.) then
+           write(6,*)'Global data Salt Lake temp',i,j,sstRR(i,j)
+            sstRR(i,j) = 273.15 + wght1*salt_lake_lst(mon1)  &
+                       +wght2*salt_lake_lst(mon2)
+            write(6,*)'Climatology Salt Lake temp',i,j,sstRR(i,j)  &
+                ,glat(i,j),glon(i,j)
+            end if
 
 ! --- Salton Sea -- California
             if (glat(i,j).gt.33. .and. glat(i,j).lt.33.7 .and.  &
@@ -364,8 +382,7 @@ if(1==1) then  ! turn off , use GFS SST
 ! frozen water - MODIS type = 15
       if(in_SF_LAKE_PHYSICS == 0) then
 ! CLM lake model is turned off
-!        if(lu_index(i,j) == iice .and. laked(i,j).ne.10. .and. sstRR(i,j) > 273.) then
-        if(lu_index(i,j) == iice .and.  sstRR(i,j) > 273.) then
+        if(lu_index(i,j) == iice .and. laked(i,j).ne.10. .and. sstRR(i,j) > 273.) then
 ! -- frozen lakes with CLM lake model turned off.
            print *,'Ice lake cannnot have SST > 274K'
 !           print *,'i,j,sstRR,lu_index,vegtyp =' ,i,j,sstRR(i,j),lu_index(i,j),vegtyp(i,j)
@@ -379,7 +396,7 @@ if(1==1) then  ! turn off , use GFS SST
         endif  ! MODIS ice = 15
     endif  ! water and ice
 
-!        sst(i,j)=sstRR(i,j)
+        sst(i,j)=sstRR(i,j)
   ENDDO
   ENDDO
   write(*,*) 'Skin temperature updated with current SST'
@@ -403,12 +420,12 @@ endif
   write(6,*)' iy,m,d,h,m,s=',iyear,imonth,iday,ihour
 
   write(6,*) '================================================='
-  allocate(field2(nlon_regional,nlat_regional))
+!  allocate(field2(nlon_regional,nlat_regional))
   field2=surftemp
   write(6,*)' max,min skin temp =',maxval(field2),minval(field2)
   write(6,*)' max,min skin temp =',maxval(surftemp),minval(surftemp)
-!  call gsi_fv3ncdf_append(sfcvars,'tsea',field2,mype)
-  call gsi_fv3ncdf_append2d(sfcvars,'tsea',surftemp,mype)
+  call gsi_fv3ncdf_append2d(sfcvars,'tsea',sst,mype)
+  call gsi_fv3ncdf_append2d(sfcvars,'tsfc',surftemp,mype)
   deallocate(field2)
 
   call MPI_Barrier(mpi_comm_world, ierror)

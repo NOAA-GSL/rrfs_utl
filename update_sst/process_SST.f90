@@ -79,7 +79,7 @@ PROGRAM process_SST
      close(15)
 
      write(geofile,'(a,a)') './', 'geo_em.d01.nc'
-     if(bkversion==1) write(geofile,'(a,a)') './', 'fv3sar_grid_spec.nc'
+     if(bkversion==1) write(geofile,'(a,a)') './', 'fv3_grid_spec'
 
      write(*,*) 'geofile =', trim(geofile)
      if(bkversion==1) then
@@ -97,10 +97,20 @@ PROGRAM process_SST
 !
 !  get GSI horizontal grid in latitude and longitude
 !
+  call OPEN_geo(geofile, NCID)
+  if(bkversion==1) then
+     call GET_geo_sngl_fv3sar(NCID,Nlon,Nlat,ylat,xlon)
+  else
+     call GET_RR_GRID(bkversion,xlon,ylat,nlon,nlat,xland,vegtyp)
+  endif
+  call CLOSE_geo(NCID)
+!
+!  get xland and vegtype
+!
   geofile="./sfc_data.nc"
   call OPEN_geo(geofile, NCID)
   if(bkversion==1) then
-     call GET_geo_sngl_fv3sar(NCID,Nlon,Nlat,ylat,xlon,xland,vegtyp)
+     call GET_geo_sngl_fv3sar_xv(NCID,Nlon,Nlat,xland,vegtyp)
   else
      call GET_RR_GRID(bkversion,xlon,ylat,nlon,nlat,xland,vegtyp)
   endif
@@ -145,11 +155,11 @@ PROGRAM process_SST
 !
 if(bkversion==1) then
      call update_SST_netcdf_fv3(sstRR, ylat, xlon, nlon, nlat,xland,vegtyp,ilake,iice,iyear,imonth,iday,ihr)
+     write(6,*) "=== FV3 PREPROCCESS SUCCESS ==="
 else
      call update_SST_netcdf_mass(sstRR, ylat, xlon, nlon, nlat,xland,vegtyp,ilake,iice)
-end if
-!
      write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
+end if
 
   endif ! mype==0
 
@@ -253,7 +263,7 @@ SUBROUTINE read_sstGlobal(sst,iyear,imonth,iday,ihr)
 !  enddo
 end subroutine 
 
-SUBROUTINE GET_RR_GRID(bkversion,xlon,ylat,nlon,nlat,xland,vegtyp)
+SUBROUTINE GET_RR_GRID(xlon,ylat,nlon,nlat,xland,vegtyp)
 !
 !   PRGMMR: Ming Hu          ORG: GSD        DATE: 2009-04-15
 !
@@ -310,16 +320,9 @@ SUBROUTINE GET_RR_GRID(bkversion,xlon,ylat,nlon,nlat,xland,vegtyp)
 !
   workPath=''
   write(geofile,'(a,a)') trim(workPath), 'geo_em.d01.nc'
-  if(bkversion==1) write(geofile,'(a,a)') trim(workPath), 'sfc_data.nc'
 
   write(*,*) 'geofile', trim(geofile)
-  if(bkversion==1) then
-    call GET_DIM_ATT_fv3sar(geofile,TNLON,TNLAT)
-  else
-    call GET_DIM_ATT_geo(geofile,TNLON,TNLAT)
-  endif
-  write(*,*) 'TNLON,TNLAT',TNLON,TNLAT
-
+  call GET_DIM_ATT_geo(geofile,TNLON,TNLAT)
   if( (TNLON.ne.NLON) .or. (TNLAT.ne.NLAT)) then
     write(6,*) ' unmatched dimension'
     write(*,*) 'NLON,NLAT',NLON,NLAT, 'TNLON,TNLAT',TNLON,TNLAT
