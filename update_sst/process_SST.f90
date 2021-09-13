@@ -50,11 +50,16 @@ PROGRAM process_SST
   integer, allocatable :: imaskSST(:,:)
 
 !
+  CHARACTER*180 geofile
   character*100 sst_file
   integer :: istatus
   integer :: i,j,iwater,ilake,iice
 !
   INTEGER :: iyear, imonth, iday, ihr
+  integer :: NCID
+!
+  INTEGER  ::  bkversion
+  namelist/setup/ bkversion,iyear,imonth,iday,ihr
 
 !**********************************************************************
 !
@@ -66,16 +71,53 @@ PROGRAM process_SST
 
 !
   if(mype==0) then
+!
+! set geogrid fle name
+!
+     open(15, file='sst.namelist')
+       read(15,setup)
+     close(15)
 
-     call GET_DIM_ATT_geo('./geo_em.d01.nc',nlon,nlat)
-     write(*,*) 'grid dimension =',nlon,nlat
+     write(geofile,'(a,a)') './', 'geo_em.d01.nc'
+     if(bkversion==1) write(geofile,'(a,a)') './', 'fv3_grid_spec'
+
+     write(*,*) 'geofile =', trim(geofile)
+     if(bkversion==1) then
+       call GET_DIM_ATT_fv3sar(geofile,nlon,nlat)
+     else
+       call GET_DIM_ATT_geo(geofile,nlon,nlat)
+     endif
+     write(*,*) 'grid dimension=',nlon,nlat
 
      allocate(xlon(nlon,nlat))
      allocate(ylat(nlon,nlat)) 
      allocate(xland(nlon,nlat))
      allocate(vegtyp(nlon,nlat))
 
-     call GET_RR_GRID(xlon,ylat,nlon,nlat,xland,vegtyp)
+!
+!  get GSI horizontal grid in latitude and longitude
+!
+  call OPEN_geo(geofile, NCID)
+  if(bkversion==1) then
+     call GET_geo_sngl_fv3sar(NCID,Nlon,Nlat,ylat,xlon)
+  else
+     call GET_RR_GRID(bkversion,xlon,ylat,nlon,nlat,xland,vegtyp)
+  endif
+  call CLOSE_geo(NCID)
+!
+!  get xland and vegtype
+!
+  geofile="./sfc_data.nc"
+  call OPEN_geo(geofile, NCID)
+  if(bkversion==1) then
+     call GET_geo_sngl_fv3sar_xv(NCID,Nlon,Nlat,xland,vegtyp)
+  else
+     call GET_RR_GRID(bkversion,xlon,ylat,nlon,nlat,xland,vegtyp)
+  endif
+  call CLOSE_geo(NCID)
+  write(*,*) "xlon=",minval(xlon),maxval(xlon)
+  write(*,*) "ylat=",minval(ylat),maxval(ylat)
+
 !
 ! read in global 0.083333 degre SST
      allocate(sstGlobal(4320,2160))
@@ -111,9 +153,13 @@ PROGRAM process_SST
 !
 ! update model sst and tsk
 !
+if(bkversion==1) then
+     call update_SST_netcdf_fv3(sstRR, ylat, xlon, nlon, nlat,xland,vegtyp,ilake,iice,iyear,imonth,iday,ihr)
+     write(6,*) "=== FV3 PREPROCCESS SUCCESS ==="
+else
      call update_SST_netcdf_mass(sstRR, ylat, xlon, nlon, nlat,xland,vegtyp,ilake,iice)
-!
      write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
+end if
 
   endif ! mype==0
 
@@ -266,16 +312,16 @@ SUBROUTINE GET_RR_GRID(xlon,ylat,nlon,nlat,xland,vegtyp)
   integer :: tnlon,tnlat
 !
   integer :: NCID
+  INTEGER ::  bkversion
   CHARACTER*180   geofile
   CHARACTER*180   workPath
-
 !
 ! set geogrid fle name
 !
   workPath=''
   write(geofile,'(a,a)') trim(workPath), 'geo_em.d01.nc'
 
-  write(*,*) 'geofile ', trim(geofile)
+  write(*,*) 'geofile', trim(geofile)
   call GET_DIM_ATT_geo(geofile,TNLON,TNLAT)
   if( (TNLON.ne.NLON) .or. (TNLAT.ne.NLAT)) then
     write(6,*) ' unmatched dimension'
@@ -287,7 +333,11 @@ SUBROUTINE GET_RR_GRID(xlon,ylat,nlon,nlat,xland,vegtyp)
 !
 
   call OPEN_geo(geofile, NCID)
-  call GET_geo_sngl_geo(NCID,Nlon,Nlat,ylat,xlon,xland,vegtyp)
+  if(bkversion==1) then
+     call GET_geo_sngl_fv3sar(NCID,Nlon,Nlat,ylat,xlon,xland,vegtyp)
+  else
+     call GET_geo_sngl_geo(NCID,Nlon,Nlat,ylat,xlon,xland,vegtyp)
+  endif
   call CLOSE_geo(NCID)
 
 
