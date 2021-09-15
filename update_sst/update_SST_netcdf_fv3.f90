@@ -23,14 +23,14 @@ subroutine update_SST_netcdf_fv3 (sstRR, glat, glon, nlon, nlat, xland, vegtyp, 
   use mpi
   use constants, only: init_constants,init_constants_derived
   use constants, only: rd,h1000,rd_over_cp,grav,half
-  use gsi_rfv3io_tten_mod, only: gsi_rfv3io_get_grid_specs
-  use gsi_rfv3io_tten_mod, only: bg_fv3regfilenameg,fv3sar_bg_opt
-  use gsi_rfv3io_tten_mod, only: rfv3io_mype
-  use gsi_rfv3io_tten_mod, only: gsi_fv3ncdf_read,gsi_fv3ncdf2d_read
-  use gsi_rfv3io_tten_mod, only: gsi_fv3ncdf_write,gsi_fv3ncdf_append
-  use gsi_rfv3io_tten_mod, only: gsi_fv3ncdf_append2d
-  use gsi_rfv3io_tten_mod, only: nlon_regional,nlat_regional,nsig_regional
-  use gsi_rfv3io_tten_mod, only: eta1_ll
+  use gsi_rfv3io_sst_mod, only: gsi_rfv3io_get_grid_specs
+  use gsi_rfv3io_sst_mod, only: bg_fv3regfilenameg,fv3sar_bg_opt
+  use gsi_rfv3io_sst_mod, only: rfv3io_mype
+  use gsi_rfv3io_sst_mod, only: gsi_fv3ncdf_read,gsi_fv3ncdf2d_read
+  use gsi_rfv3io_sst_mod, only: gsi_fv3ncdf_write,gsi_fv3ncdf_append
+  use gsi_rfv3io_sst_mod, only: gsi_fv3ncdf_append2d
+  use gsi_rfv3io_sst_mod, only: nlon_regional,nlat_regional,nsig_regional
+  use gsi_rfv3io_sst_mod, only: eta1_ll
 
   implicit none
 

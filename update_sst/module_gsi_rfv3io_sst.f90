@@ -1,4 +1,4 @@
-module gsi_rfv3io_tten_mod
+module gsi_rfv3io_sst_mod
 !$$$   module documentation block
 !             .      .    .                                       .
 ! module:     gsi_rfv3io_mod
@@ -797,4 +797,4 @@ subroutine check(status)
     end if
 end subroutine check
 
-end module gsi_rfv3io_tten_mod
+end module gsi_rfv3io_sst_mod
