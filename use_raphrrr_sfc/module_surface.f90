@@ -225,6 +225,7 @@ contains
        write(*,*) "=============================================="
        write(*,'(4a)') "Working to replace rrfs variable ",trim(thisvar_rrfs), &
                   " from RAP/HRRR ",trim(thisvar_rap)
+       if(k==9 .or. k==10) cycle
        if(k <= this%nvar3d) then
           allocate(tmp3d4b(nx_rap,ny_rap,nz_rrfs))
           call raphrrr%get_var(trim(thisvar_rap),nx_rap,ny_rap,nz_rrfs,tmp3d4b)

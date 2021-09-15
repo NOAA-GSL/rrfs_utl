@@ -38,7 +38,8 @@ program use_raphrrr_sfc
   real(r_single),allocatable,target :: tmp2d4b(:,:)
   real(r_kind),  allocatable,target :: tmp2d8b(:,:)
 
-  integer :: i,j,k
+  integer :: i,j,k,n
+  character*80 :: raphrrrfile
 !
 !**********************************************************************
 !
@@ -89,63 +90,95 @@ program use_raphrrr_sfc
      call rrfs%close()
      write(*,*) maxval(landmask_rrfs), minval(landmask_rrfs)
 !
+! use RAP
 ! read in rap latlon
-     call raphrrr%open(trim(rapfile),"r",200)
-     call raphrrr%get_dim("west_east",nx_rap)
-     call raphrrr%get_dim("south_north",ny_rap)
-     call raphrrr%get_dim("soil_layers_stag",nz_raphrrr)
-     write(*,*) 'nx_rap,ny_rap=',nx_rap,ny_rap,nz_raphrrr
-     if(nz_raphrrr /= nz_rrfs) then
-        write(*,*) "Error in vertical level =", nz_raphrrr,nz_rrfs
-        stop 123
-     endif
-!
-     allocate(rlon2d_raphrrr(nx_rap,ny_rap))
-     allocate(rlat2d_raphrrr(nx_rap,ny_rap))
-     call raphrrr%get_var("XLONG",nx_rap,ny_rap,rlon2d_raphrrr)
-     call raphrrr%get_var("XLAT",nx_rap,ny_rap,rlat2d_raphrrr)
-     call map%init_general_transform(nx_rap,ny_rap,rlat2d_raphrrr,rlon2d_raphrrr)
-     deallocate(rlon2d_raphrrr)
-     deallocate(rlat2d_raphrrr)
+     do n=1,3
 
-     allocate(landmask_raphrrr(nx_rap,ny_rap))
-     allocate(tmp2d4b(nx_rap,ny_rap))
-     call raphrrr%get_var("LANDMASK",nx_rap,ny_rap,tmp2d4b)
-     do j=1,ny_rap
-       do i=1,nx_rap
-          landmask_raphrrr(i,j)=int(tmp2d4b(i,j))
-       enddo
-     enddo
-     call raphrrr%get_var("SNOW",nx_rap,ny_rap,tmp2d4b)
-     do j=1,ny_rap
-       do i=1,nx_rap
-          if(tmp2d4b(i,j) > 0.01 ) landmask_raphrrr(i,j)=2  ! snow coverage
-       enddo
-     enddo
-     deallocate(tmp2d4b)
-     call raphrrr%close()
+        raphrrrfile='missing'
+        if(n==1 .and. trim(rapfile) /= 'missing' ) then
+           raphrrrfile=rapfile
+        elseif(n==2 .and. trim(hrrrfile) /= 'missing' ) then
+           raphrrrfile=hrrrfile
+        elseif(n==3 .and. trim(hrrr_akfile) /= 'missing' ) then
+           raphrrrfile=hrrr_akfile
+        else
+           cycle
+        endif
+        write(*,*) "===> tansfer surface fields from ",trim(raphrrrfile)
+        call raphrrr%open(trim(raphrrrfile),"r",200)
+        call raphrrr%get_dim("west_east",nx_rap)
+        call raphrrr%get_dim("south_north",ny_rap)
+        call raphrrr%get_dim("soil_layers_stag",nz_raphrrr)
+        write(*,*) 'nx_rap,ny_rap=',nx_rap,ny_rap,nz_raphrrr
+        if(nz_raphrrr /= nz_rrfs) then
+           write(*,*) "Error in vertical level =", nz_raphrrr,nz_rrfs
+           stop 123
+        endif
+!
+        allocate(rlon2d_raphrrr(nx_rap,ny_rap))
+        allocate(rlat2d_raphrrr(nx_rap,ny_rap))
+        call raphrrr%get_var("XLONG",nx_rap,ny_rap,rlon2d_raphrrr)
+        call raphrrr%get_var("XLAT",nx_rap,ny_rap,rlat2d_raphrrr)
+        call map%init_general_transform(nx_rap,ny_rap,rlat2d_raphrrr,rlon2d_raphrrr)
+        deallocate(rlon2d_raphrrr)
+        deallocate(rlat2d_raphrrr)
+
+        allocate(landmask_raphrrr(nx_rap,ny_rap))
+        allocate(tmp2d4b(nx_rap,ny_rap))
+        call raphrrr%get_var("LANDMASK",nx_rap,ny_rap,tmp2d4b)
+        do j=1,ny_rap
+          do i=1,nx_rap
+             landmask_raphrrr(i,j)=int(tmp2d4b(i,j))
+          enddo
+        enddo
+        call raphrrr%get_var("SNOW",nx_rap,ny_rap,tmp2d4b)
+        do j=1,ny_rap
+          do i=1,nx_rap
+             if(tmp2d4b(i,j) > 0.01 ) landmask_raphrrr(i,j)=2  ! snow coverage
+          enddo
+        enddo
+        deallocate(tmp2d4b)
+        call raphrrr%close()
 !
 ! initial sfc and map index
-     call sfc%init(nx_rrfs,ny_rrfs,nz_rrfs,nx_rap,ny_rap,4)
-     call sfc%build_mapindex(map,rlon2d_rrfs,rlat2d_rrfs,landmask_rrfs,landmask_raphrrr)
-     call sfc%set_varname()
-     call sfc%use_sfc(rapfile,rrfsfile)
-     call sfc%close()
+        call sfc%init(nx_rrfs,ny_rrfs,nz_rrfs,nx_rap,ny_rap,4)
+        call sfc%build_mapindex(map,rlon2d_rrfs,rlat2d_rrfs,landmask_rrfs,landmask_raphrrr)
+        call sfc%set_varname()
+        call sfc%use_sfc(raphrrrfile,rrfsfile)
+        call sfc%close()
+! release memory
+        deallocate(landmask_raphrrr)
+        call map%destory_general_transform()
 
+     enddo ! n
+!
+     deallocate(landmask_rrfs)
+!
+! use HRRR
 ! read in hrrr latlon
-     call raphrrr%open(trim(hrrrfile),"r",200)
-     call raphrrr%get_dim("west_east",nx_hrrr)
-     call raphrrr%get_dim("south_north",ny_hrrr)
-     write(*,*) 'nx_hrrr,ny_hrrr=',nx_hrrr,ny_hrrr
-     call raphrrr%close()
+!     call raphrrr%open(trim(hrrrfile),"r",200)
+!     call raphrrr%get_dim("west_east",nx_hrrr)
+!     call raphrrr%get_dim("south_north",ny_hrrr)
+!!     call raphrrr%get_dim("soil_layers_stag",nz_raphrrr)
+!     write(*,*) 'nx_hrrr,ny_hrrr=',nx_hrrr,ny_hrrr,nz_raphrrr
+!     if(nz_raphrrr /= nz_rrfs) then
+!        write(*,*) "Error in vertical level =", nz_raphrrr,nz_rrfs
+!        stop 123
+!     endif
+!!     call raphrrr%close()
 
 ! read in hrrr ak latlon
-     call raphrrr%open(trim(hrrr_akfile),"r",200)
-     call raphrrr%get_dim("west_east",nx_hrrrak)
-     call raphrrr%get_dim("south_north",ny_hrrrak)
-     write(*,*) 'nx_hrrrak,ny_hrrrak=',nx_hrrrak,ny_hrrrak
-     call raphrrr%close()
-
+!     call raphrrr%open(trim(hrrr_akfile),"r",200)
+!     call raphrrr%get_dim("west_east",nx_hrrrak)
+!     call raphrrr%get_dim("south_north",ny_hrrrak)
+!     call raphrrr%get_dim("soil_layers_stag",nz_raphrrr)
+!     write(*,*) 'nx_hrrrak,ny_hrrrak=',nx_hrrrak,ny_hrrrak,nz_raphrrr
+!     if(nz_raphrrr /= nz_rrfs) then
+!!        write(*,*) "Error in vertical level =", nz_raphrrr,nz_rrfs
+!        stop 123
+!     endif
+!     call raphrrr%close()
+!
      write(6,*) "=== USE_RAPHRRR_SFC REPROCCESS SUCCESS ==="
 
   endif ! mype==0
