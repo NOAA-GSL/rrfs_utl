@@ -77,6 +77,7 @@ subroutine update_SST_netcdf_fv3 (sstRR, glat, glon, nlon, nlat, xland, vegtyp, 
   real(r_single),allocatable::tsea(:,:)
   real(r_single),allocatable::tref(:,:)
   real(r_single),allocatable::tsfc(:,:)
+  real(r_single),allocatable::tsfcl(:,:)
 
   real(r_single)    :: time, time1, time2
   real(r_single)    :: a, b
@@ -151,6 +152,7 @@ subroutine update_SST_netcdf_fv3 (sstRR, glat, glon, nlon, nlat, xland, vegtyp, 
   allocate(tsea(nlon_regional,nlat_regional))
   allocate(tref(nlon_regional,nlat_regional))
   allocate(tsfc(nlon_regional,nlat_regional))
+  allocate(tsfcl(nlon_regional,nlat_regional))
   allocate(temp2m(nlon_regional,nlat_regional))
   allocate(sst(nlon_regional,nlat_regional))
   allocate(lu_index(nlon_regional,nlat_regional))
@@ -188,6 +190,14 @@ subroutine update_SST_netcdf_fv3 (sstRR, glat, glon, nlon, nlat, xland, vegtyp, 
   write(6,*)' max,min bck skin temp tsfc(K)=',maxval(surftemp),minval(surftemp)
        write(6,*)'background skin temp tsfc(170,170)', surftemp(170,170)
        write(6,*)'Winnipeg skin temp tsfc(516,412)', surftemp(516,412)
+!
+  write(6,*) '================================================='
+  call gsi_fv3ncdf2d_read(sfcvars,'tsfcl','TSFCL',field2,mype)
+  tsfcl=field2(:,:)
+  write(*,*)'Done with reading TSFCL from file ',sfcvars
+  write(6,*)' max,min bck skin temp tsfcl(K)=',maxval(tsfcl),minval(tsfcl)
+       write(6,*)'background skin temp tsfcl(170,170)', tsfcl(170,170)
+       write(6,*)'Winnipeg skin temp tsfcl(516,412)', tsfcl(516,412)
 !
   write(6,*) '================================================='
   call gsi_fv3ncdf2d_read(sfcvars,'t2m','T2M',field2,mype)
@@ -356,6 +366,7 @@ if(1==1) then  ! turn off , use GFS SST
 ! not updated at these points.
            if( lake_frac(i,j) == 0.) then
                surftemp(i,j) = sstRR(i,j)
+               tsfcl(i,j) = sstRR(i,j)
            endif
 
            if(sstRR(i,j) > 400. .or. sstRR(i,j) < 100. ) then
@@ -376,6 +387,7 @@ if(1==1) then  ! turn off , use GFS SST
 
               !update skin temp for frozen lakes
               surftemp(i,j)=sstRR(i,j)
+              tsfcl(i,j)=sstRR(i,j)
             endif
           endif ! in_SF_LAKE_PHYSICS == 0
 
@@ -389,6 +401,8 @@ if(1==1) then  ! turn off , use GFS SST
   write(*,*) 'Skin temperature updated with current SST'
        write(6,*)' updated skin temp(170,170)', surftemp(170,170)
        write(6,*)' max,min skin temp =',maxval(surftemp),minval(surftemp)
+       write(6,*)' updated land skin temp(170,170)', tsfcl(170,170)
+       write(6,*)' max,min land skin temp =',maxval(tsfcl),minval(tsfcl)
 endif  ! 1==1, when 1==2 SST update is turned off
 !
 !
@@ -407,9 +421,11 @@ endif  ! 1==1, when 1==2 SST update is turned off
 
   write(6,*) '================================================='
   write(6,*)' max,min skin temp =',maxval(surftemp),minval(surftemp)
+  write(6,*)' max,min land skin temp =',maxval(tsfcl),minval(tsfcl)
   call gsi_fv3ncdf_append2d(sfcvars,'tsea',sst,mype)
   call gsi_fv3ncdf_append2d(sfcvars,'tref',tref,mype)
   call gsi_fv3ncdf_append2d(sfcvars,'tsfc',surftemp,mype)
+  call gsi_fv3ncdf_append2d(sfcvars,'tsfcl',tsfcl,mype)
   deallocate(field2)
 
   call MPI_Barrier(mpi_comm_world, ierror)
