@@ -75,6 +75,7 @@ subroutine update_SST_netcdf_fv3 (sstRR, glat, glon, nlon, nlat, xland, vegtyp, 
   real(r_single),allocatable::lake_frac(:,:)
   real(r_single),allocatable::lake_depth(:,:)
   real(r_single),allocatable::tsea(:,:)
+  real(r_single),allocatable::tref(:,:)
   real(r_single),allocatable::tsfc(:,:)
 
   real(r_single)    :: time, time1, time2
@@ -148,6 +149,7 @@ subroutine update_SST_netcdf_fv3 (sstRR, glat, glon, nlon, nlat, xland, vegtyp, 
 
   allocate(surftemp(nlon_regional,nlat_regional))
   allocate(tsea(nlon_regional,nlat_regional))
+  allocate(tref(nlon_regional,nlat_regional))
   allocate(tsfc(nlon_regional,nlat_regional))
   allocate(temp2m(nlon_regional,nlat_regional))
   allocate(sst(nlon_regional,nlat_regional))
@@ -167,6 +169,16 @@ subroutine update_SST_netcdf_fv3 (sstRR, glat, glon, nlon, nlat, xland, vegtyp, 
        write(6,*)'background skin temp tsea(170,170)', sst(170,170)
        write(6,*)'new  sstRR(170,170)', sstRR(170,170)
        write(6,*)'Winnipeg skin temp tsea(516,412)', sst(516,412)
+       write(6,*)'Winnipeg sstRR(516,412)', sstRR(516,412)
+!
+  write(6,*) '================================================='
+  call gsi_fv3ncdf2d_read(sfcvars,'tref','TREF',field2,mype)
+  tref=field2(:,:)
+  write(*,*)'Done with reading TREF from file ',sfcvars
+  write(6,*)' max,min reference skin temp tref(K)=',maxval(tref),minval(tref)
+       write(6,*)'reference skin temp tref(170,170)', tref(170,170)
+       write(6,*)'new  sstRR(170,170)', sstRR(170,170)
+       write(6,*)'Winnipeg skin temp tref(516,412)', tref(516,412)
        write(6,*)'Winnipeg sstRR(516,412)', sstRR(516,412)
 !
   write(6,*) '================================================='
@@ -371,6 +383,7 @@ if(1==1) then  ! turn off , use GFS SST
 
     ! update SST 
     sst(i,j)=sstRR(i,j)
+    tref(i,j)=sstRR(i,j)
   ENDDO
   ENDDO
   write(*,*) 'Skin temperature updated with current SST'
@@ -395,6 +408,7 @@ endif  ! 1==1, when 1==2 SST update is turned off
   write(6,*) '================================================='
   write(6,*)' max,min skin temp =',maxval(surftemp),minval(surftemp)
   call gsi_fv3ncdf_append2d(sfcvars,'tsea',sst,mype)
+  call gsi_fv3ncdf_append2d(sfcvars,'tref',tref,mype)
   call gsi_fv3ncdf_append2d(sfcvars,'tsfc',surftemp,mype)
   deallocate(field2)
 
