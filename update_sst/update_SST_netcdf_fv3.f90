@@ -367,6 +367,8 @@ if(1==1) then  ! turn off , use GFS SST
            if( lake_frac(i,j) == 0.) then
                surftemp(i,j) = sstRR(i,j)
                tsfcl(i,j) = sstRR(i,j)
+               sst(i,j)=sstRR(i,j)
+               tref(i,j)=sstRR(i,j)
            endif
 
            if(sstRR(i,j) > 400. .or. sstRR(i,j) < 100. ) then
@@ -394,8 +396,8 @@ if(1==1) then  ! turn off , use GFS SST
     endif  ! water or ice
 
     ! update SST 
-    sst(i,j)=sstRR(i,j)
-    tref(i,j)=sstRR(i,j)
+!    sst(i,j)=sstRR(i,j)
+!    tref(i,j)=sstRR(i,j)
   ENDDO
   ENDDO
   write(*,*) 'Skin temperature updated with current SST'
