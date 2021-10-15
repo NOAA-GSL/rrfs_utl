@@ -145,6 +145,7 @@ program use_raphrrr_sfc
         call sfc%build_mapindex(map,rlon2d_rrfs,rlat2d_rrfs,landmask_rrfs,landmask_raphrrr)
         call sfc%set_varname()
         call sfc%use_sfc(raphrrrfile,rrfsfile)
+        if(n==2) call sfc%remove_snow(raphrrrfile,rrfsfile,rlat2d_rrfs)
         call sfc%close()
 ! release memory
         deallocate(landmask_raphrrr)
