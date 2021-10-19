@@ -13,9 +13,13 @@ PROGRAM update_GVF
   use nc_readwrt_mod, only : get_field,replace_field
   use grib2_read_mod, only : read_grib2_head_dim,read_grib2_head_time
   use grib2_read_mod, only : read_grib2_sngle
+  use module_ncio, only : ncio
 !
   implicit none
-
+!
+  type(ncio)     :: rrfs
+  integer,parameter :: bktype=1   ! 1 is rrfs
+!
 ! MPI variables
   integer :: npe, mype, mypeLocal,ierror
 !
@@ -35,6 +39,7 @@ PROGRAM update_GVF
   real, allocatable :: vegfrc_max(:,:)
   real, allocatable :: vegfrc_min(:,:)
   real, allocatable :: field2d(:,:)
+  real(8), allocatable,target :: field2d8b(:,:)
 !
 !  for grib2
 !
@@ -55,6 +60,7 @@ PROGRAM update_GVF
   integer :: ibkyr,ibkmon,ibkday,ibkhh,ibkmm
   integer :: idatayr,idatamon,idataday,idatahh,idatamm
   real :: vegfrcsmax,vegfrcsmin
+  character(256) :: filename_att
 !
 !**********************************************************************
 !
@@ -80,10 +86,68 @@ if(mype==0) then
 !  src_gvf=1   : grib2
 !          2   : geogrid binary
   src_gvf=1
-  filename='wrf_inout'
+!
+!
+!
+  if(bktype==1) then
+! read in rrfs latlon
+    call rrfs%open('fv3_grid_spec',"r",200)
+    call rrfs%get_dim("grid_xt",nx)
+    call rrfs%get_dim("grid_yt",ny)
+    write(*,*) 'nx_rrfs,ny_rrfs=',nx,ny
+
+    allocate(xlon(nx,ny),ylat(nx,ny))
+    call rrfs%get_var("grid_lont",nx,ny,xlon)
+    do j=1,ny
+      do i=1,nx
+        if(xlon(i,j) >=180.0) xlon(i,j)=xlon(i,j)-360.0
+      enddo
+    enddo
+    call rrfs%get_var("grid_latt",nx,ny,ylat)
+    call rrfs%close()
+    allocate(field2d8b(nx,ny))
+    allocate(vegfrc_wrf(nx,ny))
+    call rrfs%open("sfc_data.nc","r",200)
+    call rrfs%get_var("vfrac",nx,ny,field2d8b)
+    vegfrc_wrf=field2d8b(:,:)*100.0
+    call rrfs%get_att("filename",filename_att)
+    call rrfs%close()
+    deallocate(field2d8b)
+! get date
+    read(filename_att(9:21),"(I4,2I2,1x,2I2)") ibkyr,ibkmon,ibkday,ibkhh,ibkmm
+  else
+    filename='wrf_inout'
 !
 ! get date from wrf inout file 
-  call get_time(filename,ibkyr,ibkmon,ibkday,ibkhh,ibkmm)
+    call get_time(filename,ibkyr,ibkmon,ibkday,ibkhh,ibkmm)
+!
+! get dimension from wrf inout file
+    call get_dim(filename,nx,ny,nz)
+    write(*,*) 'dimension =',nx,ny,nz
+!
+    allocate(xlon(nx,ny),ylat(nx,ny))
+    allocate(vegfrc_wrf(nx,ny))
+!
+!
+  write(*,*) 'open file =',trim(filename)
+! open existing netCDF dataset
+    status = nf90_open(path = trim(filename), mode = nf90_nowrite, ncid = ncid)
+    if (status /= nf90_noerr) call handle_err(status)
+
+! read latlonn and ver frc from wrf inout
+    varname='XLAT'
+    call get_field(ncid,varname,nx,ny,1,ylat)
+    varname='XLONG'
+    call get_field(ncid,varname,nx,ny,1,xlon)
+    varname='VEGFRA'
+    call get_field(ncid,varname,nx,ny,1,vegfrc_wrf)
+
+! close netCDF dataset
+    status = nf90_close(ncid)
+    if (status /= nf90_noerr) call handle_err(status)
+!
+  endif  ! grid option
+!
   write(*,'(a,5I5)') 'background: ibkyr,ibkmon,ibkday,ibkhh,ibkmm =', &
                       ibkyr,ibkmon,ibkday,ibkhh,ibkmm
   idate5(1)=ibkyr
@@ -92,31 +156,6 @@ if(mype==0) then
   idate5(4)=ibkhh
   idate5(5)=ibkmm
   call w3fs21(idate5,minbk)
-!
-! get dimension from wrf inout file
-  call get_dim(filename,nx,ny,nz)
-  write(*,*) 'dimension =',nx,ny,nz
-!
-  allocate(xlon(nx,ny),ylat(nx,ny))
-  allocate(vegfrc_wrf(nx,ny))
-!
-!
-  write(*,*) 'open file =',trim(filename)
-! open existing netCDF dataset
-  status = nf90_open(path = trim(filename), mode = nf90_nowrite, ncid = ncid)
-  if (status /= nf90_noerr) call handle_err(status)
-
-! read latlonn and ver frc from wrf inout
-  varname='XLAT'
-  call get_field(ncid,varname,nx,ny,1,ylat)
-  varname='XLONG'
-  call get_field(ncid,varname,nx,ny,1,xlon)
-  varname='VEGFRA'
-  call get_field(ncid,varname,nx,ny,1,vegfrc_wrf)
-
-! close netCDF dataset
-  status = nf90_close(ncid)
-  if (status /= nf90_noerr) call handle_err(status)
 !
 ! ====
 !
@@ -254,28 +293,17 @@ if(mype==0) then
 !
 ! Now write new Veg frc to WRF inout file
 !
-  filename='wrf_inout'
-  write(*,*) 'open file =',trim(filename)
-! open existing netCDF dataset
-  status = nf90_open(path = trim(filename), mode = nf90_write, ncid = ncid)
-  if (status /= nf90_noerr) call handle_err(status)
-
   if(src_maxmin>0) then
      do j=1,ny
         do i=1,nx
            vegfrc_max(i,j)=max(0.0,min(100.0,vegfrc_max(i,j)))
         enddo
      enddo
-     varname='SHDMAX'
-     call replace_field(ncid,varname,nx,ny,1,vegfrc_max)
-
      do j=1,ny
         do i=1,nx
            vegfrc_min(i,j)=max(0.0,min(100.0,vegfrc_min(i,j)))
         enddo
      enddo
-     varname='SHDMIN'
-     call replace_field(ncid,varname,nx,ny,1,vegfrc_min)
   endif
 ! bound the real-time value with the climate and maxmin value.
   do j=1,ny
@@ -291,12 +319,38 @@ if(mype==0) then
         vegfrc(i,j)=max(vegfrcsmin,min(vegfrcsmax,vegfrc(i,j)))
      enddo
   enddo
-  varname='VEGFRA'
-  call replace_field(ncid,varname,nx,ny,1,vegfrc)
+!
+!
+  if(bktype==1) then
+    allocate(field2d8b(nx,ny))
+    call rrfs%open('sfc_data.nc',"w",200)
+    field2d8b=vegfrc*0.01
+    call rrfs%replace_var("vfrac",nx,ny,field2d8b)
+    field2d8b=vegfrc_max*0.01
+    call rrfs%replace_var("shdmax",nx,ny,field2d8b)
+    field2d8b=vegfrc_min*0.01
+    call rrfs%replace_var("shdmin",nx,ny,field2d8b)
+    call rrfs%close()
+    deallocate(field2d8b)
+  else
+    filename='wrf_inout'
+    write(*,*) 'open file =',trim(filename)
+! open existing netCDF dataset
+    status = nf90_open(path = trim(filename), mode = nf90_write, ncid = ncid)
+    if (status /= nf90_noerr) call handle_err(status)
+    if(src_maxmin>0) then
+       varname='SHDMAX'
+       call replace_field(ncid,varname,nx,ny,1,vegfrc_max)
+       varname='SHDMIN'
+       call replace_field(ncid,varname,nx,ny,1,vegfrc_min)
+    endif
+    varname='VEGFRA'
+    call replace_field(ncid,varname,nx,ny,1,vegfrc)
 
 ! close netCDF dataset
-  status = nf90_close(ncid)
-  if (status /= nf90_noerr) call handle_err(status)
+    status = nf90_close(ncid)
+    if (status /= nf90_noerr) call handle_err(status)
+  endif
 !
 !
   deallocate(vegfrc_wrf)

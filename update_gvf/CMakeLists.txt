@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-file(GLOB src_all nc_readwrt_mod.f90 grib2_read_mod.f90)
+file(GLOB src_all nc_readwrt_mod.f90 module_ncio.f90 grib2_read_mod.f90)
 #set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 
 include_directories( ${GSIINC} ${NETCDFINC} ${G2INC} )
