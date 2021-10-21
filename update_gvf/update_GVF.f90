@@ -114,7 +114,7 @@ if(mype==0) then
     call rrfs%close()
     deallocate(field2d8b)
 ! get date
-    read(filename_att(9:21),"(I4,2I2,1x,2I2)") ibkyr,ibkmon,ibkday,ibkhh,ibkmm
+  !  read(filename_att(9:21),"(I4,2I2,1x,2I2)") ibkyr,ibkmon,ibkday,ibkhh,ibkmm
   else
     filename='wrf_inout'
 !
@@ -148,14 +148,14 @@ if(mype==0) then
 !
   endif  ! grid option
 !
-  write(*,'(a,5I5)') 'background: ibkyr,ibkmon,ibkday,ibkhh,ibkmm =', &
-                      ibkyr,ibkmon,ibkday,ibkhh,ibkmm
-  idate5(1)=ibkyr
-  idate5(2)=ibkmon
-  idate5(3)=ibkday
-  idate5(4)=ibkhh
-  idate5(5)=ibkmm
-  call w3fs21(idate5,minbk)
+!  write(*,'(a,5I5)') 'background: ibkyr,ibkmon,ibkday,ibkhh,ibkmm =', &
+!                      ibkyr,ibkmon,ibkday,ibkhh,ibkmm
+!  idate5(1)=ibkyr
+!  idate5(2)=ibkmon
+!  idate5(3)=ibkday
+!  idate5(4)=ibkhh
+!  idate5(5)=ibkmm
+!  call w3fs21(idate5,minbk)
 !
 ! ====
 !
@@ -180,6 +180,7 @@ if(mype==0) then
      idate5(4)=idatahh
      idate5(5)=idatamm
      call w3fs21(idate5,mindata)
+     minbk=mindata
 ! time differenece between background and GVF data larger than 8 days
      if(abs(minbk-mindata) > maxday*24*60) then
         write(*,*) 'real-time GVF is ',maxday-7,' days older than background'
