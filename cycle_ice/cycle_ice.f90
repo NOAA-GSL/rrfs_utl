@@ -15,10 +15,13 @@ PROGRAM cycle_ice
 ! MPI variables
   integer :: npe, mype, mypeLocal,ierror
 !
-  integer :: nx,ny
+  integer :: nx,ny,nz,n,i,j,k
 !
 !  from wrf netcdf 
   real(8), allocatable,target :: field2d8b(:,:)
+  real(8), allocatable,target :: field3d8b(:,:,:)
+  real(4), allocatable :: field2d(:,:)
+  character(len=30) :: varname
 !
 !**********************************************************************
 !
@@ -39,24 +42,69 @@ if(mype==0) then
     call rrfs%open('old.sfc_data.nc',"r",200)
     call rrfs%get_dim("xaxis_1",nx)
     call rrfs%get_dim("yaxis_1",ny)
-    write(*,*) 'nx_rrfs,ny_rrfs=',nx,ny
+    call rrfs%get_dim("zaxis_1",nz)
+    write(*,*) 'nx_rrfs,ny_rrfs=',nx,ny,nz
+    call rrfs%close()
 
     allocate(field2d8b(nx,ny))
-    call rrfs%get_var("hice",nx,ny,field2d8b)
+
+    do n=1,6
+       if(n==1) varname='hice' 
+       if(n==2) varname='fice' 
+       if(n==3) varname='slmsk' 
+       if(n==4) varname='qwv_surf_ice' 
+       if(n==5) varname='clw_surf_ice' 
+       if(n==6) varname='sfalb_ice' 
+       call rrfs%open('old.sfc_data.nc',"r",200)
+       call rrfs%get_var(trim(varname),nx,ny,field2d8b)
+       call rrfs%close()
+!
+       call rrfs%open('sfc_data.nc',"w",200)
+       call rrfs%replace_var(trim(varname),nx,ny,field2d8b)
+       call rrfs%close()
+    enddo
+!
+!
+    allocate(field2d(nx,ny))
+!
+    call rrfs%open('sfc_data.nc',"r",200)
+    call rrfs%get_var('fice',nx,ny,field2d8b)
+    field2d=field2d8b
+    call rrfs%get_var('tisfc',nx,ny,field2d8b)
     call rrfs%close()
+    do j=1,ny
+      do i =1,nx
+        if(field2d(i,j) > 1.0e-10) field2d8b(i,j)=min(271.2, field2d8b(i,j))
+      enddo
+    enddo
 !
     call rrfs%open('sfc_data.nc',"w",200)
-    call rrfs%replace_var("hice",nx,ny,field2d8b)
-    call rrfs%close()
-!
-!  fice
-    call rrfs%open('old.sfc_data.nc',"r",200)
-    call rrfs%get_var("fice",nx,ny,field2d8b)
-    call rrfs%close()
-    call rrfs%open('sfc_data.nc',"w",200)
-    call rrfs%replace_var("fice",nx,ny,field2d8b)
+    call rrfs%replace_var('tisfc',nx,ny,field2d8b)
     call rrfs%close()
     deallocate(field2d8b)
+!
+!
+    allocate(field3d8b(nx,ny,nz))
+    call rrfs%open('sfc_data.nc',"r",200)
+    call rrfs%get_var('tiice',nx,ny,nz,field3d8b)
+    call rrfs%close()
+!
+    do j=1,ny
+      do i =1,nx
+        if(field2d(i,j) > 1.0e-10) then
+          do k=1,nz
+            field3d8b(i,j,k)=min(271.2, field3d8b(i,j,k))
+          enddo
+        endif
+      enddo
+    enddo
+!
+    call rrfs%open('sfc_data.nc',"w",200)
+    call rrfs%replace_var('tiice',nx,ny,nz,field3d8b)
+    call rrfs%close()
+!
+    deallocate(field2d)
+    deallocate(field3d8b)
 !
   write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
 
