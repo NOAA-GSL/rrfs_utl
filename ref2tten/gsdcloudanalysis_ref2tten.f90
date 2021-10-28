@@ -21,7 +21,7 @@ program gsdcloudanalysis_ref2tten
 !
 ! ATTRIBUTES:
 !   LANGUAGE: FORTRAN 90 
-!   MACHINE:  Linux cluster (ZEUS)
+!   MACHINE:  Linux cluster 
 !
 !$$$
 !

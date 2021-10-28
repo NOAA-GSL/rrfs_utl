@@ -243,7 +243,7 @@ program process_NSSL_mosaic
         write(*,*) 'vertical level is too large:',nlevel,maxlvl
         stop 666
      endif
-     if(mypeLocal <= npe) then
+     if(mypeLocal <= maxMosaiclvl) then
         mosaicfile=trim(filenameall(mypeLocal))
         write(*,*) 'process level:',mypeLocal,trim(mosaicfile)
      else
@@ -553,7 +553,8 @@ program process_NSSL_mosaic
         ENDDO
   endif
 
-  if(mype==0 .and. 1==1) then
+! turn this part off to speed up the process for RRFS.
+  if(mype==0 .and. 1==2) then
 !
     allocate(ref3d_column(maxlvl+2,nlon*nlat))
     ref3d_column=-999.0
