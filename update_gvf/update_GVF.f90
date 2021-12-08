@@ -110,7 +110,7 @@ if(mype==0) then
     call rrfs%open("sfc_data.nc","r",200)
     call rrfs%get_var("vfrac",nx,ny,field2d8b)
     vegfrc_wrf=field2d8b(:,:)*100.0
-    call rrfs%get_att("filename",filename_att)
+!    call rrfs%get_att("filename",filename_att)
     call rrfs%close()
     deallocate(field2d8b)
 ! get date
