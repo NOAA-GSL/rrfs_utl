@@ -199,10 +199,10 @@ subroutine update_SST_netcdf_mass (sstRR, glat, glon, nlon, nlat, xland, vegtyp,
        ierr                                 )
   surftemp=field2(:,:)
   write(6,*)' max,min bck skin temp (K)=',maxval(surftemp),minval(surftemp)
-       write(6,*)'background skin temp(170,170)', surftemp(170,170)
-       write(6,*)'new  sstRR(170,170)', sstRR(170,170)
-       write(6,*)'Winnipeg skin temp(516,412)', surftemp(516,412)
-       write(6,*)'Winnipeg sstRR(516,412)', sstRR(516,412)
+!       write(6,*)'background skin temp(170,170)', surftemp(170,170)
+!       write(6,*)'new  sstRR(170,170)', sstRR(170,170)
+!       write(6,*)'Winnipeg skin temp(516,412)', surftemp(516,412)
+!       write(6,*)'Winnipeg sstRR(516,412)', sstRR(516,412)
 !
   write(6,*) '================================================='
   rmse_var='T2'
@@ -227,8 +227,8 @@ subroutine update_SST_netcdf_mass (sstRR, glat, glon, nlon, nlat, xland, vegtyp,
        ierr                                 )
   temp2m=field2(:,:)
   write(6,*)' max,min bck 2m temp (K)=',maxval(temp2m),minval(temp2m)
-       write(6,*)'background t2 temp(292,258)', temp2m(292,258)
-       write(6,*)'new  sstRR(170,170)', sstRR(292,258)
+!       write(6,*)'background t2 temp(292,258)', temp2m(292,258)
+!       write(6,*)'new  sstRR(170,170)', sstRR(292,258)
 !
   write(6,*) '================================================='
   rmse_var='SST'
@@ -253,9 +253,9 @@ subroutine update_SST_netcdf_mass (sstRR, glat, glon, nlon, nlat, xland, vegtyp,
        ierr                                 )
   sst=field2(:,:)
   write(6,*)' max,min bck sst (K)=',maxval(sst),minval(sst)
-       write(6,*)'background sst(170,170)', sst(170,170)
-       write(6,*)'new  sstRR(170,170)', sstRR(170,170)
-       write(6,*)'Winnipeg sst(516,412)', sst(516,412)
+!       write(6,*)'background sst(170,170)', sst(170,170)
+!       write(6,*)'new  sstRR(170,170)', sstRR(170,170)
+!       write(6,*)'Winnipeg sst(516,412)', sst(516,412)
 !
   write(6,*) '================================================='
   rmse_var='LAKE_DEPTH'
@@ -280,8 +280,8 @@ subroutine update_SST_netcdf_mass (sstRR, glat, glon, nlon, nlat, xland, vegtyp,
        ierr                                 )
   laked=field2(:,:)
   write(6,*)' max,min bck laked (K)=',maxval(laked),minval(laked)
-  write(6,*)'laked(170,170)', laked(170,170)
-  write(6,*)'Winnipeg laked(516,412)', laked(516,412)
+!  write(6,*)'laked(170,170)', laked(170,170)
+!  write(6,*)'Winnipeg laked(516,412)', laked(516,412)
 !
   write(6,*) '================================================='
   rmse_var='LU_INDEX'
@@ -323,7 +323,7 @@ subroutine update_SST_netcdf_mass (sstRR, glat, glon, nlon, nlat, xland, vegtyp,
        start_index,end_index,               & !pat
        ierr                                 )
   write(6,*)' max,min LAKEMASK=',maxval(field2),minval(field2)
-  write(6,*)'Winnipeg lakemask(516,412)', field2(516,412)
+!  write(6,*)'Winnipeg lakemask(516,412)', field2(516,412)
   lakemask=field2
 !
   write(6,*) '================================================='
@@ -536,7 +536,7 @@ if(1==1) then  ! turn off , use GFS SST
   ENDDO
   ENDDO
   write(*,*) 'Skin temperature updated with current SST'
-       write(6,*)'updated skin temp(170,170)', surftemp(170,170)
+!       write(6,*)'updated skin temp(170,170)', surftemp(170,170)
 endif
 !
 !

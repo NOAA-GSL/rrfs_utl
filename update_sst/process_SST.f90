@@ -141,8 +141,8 @@ PROGRAM process_SST
      allocate(sstRR(nlon,nlat))
      sstRR=0
      call sstGlobal2RR (sstGlobal,imaskSST,xland,nlon,nlat,xlon,ylat,sstRR)
-     write(6,*)'from global  data ylat/xlon/sstRR(516,258)',   &
-                ylat(516,258),xlon(516,258),sstRR(516,258)
+!     write(6,*)'from global  data ylat/xlon/sstRR(516,258)',   &
+!                ylat(516,258),xlon(516,258),sstRR(516,258)
 
 ! High-resolution SST plus Great Lakes data
 !      iwater=16 ! USGS
