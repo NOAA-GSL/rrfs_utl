@@ -34,12 +34,15 @@ module kinds
 
 ! Integer types
   integer, parameter, public  :: i_kind = 4
+  integer, parameter, public  :: i_long = 4
 
   integer, parameter, public  :: i_byte  = 1
   integer, parameter, public  :: i_byte2 = 2
 ! Real types
   integer, parameter, public  :: r_single = 4  ! single precision
   integer, parameter, public  :: r_kind = 8
+  integer, parameter, public ::  r_quad   = 16
+  integer, parameter, public ::  r_double = 8
 
 !
   real(r_single),parameter,public :: rmissing=-99999.0
