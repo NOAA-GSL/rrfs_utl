@@ -119,8 +119,7 @@ SET(LIBBASE "-L${PROJECT_BINARY_DIR}/lib -lmap_util  -lncio  -lpesglib  -ltimeli
 
 add_subdirectory(baselib)
 add_subdirectory(mosaic)
-add_subdirectory(lightning/bufr)
-add_subdirectory(lightning/netcdf)
+add_subdirectory(lightning)
 add_subdirectory(ref2tten)
 add_subdirectory(cloudanalysis)
 add_subdirectory(larccld)

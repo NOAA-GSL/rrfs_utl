@@ -21,7 +21,7 @@
     use kinds, only: r_kind,i_kind
     implicit none
 
-    REAL(r_kind) :: lightning_out(maxlvl+2,nlon*nlat)   
+    REAL(r_kind) :: lightning_out(maxlvl+3,nlon*nlat)   
     real(r_kind) :: hdr(5),obs(1,35)
     character(80):: hdrstr='SID XOB YOB DHR TYP'
     character(80):: obsstr='POB'
@@ -44,7 +44,7 @@
     lendian_in=10
 
     open(ludx,file='prepobs_prep.bufrtable',action='read')
-    open(lendian_in,file='LightningInGSI.bufr',action='write',form='unformatted')
+    open(lendian_in,file='LightningInGSI_bufr.bufr',action='write',form='unformatted')
 
     call datelen(10)
     call openbf(lendian_in,'OUT',ludx)
@@ -52,17 +52,16 @@
       hdr(1)=transfer(sid,hdr(1))
       hdr(2)=lightning_out(1,n)/10.0_r_kind
       hdr(3)=lightning_out(2,n)/10.0_r_kind
-      hdr(4)=0
+      hdr(4)=lightning_out(3,n)
       hdr(5)=500
 
       do k=1,maxlvl
-        obs(1,k)=lightning_out(2+k,n)
+        obs(1,k)=lightning_out(3+k,n)
       enddo
       call openmb(lendian_in,subset,idate)
       call ufbint(lendian_in,hdr,5,   1,iret,hdrstr)
       call ufbint(lendian_in,obs,1,maxlvl,iret,obsstr)
       call writsb(lendian_in,ibfmsg,iret)
-!      write(6,*) 'write_bufr_nsslref,1st: write BUFR message ibfmsg(1:',iret,') to local system'
     enddo
     call closbf(lendian_in)
     write(6,*) 'write_bufr_nsslref, DONE: write columns:',numref

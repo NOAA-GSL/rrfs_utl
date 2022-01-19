@@ -27,7 +27,7 @@ program  process_metar_cloud
 !
   use mpi
   use kinds, only: r_kind,i_kind,r_single
-  use map_utils
+  use module_map_utils
 !  use misc_definitions_module , only : PROJ_LC, PROJ_ROTLL
   use constants_module ,only : EARTH_RADIUS_M
   use constants, only: init_constants_derived, deg2rad
@@ -66,7 +66,6 @@ program  process_metar_cloud
   real ::  userTRUELAT1,userTRUELAT2,MOAD_CEN_LAT,STAND_LON
   integer :: MAP_PROJ
 
-  type (proj_info) :: proj_stack
   REAL :: truelat1, truelat2, stdlon, lat1, lon1, r_earth
 
 !
