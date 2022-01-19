@@ -18,7 +18,6 @@
 !   machine:  linux 
 !
 !$$$
-    use constants, only: zero, one
     use kinds, only: r_kind,i_kind
     implicit none
 
