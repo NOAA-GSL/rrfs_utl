@@ -115,8 +115,9 @@ SET(Fortran_LINK_FLAGS "-qopenmp")
 SET(Fortran_FLAGS_bigEndian "-convert big_endian")
 SET(C_FLAGS "-D_UNDERSCORE -DLINUX -Dfunder -DFortranByte=char -DFortranInt=int -DFortranLlong='long long'")
 
-SET(LIBBASE "-L${PROJECT_BINARY_DIR}/lib -lmap_util  -lncio  -lpesglib  -ltimelib")
+SET(LIBBASE "-L${PROJECT_BINARY_DIR}/lib -lmap_util -lesggrid_util -lncio  -lpesglib  -ltimelib")
 
+add_subdirectory(baselib/regional_esg_grid.fd)
 add_subdirectory(baselib)
 add_subdirectory(mosaic)
 add_subdirectory(lightning)

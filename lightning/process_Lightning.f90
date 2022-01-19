@@ -92,10 +92,9 @@ program process_Lightning
 
   integer i,j,igrid,jgrid,nt
   integer :: ii,jj
-
   integer :: NCID, istatus
-
   integer :: numlightning,idate,filenum
+  logical :: ifexist
 
 
 !**********************************************************************
@@ -107,124 +106,131 @@ program process_Lightning
   call MPI_COMM_RANK(mpi_comm_world,mype,ierror)
 
   if(mype==0) then
-  numNLDN_all=0
-  numNLDN_used=0
+     numNLDN_all=0
+     numNLDN_used=0
 
-  NLDN_filenum=1  
-  trange_start=0
-  trange_end=0
-  minute=0
-  obs_type="none"
-  grid_type="none"
-  open(15, file='namelist.lightning')
-    read(15,setup)
-  close(15)
+     NLDN_filenum=1  
+     trange_start=0
+     trange_end=0
+     minute=0
+     obs_type="none"
+     grid_type="none"
+     inquire(file='namelist.lightning', EXIST=ifexist )
+     if(ifexist) then
+        open(15, file='namelist.lightning')
+          read(15,setup)
+        close(15)
+     else
+        write(*,*) "ERROR: cannot find namelist file"
+        stop 123
+     endif
 
 ! define esg grid
   
-  call esggrid%init(grid_type)
+     call esggrid%init(grid_type)
 
 !
 ! get domain dimension
 !
-  write(geofile,'(a,a)') './', 'fv3sar_grid_spec.nc'
-  call rrfs%open(trim(geofile),"r",200)
-  call rrfs%get_dim("grid_xt",nlonfv3)
-  call rrfs%get_dim("grid_yt",nlatfv3)
-  write(*,*) 'nx_rrfs,ny_rrfs=',nlonfv3,nlatfv3
-!  allocate(xlonfv3(nlonfv3,nlatfv3))
-!  allocate(ylatfv3(nlonfv3,nlatfv3))
-!  call rrfs%get_var("grid_lont",nlonfv3,nlatfv3,xlonfv3)
-!  call rrfs%get_var("grid_latt",nlonfv3,nlatfv3,ylatfv3)
-!  write(*,*) 'FV3SAR grid'
-!  write(*,*) 'nlonfv3,nlatfv3=', nlonfv3,nlatfv3
-!  write(*,*) 'max, min lon=', maxval(xlonfv3),minval(xlonfv3)
-!  write(*,*) 'max, min lat=', maxval(ylatfv3),minval(ylatfv3)
-  call rrfs%close()
+     write(geofile,'(a,a)') './', 'fv3sar_grid_spec.nc'
+     call rrfs%open(trim(geofile),"r",200)
+     call rrfs%get_dim("grid_xt",nlonfv3)
+     call rrfs%get_dim("grid_yt",nlatfv3)
+     write(*,*) 'nx_rrfs,ny_rrfs=',nlonfv3,nlatfv3
+!     allocate(xlonfv3(nlonfv3,nlatfv3))
+!     allocate(ylatfv3(nlonfv3,nlatfv3))
+!     call rrfs%get_var("grid_lont",nlonfv3,nlatfv3,xlonfv3)
+!     call rrfs%get_var("grid_latt",nlonfv3,nlatfv3,ylatfv3)
+!     write(*,*) 'FV3SAR grid'
+!     write(*,*) 'nlonfv3,nlatfv3=', nlonfv3,nlatfv3
+!     write(*,*) 'max, min lon=', maxval(xlonfv3),minval(xlonfv3)
+!     write(*,*) 'max, min lat=', maxval(ylatfv3),minval(ylatfv3)
+     call rrfs%close()
 
-  allocate(lightning(nlonfv3,nlatfv3))
-  lightning=0
+     allocate(lightning(nlonfv3,nlatfv3))
+     lightning=0
 
-  if(obs_type=="bufr") then
-     filenum=1
-  elseif(obs_type=="nldn_nc") then
-     filenum=NLDN_filenum
-  else
-     write(*,*) 'ERROR: unknown data type:',obs_type
-  endif
-!
-  do nt=1,filenum
      if(obs_type=="bufr") then
+        filenum=1
+     elseif(obs_type=="nldn_nc") then
+        filenum=NLDN_filenum
+     else
+        write(*,*) 'ERROR: unknown data type:',obs_type
+     endif
+!
+     read(analysis_time,'(I10)') idate
+     do nt=1,filenum
+        if(obs_type=="bufr") then
+   
+           allocate(llon(max_numStrike))
+           allocate(llat(max_numStrike))
+           allocate(ltime(max_numStrike))
+           allocate(lStrike(max_numStrike))
 
-        allocate(llon(max_numStrike))
-        allocate(llat(max_numStrike))
-        allocate(ltime(max_numStrike))
-        allocate(lStrike(max_numStrike))
-
-        lightsngle='lghtngbufr'
-        read(analysis_time,'(I10)') idate
-        call read_lightning_bufr(lightsngle,max_numStrike,analysis_time,minute,trange_start,trange_end,&
+           lightsngle='lghtngbufr'
+           call read_lightning_bufr(lightsngle,max_numStrike,analysis_time,minute,trange_start,trange_end,&
                              numStrike,llon,llat,ltime,lStrike)
-        numNLDN_all=numStrike
+           numNLDN_all=numStrike
 
-        allocate(lquality(numStrike))
-        lquality = 0    ! 0 good data,  > 0 bad data
-        call Check_Lightning_QC(numStrike,llon,llat,ltime,lstrike,lquality)
+           allocate(lquality(numStrike))
+           lquality = 0    ! 0 good data,  > 0 bad data
+           call Check_Lightning_QC(numStrike,llon,llat,ltime,lstrike,lquality)
 
 !
 !  process NLDN data
 !
-     elseif(obs_type=="nldn_nc") then
-        write(lightsngle,'(a,I1)') 'NLDN_lightning_',nt
-        write(*,*) trim(lightsngle)
-        call ifexist_file(trim(lightsngle),istatus)
-        if (ISTATUS .NE. NF_NOERR) CYCLE
+        elseif(obs_type=="nldn_nc") then
+           write(lightsngle,'(a,I1)') 'NLDN_lightning_',nt
+           write(*,*) trim(lightsngle)
+           call ifexist_file(trim(lightsngle),istatus)
+           if (ISTATUS .NE. NF_NOERR) CYCLE
 
-        call GET_DIM_ATT_NLDN(lightsngle,numStrike)
-        write(*,*) 'number of strikes=', nt, numStrike
+           call GET_DIM_ATT_NLDN(lightsngle,numStrike)
+           write(*,*) 'number of strikes=', nt, numStrike
 
-        allocate(llon(numStrike))
-        allocate(llat(numStrike))
-        allocate(ltime(numStrike))
-        allocate(lStrike(numStrike))
+           allocate(llon(numStrike))
+           allocate(llat(numStrike))
+           allocate(ltime(numStrike))
+           allocate(lStrike(numStrike))
 
-        call GET_lightning_NLDN(lightsngle,numStrike,llon,llat,ltime,lStrike)
+           call GET_lightning_NLDN(lightsngle,numStrike,llon,llat,ltime,lStrike)
 ! check quality
-        allocate(lquality(numStrike))
-        lquality = 0    ! 0 good data,  > 0 bad data
-        call Check_NLDN(numStrike,llon,llat,ltime,lstrike,lquality)
-     endif
+           allocate(lquality(numStrike))
+           lquality = 0    ! 0 good data,  > 0 bad data
+           call Check_NLDN(numStrike,llon,llat,ltime,lstrike,lquality)
+        endif
 
-     do i=1,numStrike
+        do i=1,numStrike
 
-        if(lquality(i) == 0 ) then
-           dlon=llon(i)
-           dlat=llat(i)
-           call esggrid%lltoxy(dlon,dlat,xc,yc)
+           if(lquality(i) == 0 ) then
+              dlon=llon(i)
+              dlat=llat(i)
+              call esggrid%lltoxy(dlon,dlat,xc,yc)
 
-           igrid = int(XC+0.5)
-           jgrid = int(YC+0.5)
-           if( (igrid > 0 .and. igrid< nlonfv3).and.  &
-               (jgrid > 0 .and. jgrid< nlatfv3)) then 
-               lightning(igrid,jgrid) = lightning(igrid,jgrid) + 1
-               numNLDN_used=numNLDN_used+1
-           endif
-        endif ! lquality(i) == 0 
+              igrid = int(XC+0.5)
+              jgrid = int(YC+0.5)
+              if( (igrid > 0 .and. igrid< nlonfv3).and.  &
+                  (jgrid > 0 .and. jgrid< nlatfv3)) then 
+                  lightning(igrid,jgrid) = lightning(igrid,jgrid) + 1
+                  numNLDN_used=numNLDN_used+1
+              endif
+           endif ! lquality(i) == 0 
 
-    enddo
+       enddo
 
-    deallocate(llon)
-    deallocate(llat)
-    deallocate(ltime)
-    deallocate(lStrike)
-    deallocate(lquality)
-  enddo ! nt
-  call esggrid%close()
+       deallocate(llon)
+       deallocate(llat)
+       deallocate(ltime)
+       deallocate(lStrike)
+       deallocate(lquality)
+     enddo ! nt
 !
-!  statistic
+     call esggrid%close()
 !
-  write(*,*) ' The total number of lightning obs is:', numNLDN_all
-  write(*,*) ' The number of obs used is:', numNLDN_used
+!  report statistic
+!
+     write(*,*) ' The total number of lightning obs is:', numNLDN_all
+     write(*,*) ' The number of obs used is:', numNLDN_used
 
 !  for FV3 LAM
 
@@ -254,11 +260,8 @@ program process_Lightning
       write(10) lightning
      close(10)
 
-   read(analysis_time,'(I10)') idate
-   write(6,*) 'cycle time is :', idate
-
-   write(6,*) ' write lightning in BUFR'
-   call write_bufr_lightning(1,nlonfv3,nlatfv3,numlightning,lightning_out,idate)
+     write(6,*) ' write lightning in BUFR for cycle time ',idate
+     call write_bufr_lightning(1,nlonfv3,nlatfv3,numlightning,lightning_out,idate)
      deallocate(lightning_out)
 
   endif ! mype

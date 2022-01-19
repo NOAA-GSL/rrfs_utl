@@ -1,10 +1,10 @@
 program  process_NASALaRC_cloud
 !
-!   PRGMMR: Ming Hu          ORG: GSD        DATE: 2009-09-04
+!   PRGMMR: Ming Hu          ORG: GSL        DATE: 2022-01-18
 !
 ! ABSTRACT: 
 !     This routine read in NASA LaRC cloud products and 
-!     interpolate them into GSI mass grid
+!     interpolate them into ESG grid
 !
 ! PROGRAM HISTORY LOG:
 !
@@ -27,15 +27,16 @@ program  process_NASALaRC_cloud
 !
   use mpi
   use kinds, only: r_kind,i_kind,r_single
-  use module_map_utils
-  use misc_definitions_module , only : PROJ_LC, PROJ_ROTLL
-  use constants_module ,only : EARTH_RADIUS_M
-  use constants, only: init_constants_derived, deg2rad
-  use gridmod_gsimap ,only : nlon,nlat,init_general_transform,tll2xy,txy2ll
+  use module_ncio, only : ncio
+  use pesg, only : gtoxm_ak_dd,xmtog_ak_dd
+  use module_esggrid_util, only: edp,esggrid_util
 
   implicit none
 !
   INCLUDE 'netcdf.inc'
+!
+  type(ncio) :: rrfs
+  type(esggrid_util) :: esggrid
 !
 ! MPI variables
   integer :: npe, mype,ierror
@@ -43,29 +44,12 @@ program  process_NASALaRC_cloud
 !  integer, parameter :: satidgoeswest=259  ! GOES 15  Stopped after March 2nd, 2020
   integer, parameter :: satidgoeswest=271  ! GOES 17
   integer, parameter :: satidgoeseast=270  ! GOES 16
-  real     :: rad2deg = 180.0/3.1415926
   integer,parameter  :: boxMAX=10
 !
   character*256 output_file
 !
 !  grid
-  integer(i_kind) :: nlonfv3,nlatfv3
-  real,allocatable:: xlonfv3(:,:)    !
-  real,allocatable:: ylatfv3(:,:)    !
-
-  real,allocatable:: xlon(:,:)    !
-  real,allocatable:: ylat(:,:)    !
-  real(r_kind),allocatable:: rxlon(:,:)    !
-  real(r_kind),allocatable:: rylat(:,:)    !
-
-  real ::  userDX, userDY, CEN_LAT, CEN_LON
-  real ::  userTRUELAT1,userTRUELAT2,MOAD_CEN_LAT,STAND_LON
-  integer :: MAP_PROJ
-
-  REAL :: truelat1, truelat2, stdlon, lat1, lon1, r_earth
-  REAL :: knowni, knownj, dx
-  REAL :: user_known_x,user_known_y
-
+  integer(i_kind) :: nlon,nlat
   CHARACTER*180   geofile
 !
 !  For NASA LaRC 
@@ -96,17 +80,8 @@ program  process_NASALaRC_cloud
   REAL(r_single), allocatable ::   w_lwp (:,:)
   integer(i_kind),allocatable ::   nlev_cld(:,:)
 !
-!  array for FV3
-!
-  REAL(r_single), allocatable ::   w_pcldfv3(:,:)
-  REAL(r_single), allocatable ::   w_tcldfv3(:,:)
-  REAL(r_single), allocatable ::   w_fracfv3(:,:)
-  REAL(r_single), allocatable ::   w_lwpfv3 (:,:)
-  integer(i_kind),allocatable ::   nlev_cldfv3(:,:)
-  integer(i_kind),allocatable ::   indexfv3(:,:)
-!
-!
 ! Working
+!
   integer  nfov
   parameter (nfov=160)
   real, allocatable ::     Pxx(:,:,:),Txx(:,:,:),WPxx(:,:,:)
@@ -119,28 +94,24 @@ program  process_NASALaRC_cloud
 !
 ! namelist
 !
-  INTEGER(i_kind)  ::  bkversion
-  integer :: analysis_time
-  integer :: ioption
+  integer            :: analysis_time
+  integer            :: ioption
   character(len=100) :: bufrfile
-  integer(i_kind) :: npts_rad, nptsx, nptsy
-  integer(i_kind) :: boxhalfx(boxMAX), boxhalfy(boxMAX)
-  real (r_kind)   :: boxlat0(boxMAX)
-  namelist/setup/ bkversion,analysis_time, ioption, npts_rad,bufrfile, &
-     boxhalfx, boxhalfy, boxlat0
+  integer(i_kind)    :: npts_rad, nptsx, nptsy
+  integer(i_kind)    :: boxhalfx(boxMAX), boxhalfy(boxMAX)
+  real (r_kind)      :: boxlat0(boxMAX)
+  character(len=20)  :: grid_type
+  real (r_kind)      :: userDX
+  namelist/setup/ grid_type,analysis_time, ioption, npts_rad,bufrfile, &
+                  boxhalfx, boxhalfy, boxlat0,userDX
    ! for area north of the latitude bigbox_lat0, a large radius npts_rad2 will be used.
    ! this is to solve the cloud stripe issue in Alaska  -G. Ge Nov. 19, 2019 
 !
 !
 !  ** misc
       
-  real(r_kind)        :: xc  ! x-grid coordinate (grid units)
-  real(r_kind)        :: yc  ! y-grid coordinate (grid units)
-  real(r_kind)        :: rlon  ! earth longitude (radians)
-  real(r_kind)        :: rlat  ! earth latitude  (radians)
-
-  logical     ::outside     ! .false., then point is inside x-y domain
-                              ! .true.,  then point is outside x-y domain
+  real(edp)     :: rlat,rlon
+  real(edp)     :: xc,yc
 
   integer i,j,k,ipt,jpt,cfov,ibox
   Integer nf_status,nf_fid,nf_vid
@@ -163,208 +134,164 @@ program  process_NASALaRC_cloud
   call MPI_COMM_RANK(mpi_comm_world,mype,ierror)
 
   if(mype==0) then
+!
 !  get namelist
 !
-  bkversion=0
-  analysis_time=2018051718
-  bufrfile='NASALaRCCloudInGSI_bufr.bufr'
-  npts_rad=1
-  boxhalfx=-1
-  boxhalfy=-1
-  boxlat0= 999.0 !don't use variable box by default
+     analysis_time=2018051718
+     bufrfile='NASALaRCCloudInGSI_bufr.bufr'
+     npts_rad=1
+     boxhalfx=-1
+     boxhalfy=-1
+     boxlat0= 999.0 !don't use variable box by default
       ! * ioption = 1 is nearest neighrhood
       ! * ioption = 2 is median of cloudy fov
-  ioption = 2
+     ioption = 2
+     grid_type="none"
+     userDX=3000.0
  
-  inquire(file='namelist_nasalarc', EXIST=ifexist )
-  if(ifexist) then
-    open(10,file='namelist_nasalarc',status='old')
-       read(10,setup)
-    close(10)
-    write(*,*) 'Namelist setup are:'
-    write(*,setup)
-  else
-    write(*,*) 'No namelist file exist, use default values'
-    write(*,*) "analysis_time,bufrfile,npts_rad,ioption"
-    write(*,*) analysis_time, trim(bufrfile),npts_rad,ioption
-    write(*,*) "boxhalfx,boxhalfy,boxlat0"
-    write(*,*) boxhalfx,boxhalfy,boxlat0
-  endif
+     inquire(file='namelist_nasalarc', EXIST=ifexist )
+     if(ifexist) then
+       open(10,file='namelist_nasalarc',status='old')
+          read(10,setup)
+       close(10)
+       write(*,*) 'Namelist setup are:'
+       write(*,setup)
+     else
+       write(*,*) 'No namelist file exist, use default values'
+       write(*,*) "analysis_time,bufrfile,npts_rad,ioption"
+       write(*,*) analysis_time, trim(bufrfile),npts_rad,ioption
+       write(*,*) "boxhalfx,boxhalfy,boxlat0"
+       write(*,*) boxhalfx,boxhalfy,boxlat0
+     endif
  
-
-! set geogrid fle name
 !
-
-  call init_constants_derived
-
-  workPath='./'
-  write(geofile,'(a,a)') trim(workPath), 'geo_em.d01.nc'
-
-  write(*,*) 'geofile', trim(geofile)
-  call GET_DIM_ATT_geo(geofile,NLON,NLAT)
-  write(*,*) 'NLON,NLAT',NLON,NLAT
-
-  call GET_MAP_ATT_geo(geofile, userDX, userDY, CEN_LAT, CEN_LON, &
-                userTRUELAT1,userTRUELAT2,MOAD_CEN_LAT,STAND_LON,MAP_PROJ)
-  write(*,*) userDX, userDY, CEN_LAT, CEN_LON
-  write(*,*) userTRUELAT1,userTRUELAT2,MOAD_CEN_LAT,STAND_LON,MAP_PROJ
+! define esg grid
 !
-!  get GSI horizontal grid in latitude and longitude
+     call esggrid%init(grid_type)
 !
-  allocate(xlon(nlon,nlat),rxlon(nlon,nlat))
-  allocate(ylat(nlon,nlat),rylat(nlon,nlat))
-
-  call OPEN_geo(geofile, NCID)
-  call GET_geo_sngl_geo(NCID,Nlon,Nlat,ylat,xlon)
-  call CLOSE_geo(NCID)
-
-
-  if(bkversion==1) then
+! get domain dimension
+!
      write(geofile,'(a,a)') './', 'fv3sar_grid_spec.nc'
-     call GET_DIM_ATT_fv3sar(geofile,NLONFV3,NLATFV3) 
-     allocate(xlonfv3(nlonfv3,nlatfv3))
-     allocate(ylatfv3(nlonfv3,nlatfv3))
-     call OPEN_geo(geofile, NCID)
-     call GET_geo_sngl_fv3sar(NCID,Nlonfv3,Nlatfv3,ylatfv3,xlonfv3)
-     call CLOSE_geo(NCID)
-     write(*,*) 'FV3SAR grid'
-     write(*,*) 'nlonfv3,nlatfv3=', nlonfv3,nlatfv3
-     write(*,*) 'max, min lon=', maxval(xlonfv3),minval(xlonfv3)
-     write(*,*) 'max, min lat=', maxval(ylatfv3),minval(ylatfv3)
-  endif
-!
-  mype=0
-  rylat=ylat*deg2rad
-  rxlon=xlon*deg2rad
-  call init_general_transform(rylat,rxlon,mype)
-!
-  allocate (Pxx(nlon,nlat,nfov),Txx(nlon,nlat,nfov),WPxx(nlon,nlat,nfov))
-  allocate (xdist(nlon,nlat,nfov), xxxdist(nfov))
-  allocate (PHxx(nlon,nlat,nfov),index(nlon,nlat), jndex(nfov))
-  index=0
+     call rrfs%open(trim(geofile),"r",200)
+     call rrfs%get_dim("grid_xt",nlon)
+     call rrfs%get_dim("grid_yt",nlat)
+     write(*,*) 'nx_rrfs,ny_rrfs=',nlon,nlat
+     call rrfs%close()
 !
 !  read in the NASA LaRC cloud data
-!  maxobs=(1800*700 + 1500*850)*1
-  satfile='NASA_LaRC_cloud.bufr'
-  call read_NASALaRC_cloud_bufr_survey(satfile,satidgoeseast,satidgoeswest,east_time, west_time,maxobs)
-  allocate(lat_l(maxobs))
-  allocate(lon_l(maxobs))
-  allocate(ptop_l(maxobs))
-  allocate(teff_l(maxobs))
-  allocate(phase_l(maxobs))
-  allocate(lwp_l(maxobs))
-  ptop_l=-9.
-  teff_l=-9.
-  lat_l =-9.
-  lon_l =-9.
-  lwp_l =-9.
-  phase_l=-9
-  call read_NASALaRC_cloud_bufr(satfile,atime,satidgoeseast,satidgoeswest,east_time, west_time,   &   
+!
+     satfile='lgycld.bufr_d'
+     call read_NASALaRC_cloud_bufr_survey(satfile,satidgoeseast,satidgoeswest,east_time, west_time,maxobs)
+     if(maxobs==0) then
+        write(*,*) "WARNING: no observaion available"
+        stop 0
+     endif
+     allocate(lat_l(maxobs))
+     allocate(lon_l(maxobs))
+     allocate(ptop_l(maxobs))
+     allocate(teff_l(maxobs))
+     allocate(phase_l(maxobs))
+     allocate(lwp_l(maxobs))
+     ptop_l=-9.
+     teff_l=-9.
+     lat_l =-9.
+     lon_l =-9.
+     lwp_l =-9.
+     phase_l=-9
+     call read_NASALaRC_cloud_bufr(satfile,atime,satidgoeseast,satidgoeswest,east_time, west_time,   &   
             maxobs,numobs, ptop_l, teff_l, phase_l, lwp_l,lat_l, lon_l)
 
-     write(6,*)'LaRC ptop =', (ptop_l(j),j=1,numobs,5000)
-     write(6,*)'LaRC teff =', (teff_l(j),j=1,numobs,5000)
-     write(6,*)'LaRC lat  =', (lat_l(j),j=1,numobs,5000)
-     write(6,*)'LaRC lon  =', (lon_l(j),j=1,numobs,5000)
-     write(6,*)'LaRC lwp  =', (lwp_l(j),j=1,numobs,5000)
-     write(6,*)'LaRC phase  =', (phase_l(j),j=1,numobs,5000)
+     write(6,'(6a12)')'ptop', 'teff', 'lat', 'lon', 'lwp', 'phase'
+     do j=1,numobs,numobs/50
+        write(6,'(4f12.3,f12.4,I12)') ptop_l(j),teff_l(j),lat_l(j),lon_l(j),lwp_l(j),phase_l(j)
+     enddo
 
-   do i=1,numobs
+     do i=1,numobs
         if (phase_l(i).eq.4) phase_l(i) = 0   ! clear
         if (phase_l(i).eq.5) phase_l(i) = -9  ! bad data
-!                                     equivalent to "no data"
-!        if (phase_l(i).eq.-9) ptop_l(i) = -9.
         if (phase_l(i).eq.0) ptop_l(i) = -20.
-   enddo
+     enddo
 ! -----------------------------------------------------------
 ! -----------------------------------------------------------
-!     Map each FOV onto RR grid points 
+!     Map each FOV onto ESG grid points 
 ! -----------------------------------------------------------
 ! -----------------------------------------------------------
+!
+     allocate (Pxx(nlon,nlat,nfov),Txx(nlon,nlat,nfov),WPxx(nlon,nlat,nfov))
+     allocate (xdist(nlon,nlat,nfov), xxxdist(nfov))
+     allocate (PHxx(nlon,nlat,nfov),index(nlon,nlat), jndex(nfov))
+     index=0
+
      do ipt=1,numobs
        if (phase_l(ipt).ge.0) then
 !  Indicates there is some data (not missing)
-           rlon=lon_l(ipt)*deg2rad
-!mhu           rlat=(90.0-lat_l(ipt,jpt))*deg2rad
-           rlat=lat_l(ipt)*deg2rad
-           call tll2xy(rlon,rlat,xc,yc)
-!           call txy2ll(xc,yc,rlon,rlat)
-!         endif
+
+!  to determine npts
+         nptsx=npts_rad !by default
+         nptsy=npts_rad !by default
+         if (lat_l(ipt) > boxlat0(1) ) then
+           do ibox=1,boxMAX !to get the largest possible npts
+             if (lat_l(ipt) > boxlat0(ibox)) then
+               if (boxhalfx(ibox)>0) nptsx=boxhalfx(ibox)
+               if (boxhalfy(ibox)>0) nptsy=boxhalfy(ibox)
+             endif
+           enddo
+         endif
+
 ! * Compute RR grid x/y at lat/lon of cloud data
-! -----------------------------------------------------------
-! * XC,YC should be within RR boundary, i.e., XC,YC >0
-      !to determine npts
-      nptsx=npts_rad !by default
-      nptsy=npts_rad !by default
-      if (lat_l(ipt) > boxlat0(1) ) then
-        do ibox=1,boxMAX !to get the largest possible npts
-          if (lat_l(ipt) > boxlat0(ibox)) then
-            if (boxhalfx(ibox)>0) nptsx=boxhalfx(ibox)
-            if (boxhalfy(ibox)>0) nptsy=boxhalfy(ibox)
-          endif
-        enddo
-      endif
-      !write(*,*) 'The number of impact point nx,ny=',npts_rad, npts
+         rlon=lon_l(ipt)
+         rlat=lat_l(ipt)
+         call esggrid%lltoxy(rlon,rlat,xc,yc)
 
          ii1 = int(xc+0.5)
          jj1 = int(yc+0.5)
-         do jj = max(1,jj1-nptsy), min(nlat,jj1+nptsy)
-         if (jj1-1.ge.1 .and. jj1+1.le.nlat) then
-         do ii = max(1,ii1-nptsx), min(nlon,ii1+nptsx)
-         if (ii1-1.ge.1 .and. ii1+1.le.nlon) then
-!         if(XC .ge. 1. .and. XC .lt. nlon .and.        &
-!            YC .ge. 1. .and. YC .lt. nlat) then
-!             ii1 = int(xc+0.5)
-!             jj1 = int(yc+0.5)
-!             ii=ii1
-!             jj=jj1
-
+         if ( (jj1-1.ge.1 .and. jj1+1.le.nlat) .and.  &
+              (ii1-1.ge.1 .and. ii1+1.le.nlon) )    then
+            do jj = max(1,jj1-nptsy), min(nlat,jj1+nptsy)
+               do ii = max(1,ii1-nptsx), min(nlon,ii1+nptsx)
 ! * We check multiple data within gridbox
+                  if (index(ii,jj).lt.nfov) then
+                      index(ii,jj) = index(ii,jj) + 1
 
-                 if (index(ii,jj).lt.nfov) then
-                   index(ii,jj) = index(ii,jj) + 1
-
-                   Pxx(ii,jj,index(ii,jj)) = Ptop_l(ipt)
-                   Txx(ii,jj,index(ii,jj)) = Teff_l(ipt)
-                   PHxx(ii,jj,index(ii,jj)) = phase_l(ipt)
-                   WPxx(ii,jj,index(ii,jj)) = lwp_l(ipt)
-                   xdist(ii,jj,index(ii,jj)) = sqrt(      &
-                      (XC+1-ii)**2 + (YC+1-jj)**2)
-                 else
-                   write(6,*) 'ALERT: too many data in one grid, increase nfov'
-                   write(6,*) nfov, ii,jj
-                 end if
-         endif
-         enddo ! ii
-         endif
-         enddo  ! jj
-!         endif   ! observation is in the domain
-
+                     Pxx(ii,jj,index(ii,jj))   = Ptop_l(ipt)
+                     Txx(ii,jj,index(ii,jj))   = Teff_l(ipt)
+                     PHxx(ii,jj,index(ii,jj))  = phase_l(ipt)
+                     WPxx(ii,jj,index(ii,jj))  = lwp_l(ipt)
+                     xdist(ii,jj,index(ii,jj)) =       &
+                         sqrt( (XC+1-ii)**2 + (YC+1-jj)**2 )
+                  else
+                     write(6,*) 'ALERT: too many data in one grid, increase nfov'
+                     write(6,*) nfov, ii,jj
+                  endif
+               enddo ! ii
+            enddo  ! jj
+         endif ! obs is inside the analysis domain
+!
        endif   ! phase_l >= 0
      enddo   ! ipt
 
      deallocate(lat_l,lon_l,ptop_l,teff_l,phase_l,lwp_l)
-
+     write(6,*) 'The max index number is: ', maxval(index)
 !
-  write(6,*) 'The max index number is: ', maxval(index)
+!  Now, map the observations to FV3LAM native grid
+!
+     allocate(w_pcld(nlon,nlat))
+     allocate(w_tcld(nlon,nlat))
+     allocate(w_frac(nlon,nlat))
+     allocate(w_lwp(nlon,nlat))
+     allocate(nlev_cld(nlon,nlat))
+     w_pcld=99999.
+     w_tcld=99999.
+     w_frac=99999.
+     w_lwp=99999.
+     nlev_cld = 99999
 
-  allocate(w_pcld(nlon,nlat))
-  allocate(w_tcld(nlon,nlat))
-  allocate(w_frac(nlon,nlat))
-  allocate(w_lwp(nlon,nlat))
-  allocate(nlev_cld(nlon,nlat))
-  w_pcld=99999.
-  w_tcld=99999.
-  w_frac=99999.
-  w_lwp=99999.
-  nlev_cld = 99999
-
-  do jj = 1,nlat
-  do ii = 1,nlon
-    if ((index(ii,jj) .ge. 1 .and. index(ii,jj) .lt. 3) .and. userDX < 7000.0 ) then
+     do jj = 1,nlat
+     do ii = 1,nlon
+       if ((index(ii,jj) >= 1 .and. index(ii,jj) < 3) .and. userDX < 7000.0) then
           w_pcld(ii,jj) = Pxx(ii,jj,1) ! hPa
           w_tcld(ii,jj) = Txx(ii,jj,1) ! K
-          w_lwp(ii,jj) = WPxx(ii,jj,1) !  g/m^2
+          w_lwp(ii,jj) = WPxx(ii,jj,1) ! g/m^2
           w_frac(ii,jj) = 1
           nlev_cld(ii,jj) = 1
           if (w_pcld(ii,jj).eq.-20) then
@@ -372,166 +299,92 @@ program  process_NASALaRC_cloud
                w_frac(ii,jj)=0.0
                nlev_cld(ii,jj) = 0
           end if
-    elseif(index(ii,jj) .ge. 3) then
+       elseif(index(ii,jj) .ge. 3) then
 
 ! * We decided to use nearest neighborhood for ECA values,
 ! *     a kind of convective signal from GOES platform...
 !
 ! * Sort to find closest distance if more than one sample
-      if(ioption == 1) then    !nearest neighborhood
-          do i=1,index(ii,jj)
+          if(ioption == 1) then    !nearest neighborhood
+            do i=1,index(ii,jj)
               jndex(i) = i
               xxxdist(i) = xdist(ii,jj,i)
-          enddo
-          call sortmed(xxxdist,index(ii,jj),jndex,fr)
-          w_pcld(ii,jj) = Pxx(ii,jj,jndex(1))
-          w_tcld(ii,jj) = Txx(ii,jj,jndex(1))
-          w_lwp(ii,jj) = WPxx(ii,jj,jndex(1))
-      endif
+            enddo
+            call sortmed(xxxdist,index(ii,jj),jndex,fr)
+            w_pcld(ii,jj) = Pxx(ii,jj,jndex(1))
+            w_tcld(ii,jj) = Txx(ii,jj,jndex(1))
+            w_lwp(ii,jj) = WPxx(ii,jj,jndex(1))
+          endif
 ! * Sort to find median value 
-      if(ioption .eq. 2) then    !pick median 
-          do i=1,index(ii,jj)
+          if(ioption .eq. 2) then    !pick median 
+            do i=1,index(ii,jj)
               jndex(i) = i
               xxxdist(i) = Pxx(ii,jj,i)
-          enddo
-          call sortmed(xxxdist,index(ii,jj),jndex,fr)
-          med_pt = index(ii,jj)/2  + 1
-          w_pcld(ii,jj) = Pxx(ii,jj,jndex(med_pt)) ! hPa
-          w_tcld(ii,jj) = Txx(ii,jj,jndex(med_pt)) ! K
-          w_lwp(ii,jj) = WPxx(ii,jj,jndex(med_pt)) !  g/m^2
-      endif   ! pick median
-
+            enddo
+            call sortmed(xxxdist,index(ii,jj),jndex,fr)
+            med_pt = index(ii,jj)/2  + 1
+            w_pcld(ii,jj) = Pxx(ii,jj,jndex(med_pt)) ! hPa
+            w_tcld(ii,jj) = Txx(ii,jj,jndex(med_pt)) ! K
+            w_lwp(ii,jj) = WPxx(ii,jj,jndex(med_pt)) !  g/m^2
+          endif   ! pick median
+!
 ! missing pcld
-      if (w_pcld(ii,jj).eq.-20) then
-           w_pcld(ii,jj) = 1013. ! hPa - no cloud
-           w_frac(ii,jj)=0.0
-           nlev_cld(ii,jj) = 0
+          if (w_pcld(ii,jj).eq.-20) then
+             w_pcld(ii,jj) = 1013. ! hPa - no cloud
+             w_frac(ii,jj)=0.0
+             nlev_cld(ii,jj) = 0
 ! cloud fraction based on phase (0 are clear), what about -9 ????
-      elseif( w_pcld(ii,jj) < 1012.99) then
-        cfov = 0
-        do i=1,index(ii,jj)
-          if(PHxx(ii,jj,i) .gt. 0.1) cfov = cfov + 1
-        enddo
-        w_frac(ii,jj) = float(cfov)/(max(1,index(ii,jj)))     !  fraction
-        if( w_frac(ii,jj) > 0.01 ) nlev_cld(ii,jj) = 1
-      endif
+          elseif( w_pcld(ii,jj) < 1012.99) then
+             cfov = 0
+             do i=1,index(ii,jj)
+               if(PHxx(ii,jj,i) .gt. 0.1) cfov = cfov + 1
+             enddo
+             w_frac(ii,jj) = float(cfov)/(max(1,index(ii,jj)))     !  fraction
+             if( w_frac(ii,jj) > 0.01 ) nlev_cld(ii,jj) = 1
+          endif
+       endif   ! index > 3
+     enddo  !ii
+     enddo  !jj
 
-    endif   ! index > 3
-  enddo  !ii
-  enddo  !jj
-
-  deallocate (Pxx,Txx,WPxx)
-  deallocate (xdist, xxxdist)
-  deallocate (PHxx, jndex)
-
-      write (6,*) 'index'
-      write (6,'(10i10)') (index(300,jj),jj=1,nlat,10)
-      write (6,*) 'w_pcld'
-      write (6,'(10f10.2)') (w_pcld(300,jj),jj=1,nlat,10)
-      write (6,*) 'w_tcld'
-      write (6,'(10f10.2)') (w_tcld(300,jj),jj=1,nlat,10)
-      write (6,*) 'w_frac'
-      write (6,'(10f10.2)') (w_frac(300,jj),jj=1,nlat,10)
-      write (6,*) 'w_lwp '
-      write (6,'(10f10.2)') (w_lwp (300,jj),jj=1,nlat,10)
-      write (6,*) 'nlev_cld'
-      write (6,'(10I10)') (nlev_cld(300,jj),jj=1,nlat,10)
-  OPEN(15, file='NASALaRC_cloud.bin',form='unformatted')
-    write(15)  nlon,nlat
-    write(15)  xlon
-    write(15)  ylat
-    write(15)  index
-    write(15)  w_pcld
-    write(15)  w_tcld
-    write(15)  w_frac
-    write(15)  w_lwp
-    write(15)  nlev_cld
-  CLOSE(15)
+     deallocate (Pxx,Txx,WPxx)
+     deallocate (xdist, xxxdist)
+     deallocate (PHxx, jndex)
+!
+!  write results
+!
+     ii=nlon/2
+     write(6,'(6a12)') 'index', 'w_pcld', 'w_tcld', 'w_frac', 'w_lwp ', 'nlev_cld'
+     do j=1,nlat,nlat/20
+        write(6,'(I12,3f12.3,f12.4,I12)') index(ii,j),w_pcld(ii,j),&
+                w_tcld(ii,j),w_frac(ii,j),w_lwp(ii,j),nlev_cld(ii,j)
+     enddo
+!
+     open(15, file='NASALaRC_cloud4fv3.bin',form='unformatted')
+        write(15)  nlon,nlat
+        write(15)  index
+        write(15)  w_pcld
+        write(15)  w_tcld
+        write(15)  w_frac
+        write(15)  w_lwp
+        write(15)  nlev_cld
+     close(15)
 !
 !  write out results
 !
-  if(bkversion==1) then
-
-     allocate(w_pcldfv3(nlonfv3,nlatfv3))
-     allocate(w_tcldfv3(nlonfv3,nlatfv3))
-     allocate(w_fracfv3(nlonfv3,nlatfv3))
-     allocate(w_lwpfv3(nlonfv3,nlatfv3))
-     allocate(nlev_cldfv3(nlonfv3,nlatfv3))
-     allocate(indexfv3(nlonfv3,nlatfv3))
-     w_pcldfv3=99999.
-     w_tcldfv3=99999.
-     w_fracfv3=99999.
-     w_lwpfv3=99999.
-     nlev_cldfv3 = 99999
-     indexfv3=0
-
-     write(*,*) 'nlonfv3,nlatfv3=', nlonfv3,nlatfv3
-     write(*,*) 'max, min lon=', maxval(xlonfv3),minval(xlonfv3)
-     write(*,*) 'max, min lat=', maxval(ylatfv3),minval(ylatfv3)
-
-     do j=1,nlatfv3
-        do i=1,nlonfv3
-           rlon=xlonfv3(i,j)
-           rlat=ylatfv3(i,j)
-           if(xlonfv3(i,j) > 180.0_r_kind) rlon=rlon-360.0_r_kind
-           rlon=rlon*deg2rad
-           rlat=rlat*deg2rad
-           call tll2xy(rlon,rlat,xc,yc)
-
-! find the i,j of FV3 column in WRF grid (nearst point)
-           call find_ij(xc,yc,nlon,nlat,ii,jj)
-!
-           if(ii > 0 .and. jj > 0 ) then
-              w_pcldfv3(i,j) = w_pcld(ii,jj)
-              w_tcldfv3(i,j) = w_tcld(ii,jj)
-              w_fracfv3(i,j) = w_frac(ii,jj)
-              nlev_cldfv3(i,j) = nlev_cld(ii,jj)
-              indexfv3(i,j) = index(ii,jj)
-           endif
-        enddo
-     enddo
-     OPEN(15, file='NASALaRC_cloud4fv3.bin',form='unformatted')
-        write(15)  nlonfv3,nlatfv3
-        write(15)  xlonfv3
-        write(15)  ylatfv3
-        write(15)  indexfv3
-        write(15)  w_pcldfv3
-        write(15)  w_tcldfv3
-        write(15)  w_fracfv3
-        write(15)  w_lwpfv3
-        write(15)  nlev_cldfv3
-     close(15)
-     call write_bufr_NASALaRC(bufrfile,analysis_time,nlonfv3,nlatfv3,userDX,indexfv3,w_pcldfv3,w_tcldfv3,w_fracfv3,w_lwpfv3,nlev_cldfv3)
-     deallocate(w_pcldfv3)
-     deallocate(w_tcldfv3)
-     deallocate(w_fracfv3)
-     deallocate(w_lwpfv3)
-     deallocate(nlev_cldfv3)
-     deallocate(indexfv3)
-  else
      call write_bufr_NASALaRC(bufrfile,analysis_time,nlon,nlat,userDX,index,w_pcld,w_tcld,w_frac,w_lwp,nlev_cld)
-  endif
 !
-  deallocate(w_pcld)
-  deallocate(w_tcld)
-  deallocate(w_frac)
-  deallocate(w_lwp)
-  deallocate(nlev_cld)
-  deallocate(index)
-
+     deallocate(w_pcld)
+     deallocate(w_tcld)
+     deallocate(w_frac)
+     deallocate(w_lwp)
+     deallocate(nlev_cld)
+     deallocate(index)
 !
-  write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
-
+     write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
   endif ! if mype==0 
 
   call MPI_FINALIZE(ierror)
 
-!  DO j=1,nlat
-!  DO I=1,nlon
-!    if( w_lwp(i,j) > 99998.0 ) w_lwp(i,j) = 0.0
-!  ENDDO
-!  ENDDO
-!
 end program process_NASALaRC_cloud
 
 subroutine read_NASALaRC_cloud_bufr(satfile,atime,satidgoeseast,satidgoeswest,east_time, west_time, &
@@ -854,77 +707,3 @@ subroutine read_NASALaRC_cloud_bufr_survey(satfile,satidgoeseast,satidgoeswest,e
 
 end subroutine read_NASALaRC_cloud_bufr_survey
 
-subroutine find_ij(xc,yc,nlon,nlat,i,j)
-!
-! based on input xc, cy to find the nearest grid point
-!
-  use kinds, only: r_kind,i_kind,r_single
-
-  implicit none
-
-  real(r_kind),intent(in)     :: xc,yc
-  integer, intent(in)         :: nlon,nlat
-  integer, intent(out)        :: i,j
-
-!
-  integer :: ii,jj
-
-! missing value
-  i=0
-  j=0
-!
-  ii=int(xc)
-  jj=int(yc)
-  if( (jj>=1 .and. jj<=nlat-1) .and. (ii>=1 .and. ii <= nlon-1) ) then
-     i=ii
-     j=jj
-     if(xc-ii > 0.5_r_kind) i=ii+1
-     if(yc-jj > 0.5_r_kind) j=jj+1
-  elseif( ii == 0 .and. (jj>=1 .and. jj<=nlat-1) ) then
-     if(xc-ii > 0.5_r_kind) then
-       i=1
-       j=jj
-       if(yc-jj > 0.5_r_kind) j=jj+1
-     endif
-  elseif( ii == nlon .and. (jj>=1 .and. jj<=nlat-1) ) then
-     if(xc-ii < 0.5_r_kind) then
-       i=nlon
-       j=jj
-       if(yc-jj > 0.5_r_kind) j=jj+1
-     endif
-  elseif( jj == 0 .and. (ii>=1 .and. ii <= nlon-1) ) then
-     if(yc-jj > 0.5_r_kind) then
-       j=1
-       i=ii
-       if(xc-ii > 0.5_r_kind) i=ii+1
-     endif
-  elseif( jj == nlat .and. (ii>=1 .and. ii <= nlon-1) ) then
-     if(yc-jj < 0.5_r_kind) then
-       j=nlat
-       i=ii
-       if(xc-ii > 0.5_r_kind) i=ii+1
-     endif
-  elseif( ii == 0 .and. jj==0 ) then
-     if( (xc-ii > 0.5_r_kind) .and. (yc-jj > 0.5_r_kind) ) then
-        i=1
-        j=1
-     endif
-  elseif( ii == 0 .and. jj==nlat ) then
-     if( (xc-ii > 0.5_r_kind) .and. (yc-jj < 0.5_r_kind) ) then
-        i=1
-        j=nlat
-     endif
-  elseif( ii == nlon .and. jj==0 ) then
-     if( (xc-ii < 0.5_r_kind) .and. (yc-jj > 0.5_r_kind) ) then
-        i=nlon
-        j=1
-     endif
-  elseif( ii == nlon .and. jj==nlat ) then
-     if( (xc-ii < 0.5_r_kind) .and. (yc-jj < 0.5_r_kind) ) then
-        i=nlon
-        j=nlat
-     endif
-  endif
-!  write(*,'(2f10.4,10I6)') xc,yc,ii,jj,i,j
-
-end subroutine find_ij
