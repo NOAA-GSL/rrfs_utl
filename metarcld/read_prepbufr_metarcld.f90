@@ -1,4 +1,5 @@
-subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,twindin)
+subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,&
+                                  twindin,nlon,nlat,grid_type)
 !$$$  subprogram documentation block
 !                .      .    .                                       .
 ! subprogram:  read_prepbuf_emtarcld        read metar cld obs from prepbufr file
@@ -20,18 +21,21 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,twindin)
 !
 !$$$
   use kinds, only: r_single,r_kind,i_kind,r_double
-  use gridmod_gsimap ,only : nlon,nlat,tll2xy,txy2ll
   use cld_parm_array_mod, only : obstype, sis, nchanl,nreal,ilat,ilon,ndata
   use cld_parm_array_mod, only : cdata_regular
-
+  use module_esggrid_util, only: edp,esggrid_util
 
   implicit none
+
+  type(esggrid_util) :: esggrid
 
 ! Declare passed variables
   character(len=*)                      ,intent(in   ) :: infile
   real(r_kind)                          ,intent(in   ) :: twindin
   integer                               ,intent(in   ) :: analysis_time
   integer                               ,intent(in   ) :: analysis_minute
+  integer                               ,intent(in   ) :: nlon,nlat
+  character(len=*)                      ,intent(in   ) :: grid_type
 
 ! Declare local parameters
   real(r_kind),parameter :: bmiss= 10.e10_r_kind
@@ -97,9 +101,9 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,twindin)
   real(r_kind) timeobs
   real(r_kind) usage
   real(r_kind) deg2rad
+  real(edp)    :: rlon,rlat,xc,yc
   integer(i_kind) :: ivalid
   integer(i_kind) :: minobs, minan
-
 
 ! Initialize variables
 
@@ -121,8 +125,11 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,twindin)
   ilon=2
   ilat=3
 
+! define esg grid
+  call esggrid%init(grid_type)
 
-     open(lunin,file=infile,form='unformatted')
+! read cloud observations from METAR
+  open(lunin,file=infile,form='unformatted')
      call openbf(lunin,'IN',lunin)
      call datelen(10)
 
@@ -151,9 +158,13 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,twindin)
            dlat_earth_deg=hdr(3)
            dlon_earth=hdr(2)*deg2rad
            dlat_earth=hdr(3)*deg2rad
+           rlon=dlon_earth_deg
+           rlat=dlat_earth_deg
 
 ! convert to grid coordinate and check if it is inside the domain
-           call tll2xy(dlon_earth,dlat_earth,dlon,dlat)
+           call esggrid%lltoxy(rlon,rlat,xc,yc)
+           dlon=xc
+           dlat=yc
            if( (int(dlon) <= 0 .or. int(dlon) >= nlon) .or. &
                (int(dlat) <= 0 .or. int(dlat) >= nlat) ) cycle loop_readsb
 
@@ -208,12 +219,7 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,twindin)
            if(metarvis(1,1) < 1.0e9) ivalid=ivalid+1
            if(ivalid==0)  cycle loop_readsb
            iout=iout+1
-
-!           write(*,*) ntb, kx, iout
-!           write(*,*) metarcld(1:2,:)
-!           write(*,*) metarwth(1,:)
-!           write(*,*) metarvis(1:2,:)
-
+!
 !          Set station ID
            rstation_id=hdr(1)
            stnelev=hdr(6)
@@ -280,7 +286,7 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,twindin)
 !   End of bufr read loop
      enddo loop_msg
 !    Close unit to bufr file
-     call closbf(lunin)
+  call closbf(lunin)
 
 ! Normal exit
 
@@ -299,7 +305,7 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,twindin)
   if(metarcldobs .and. ndata > 0) then
      maxobs=2000000
      allocate(cdata_all(nreal,maxobs))
-     call reorg_metar_cloud_regular(cdata_out,nreal,ndata,cdata_all,maxobs,iout)
+     call reorg_metar_cloud_regular(cdata_out,nreal,ndata,nlon,nlat,cdata_all,maxobs,iout)
      ndata=iout
      deallocate(cdata_out)
      allocate(cdata_regular(nreal,ndata))
@@ -319,5 +325,4 @@ subroutine read_prepbufr_metarcld(infile,analysis_time,analysis_minute,twindin)
   return
 
 end subroutine read_prepbufr_metarcld
-
 

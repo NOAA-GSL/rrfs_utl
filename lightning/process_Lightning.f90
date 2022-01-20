@@ -28,7 +28,6 @@ program process_Lightning
   use mpi
   use kinds, only: r_kind,i_kind
   use module_ncio, only : ncio
-  use pesg, only : gtoxm_ak_dd,xmtog_ak_dd
   use module_esggrid_util, only: edp,esggrid_util
 
   implicit none

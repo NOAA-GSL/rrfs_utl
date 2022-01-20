@@ -1,4 +1,4 @@
-subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,cdata_all,maxobs,ngrid)
+subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,nlon,nlat,cdata_all,maxobs,ngrid)
 !$$$  subprogram documentation block
 !                .      .    .                                       .
 ! subprogram:  reorg_metar_cloud     define a closest METAR cloud observation for each grid point
@@ -41,7 +41,6 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,cdata_all,maxobs,ngrid)
 !
 
   use kinds, only: r_kind,i_kind,r_double
-  use gridmod_gsimap ,only : nlon,nlat
 
   use cld_parm_array_mod, only: region_dy,region_dx
   use cld_parm_array_mod, only: metar_impact_radius
@@ -59,6 +58,7 @@ subroutine reorg_metar_cloud_regular(cdata,nreal,ndata,cdata_all,maxobs,ngrid)
   integer(i_kind)                       ,intent(in) :: nreal   
   integer(i_kind)                       ,intent(in) :: ndata
   integer(i_kind)                       ,intent(in) :: maxobs
+  integer(i_kind)                       ,intent(in):: nlon,nlat
   real(r_kind),dimension(nreal,ndata)   ,intent(inout) :: cdata
   real(r_kind),dimension(nreal,maxobs)  ,intent(out):: cdata_all
   integer(i_kind)                       ,intent(out):: ngrid
