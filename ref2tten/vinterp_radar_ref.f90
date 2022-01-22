@@ -104,8 +104,8 @@ SUBROUTINE vinterp_radar_ref(nlon,nlat,nsig,Nmsclvl,ref_mos_3d,ref_mosaic31,h_bk
   endif
   
   DO k2=1,nsig
-    DO j=2,nlat-1
-      DO i=2,nlon-1
+    DO j=1,nlat
+      DO i=1,nlon
         heightGSI=h_bk(i,j,k2)+zh(i,j)
         if(heightGSI >= msclvlAll(1) .and. heightGSI < msclvlAll(Nmsclvl) ) then
            do k=1,Nmsclvl-1
@@ -133,11 +133,11 @@ SUBROUTINE vinterp_radar_ref(nlon,nlat,nsig,Nmsclvl,ref_mos_3d,ref_mosaic31,h_bk
 
 !
   DO k2=1,nsig
-    DO i=2,nlon-1
+    DO i=1,nlon
       ref_mos_3d(i,1,k2)=ref_mos_3d(i,2,k2)
       ref_mos_3d(i,nlat,k2)=ref_mos_3d(i,nlat-1,k2)
     ENDDO
-    DO j=2,nlat-1
+    DO j=1,nlat
       ref_mos_3d(1,j,k2)=ref_mos_3d(2,j,k2)
       ref_mos_3d(nlon,j,k2)=ref_mos_3d(nlon-1,j,k2)
     ENDDO

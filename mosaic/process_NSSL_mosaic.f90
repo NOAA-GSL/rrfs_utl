@@ -189,8 +189,8 @@ program process_NSSL_mosaic
         allocate(ref3d_column(maxlvl+2,nlon*nlat))
         ref3d_column=-999.0
         numref=0
-        DO j=2,nlat-1
-        DO i=2,nlon-1
+        DO j=1,nlat
+        DO i=1,nlon
           numlvl=0
           DO k=1,maxlvl
             if(abs(ref0(i,j,k)) < 888.0 ) numlvl=numlvl+1

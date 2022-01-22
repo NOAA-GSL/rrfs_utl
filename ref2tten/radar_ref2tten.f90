@@ -1,6 +1,7 @@
 SUBROUTINE radar_ref2tten(nlon,nlat,nsig,ref_mos_3d,& 
                          p_bk,t_bk,ges_tten,dfi_rlhtp,krad_bot_in,pblh,&
-                         l_tten_for_convection_only,convection_refl_threshold)
+                         l_tten_for_convection_only,convection_refl_threshold,&
+                         fv3_io_layout_y,fv3_io_layout_end,mype)
 !
 !$$$  subprogram documentation block
 !                .      .    .                                       .
@@ -30,6 +31,8 @@ SUBROUTINE radar_ref2tten(nlon,nlat,nsig,ref_mos_3d,&
 !     krad_bot_in  - radar bottome height
 !     pblh         - PBL height in grid unit
 !     l_tten_for_convection_only - .true. = turn off radar-based tten for nonconvective precipitation
+!     fv3_io_layout_y - values of fv3 model io_layout(2)
+!     fv3_io_layout_end - the end of subdomain restart files in Y direction
 !
 !   output argument list:
 !     ges_tten     - 3D radar temperature tendency 
@@ -49,6 +52,7 @@ SUBROUTINE radar_ref2tten(nlon,nlat,nsig,ref_mos_3d,&
 !
 !_____________________________________________________________________
 !
+  use mpi
   use constants, only: rd_over_cp, h1000
   use kinds, only: r_kind,i_kind,r_single
   implicit none
@@ -64,11 +68,16 @@ SUBROUTINE radar_ref2tten(nlon,nlat,nsig,ref_mos_3d,&
   real(r_single), INTENT(INOUT):: ges_tten(nlon,nlat,nsig)
   logical,INTENT(IN)         :: l_tten_for_convection_only
   REAL(r_kind),INTENT(IN) :: convection_refl_threshold     ! units dBZ
+  integer, intent(in)     :: fv3_io_layout_y
+  integer, intent(in)     :: fv3_io_layout_end(fv3_io_layout_y)
+  integer, intent(in)     :: mype
 
   real (r_single) :: tbk_k
 
   real(r_kind), allocatable :: tten_radar(:,:,:)         ! 
   real(r_kind), allocatable :: dummy(:,:)         ! 
+  real(r_kind), allocatable :: tmp2dfa(:,:)         ! 
+  real(r_kind), allocatable :: tmp2dfb(:,:)         ! 
 
   integer(i_kind) :: krad_bot             ! RUC bottom level for TTEN_RAD
                                           !  and for filling from above
@@ -130,6 +139,7 @@ SUBROUTINE radar_ref2tten(nlon,nlat,nsig,ref_mos_3d,&
   REAL(r_kind):: tten, addsnow
   REAL(r_kind):: spval_p
 
+  integer :: ierror,nlatfull
 !
   spval_p =99999.0_r_kind
   if( 1 == 1 ) then
@@ -144,8 +154,8 @@ SUBROUTINE radar_ref2tten(nlon,nlat,nsig,ref_mos_3d,&
 !      if (mype==0) write(6,*) 'determining locations of probable deep, moist convection'
       allocate(probable_convection(nlon,nlat))
       probable_convection(:,:) = .false.
-      DO j=2,nlat-1
-        DO i=2,nlon-1
+      DO j=1,nlat
+        DO i=1,nlon
           dpint = 0.0_r_kind
           DO k=2,nsig-1
             tbk_k=t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp       ! temperature (K)
@@ -175,8 +185,8 @@ SUBROUTINE radar_ref2tten(nlon,nlat,nsig,ref_mos_3d,&
 !    So (60*cpd_p), where 60 is 60 steps for 40 min foreward integration with 40 second time step.
 !
     DO k=2,nsig-1
-      DO j=2,nlat-1
-        DO i=2,nlon-1
+      DO j=1,nlat
+        DO i=1,nlon
           krad_bot= int( max(krad_bot_in,pblh(i,j)) + 0.5_r_single )  ! consider PBL height
           tbk_k=t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp  ! convert to temperature(K) 
           if (ref_mos_3d(i,j,k)<0.001_r_kind.and.ref_mos_3d(i,j,k)>-100) then     ! no echo
@@ -216,11 +226,42 @@ SUBROUTINE radar_ref2tten(nlon,nlat,nsig,ref_mos_3d,&
       ENDDO
     ENDDO
 
-    DO k=1,nsig
-      call smooth(tten_radar(1,1,k),dummy,nlon,nlat,0.5_r_kind)
-      call smooth(tten_radar(1,1,k),dummy,nlon,nlat,0.5_r_kind)
-    ENDDO
+    if(fv3_io_layout_y>1) then
+       nlatfull=fv3_io_layout_end(fv3_io_layout_y)
+       allocate(tmp2dfa(nlon,nlatfull))
+       allocate(tmp2dfb(nlon,nlatfull))
+    endif
 
+    DO k=1,nsig
+   
+       if(fv3_io_layout_y==1) then
+          call smooth(tten_radar(1,1,k),dummy,nlon,nlat,0.5_r_kind)
+          call smooth(tten_radar(1,1,k),dummy,nlon,nlat,0.5_r_kind)
+       else
+          tmp2dfa=0.0_r_kind
+          tmp2dfb=0.0_r_kind
+          if(mype==0) then
+            tmp2dfa(:,1:fv3_io_layout_end(1)) = tten_radar(:,:,k)
+          else
+            tmp2dfa(:,fv3_io_layout_end(mype)+1:fv3_io_layout_end(mype+1)) = tten_radar(:,:,k)
+          endif
+          call mpi_reduce(tmp2dfa,tmp2dfb, nlon*nlatfull,&
+                      mpi_double, mpi_sum, 0,MPI_COMM_WORLD, ierror)
+          if(mype==0) then
+             call smooth(tmp2dfb,dummy,nlon,nlat,0.5_r_kind)
+             call smooth(tmp2dfb,dummy,nlon,nlat,0.5_r_kind)
+          endif
+          call mpi_bcast(tmp2dfb,nlon*nlatfull,mpi_double,0,MPI_COMM_WORLD,ierror)
+          if(mype==0) then
+            tten_radar(:,:,k)=tmp2dfb(:,1:fv3_io_layout_end(1))
+          else
+            tten_radar(:,:,k)=tmp2dfb(:,fv3_io_layout_end(mype)+1:fv3_io_layout_end(mype+1))
+          endif
+       endif
+    ENDDO
+    if(fv3_io_layout_y>1) then
+      deallocate(tmp2dfa,tmp2dfb)
+    endif
 !  KEY element -- Set tten_radar to no-coverage AFTER smoothing
 !      where ref_mos_3d had been previously set to no-coverage (-99.0 dbZ)
 
@@ -235,11 +276,43 @@ SUBROUTINE radar_ref2tten(nlon,nlat,nsig,ref_mos_3d,&
 
 ! -- Whack (smooth) the tten_radar array some more.
 !     for convection suppression in the radyn array.
+    if(fv3_io_layout_y>1) then
+       nlatfull=fv3_io_layout_end(fv3_io_layout_y)
+       allocate(tmp2dfa(nlon,nlatfull))
+       allocate(tmp2dfb(nlon,nlatfull))
+    endif
+
     DO k=1,nsig
-      call smooth(tten_radar(1,1,k),dummy,nlon,nlat,0.5_r_kind)
-      call smooth(tten_radar(1,1,k),dummy,nlon,nlat,0.5_r_kind)
-      call smooth(tten_radar(1,1,k),dummy,nlon,nlat,0.5_r_kind)
+      if(fv3_io_layout_y==1) then
+        call smooth(tten_radar(1,1,k),dummy,nlon,nlat,0.5_r_kind)
+        call smooth(tten_radar(1,1,k),dummy,nlon,nlat,0.5_r_kind)
+        call smooth(tten_radar(1,1,k),dummy,nlon,nlat,0.5_r_kind)
+      else
+          tmp2dfa=0.0_r_kind
+          tmp2dfb=0.0_r_kind
+          if(mype==0) then
+            tmp2dfa(:,1:fv3_io_layout_end(1)) = tten_radar(:,:,k)
+          else
+            tmp2dfa(:,fv3_io_layout_end(mype)+1:fv3_io_layout_end(mype+1)) = tten_radar(:,:,k)
+          endif
+          call mpi_reduce(tmp2dfa,tmp2dfb, nlon*nlatfull,&
+                      mpi_double, mpi_sum, 0,MPI_COMM_WORLD, ierror)
+          if(mype==0) then
+             call smooth(tmp2dfb,dummy,nlon,nlat,0.5_r_kind)
+             call smooth(tmp2dfb,dummy,nlon,nlat,0.5_r_kind)
+             call smooth(tmp2dfb,dummy,nlon,nlat,0.5_r_kind)
+          endif
+          call mpi_bcast(tmp2dfb,nlon*nlatfull,mpi_double,0,MPI_COMM_WORLD,ierror)
+          if(mype==0) then
+            tten_radar(:,:,k)=tmp2dfb(:,1:fv3_io_layout_end(1))
+          else
+            tten_radar(:,:,k)=tmp2dfb(:,fv3_io_layout_end(mype)+1:fv3_io_layout_end(mype+1))
+          endif
+      endif
     ENDDO
+    if(fv3_io_layout_y>1) then
+      deallocate(tmp2dfa,tmp2dfb)
+    endif
 
     deallocate(dummy)   
 
@@ -314,8 +387,8 @@ SUBROUTINE radar_ref2tten(nlon,nlat,nsig,ref_mos_3d,&
 ! than being specified.
     if (l_tten_for_convection_only) then
       write(6,*) 'changing regions of non-convective precipitation to no coverage'
-      DO j=2,nlat-1
-        DO i=2,nlon-1
+      DO j=1,nlat
+        DO i=1,nlon
           if (radyn(i,j)>0.9_r_kind .and. .not. probable_convection(i,j)) then
             ges_tten(i,j,nsig)=-10.0_r_kind
             DO k=2,nsig-1

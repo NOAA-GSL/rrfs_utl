@@ -1,4 +1,4 @@
-SUBROUTINE read_Lightning2cld(nlon,nlat,numlight,light_in,lightning)
+SUBROUTINE read_Lightning2cld(nlon,nlat,numitem,numlight,ybegin,yend,light_in,lightning)
 !
 !
 !$$$  subprogram documentation block
@@ -17,7 +17,10 @@ SUBROUTINE read_Lightning2cld(nlon,nlat,numlight,light_in,lightning)
 !   input argument list:
 !     nlon        - no. of lons on subdomain (buffer points on ends)
 !     nlat        - no. of lats on subdomain (buffer points on ends)
+!     numitem     - number of item in each observation
 !     numlight    - number of observation
+!     ybegin      - begin Y index for the domain
+!     yend        - end Y index for the domain
 !
 !   output argument list:
 !     lightning   - lightning flash rate in analysis grid
@@ -42,8 +45,10 @@ SUBROUTINE read_Lightning2cld(nlon,nlat,numlight,light_in,lightning)
   implicit none
 
   INTEGER(i_kind),intent(in) :: nlon,nlat
+  INTEGER(i_kind),intent(in) :: numitem
   INTEGER(i_kind),intent(in) :: numlight 
-  real(r_single),intent(in)    :: light_in(3,numlight)
+  INTEGER(i_kind),intent(in) :: ybegin,yend
+  real(r_single),intent(in)  :: light_in(numitem,numlight)
   real(r_single), intent(out):: lightning(nlon,nlat)
 !
 !  local
@@ -54,18 +59,23 @@ SUBROUTINE read_Lightning2cld(nlon,nlat,numlight,light_in,lightning)
   ilon1s=1
   ilat1s=2
 
-!  DO i=1,numlight
-!    write(*,*) 'lat lon values ',i,light_in(ilat1s,i)+0.001_r_kind,light_in(ilon1s,i)+0.001_r_kind
-!  ENDDO
+  write(6,*) "process lightning obs for domain ", nlon,nlat,ybegin,yend
+  if(numitem /= 4) then
+     write(*,*) 'ERROR: not match expected item size ',numitem
+     stop 1234
+  endif
+
   DO i=1,numlight
     ii=int(light_in(ilon1s,i)+0.001_r_single)
     jj=int(light_in(ilat1s,i)+0.001_r_single)
-    
-    if( ii < 1 .or. ii > nlon ) write(6,*) 'read_Lightning_cld: ', &
-                                'Error in read in lightning ii:',ii,jj,i
-    if( jj < 1 .or. jj > nlat ) write(6,*) 'read_Lightning_cld:', &
-                                'Error in read in lightning jj:',ii,jj,i
-    lightning(ii,jj)=light_in(3,i)
+
+    if( (ii >= 1 .and. ii <= nlon ) .and. &
+        (jj >= ybegin .and. jj <= yend ) ) then
+      jj=jj-ybegin+1
+      lightning(ii,jj)=light_in(4,i)
+    else
+!      write(6,*) 'lightning obs outside analysis domain ',i,ii,jj
+    endif
   ENDDO
 
 END SUBROUTINE read_Lightning2cld

@@ -144,8 +144,8 @@ SUBROUTINE convert_stcst2ref(nlon,nlat,nsig,ref_mos_3d,satcast_cr,h_bk)
   season=1
   dbz_satcast = -9999.0_r_kind
   satcast_ref = -9999.0_r_kind
-  DO j=2,nlat-1
-    DO i=2,nlon-1
+  DO j=1,nlat
+    DO i=1,nlon
       if(satcast_cr(i,j) < -3.0_r_kind ) then
 !         print*, 'satcast_cr ls -3',satcast_cr(i,j),i,j
          satcast_ref(i,j)=-4*satcast_cr(i,j)
@@ -168,8 +168,8 @@ SUBROUTINE convert_stcst2ref(nlon,nlat,nsig,ref_mos_3d,satcast_cr,h_bk)
 !  ref_mos_3d=-9999.0
      write(*,*) 'modifying dbz using satcast cooling rate',nlat,nlon
 
-  DO j=2,nlat-1
-    DO i=2,nlon-1
+  DO j=1,nlat
+    DO i=1,nlon
       if( dbz_satcast(i,j) > 30 ) then
 !         print*, 'dbz_satcast is gt 30', satcast_ref(i,j),dbz_satcast(i,j),i,j
          mref =  min(4,(int((dbz_satcast(i,j) - 30.0_r_kind)/5.0_r_kind) + 1 ))

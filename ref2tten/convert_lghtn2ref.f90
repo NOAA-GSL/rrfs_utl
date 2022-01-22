@@ -140,8 +140,8 @@ SUBROUTINE convert_lghtn2ref(mype,nlon,nlat,nsig,ref_mos_3d,lightning,h_bk)
 !
   season=1
   dbz_lightning = -9999.0_r_kind
-  DO j=2,nlat-1
-    DO i=2,nlon-1
+  DO j=1,nlat
+    DO i=1,nlon
       if(lightning(i,j) > 0.1_r_kind ) then
         num_lightning = max(1,min(30,int(lightning(i,j))))
         if(season== 2 ) then
@@ -155,8 +155,8 @@ SUBROUTINE convert_lghtn2ref(mype,nlon,nlat,nsig,ref_mos_3d,lightning,h_bk)
 !
 !  vertical reflectivity distribution
 !
-  DO j=2,nlat-1
-    DO i=2,nlon-1
+  DO j=1,nlat
+    DO i=1,nlon
       if( dbz_lightning(i,j) > 30 ) then
          mref =  min(4,(int((dbz_lightning(i,j) - 30.0_r_kind)/5.0_r_kind) + 1 ))
          if(season== 2 ) then

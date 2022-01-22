@@ -52,8 +52,6 @@ program gsdcloudanalysis_ref2tten
 !
 ! background
 !
-  integer, parameter :: maxcores=1
-  integer, parameter :: timelevel=4
   integer :: ntime
   integer(i_kind) iyear,imonth,iday,ihour,iminute,isecond
   real(r_single)  pt_regional
@@ -100,9 +98,12 @@ program gsdcloudanalysis_ref2tten
   logical         :: l_convection_suppress
   real(r_single) :: dfi_radar_latent_heat_time_period
   REAL(r_kind) :: convection_refl_threshold     ! units dBZ
+  integer      :: fv3_io_layout_y
+  integer      :: timelevel
 !
   namelist/setup/ dfi_radar_latent_heat_time_period,convection_refl_threshold, &
-                  l_tten_for_convection_only,l_convection_suppress
+                  l_tten_for_convection_only,l_convection_suppress,  &
+                  fv3_io_layout_y,timelevel
 !
 !
   real(r_single),allocatable :: field1(:)
@@ -116,6 +117,8 @@ program gsdcloudanalysis_ref2tten
 !
 !  misc.
 !
+  integer(i_kind),allocatable:: fv3_io_layout_end(:),io_layout_tmp(:)
+  integer(i_kind)            :: ybegin,yend
   INTEGER(i_kind) :: i,j,k,n
   integer(i_kind)            :: header1,header2,header3
   integer(i_kind)            :: numlight
@@ -125,10 +128,11 @@ program gsdcloudanalysis_ref2tten
   real(r_single),allocatable   :: lightning(:,:)
   integer(i_kind) :: mype_2d,mype_t,mype_q,mype_p,mype_ql
 
-  character(len=:),allocatable :: dynvars   !='fv3_dynvars'
-  character(len=:),allocatable :: tracers   !='fv3_tracer'
-  character(len=:),allocatable :: sfcvars   !='fv3_sfcdata'
-  character(len=:),allocatable :: phyvars   !='fv3_phydata'
+  character(len=80) :: dynvars   !='fv3_dynvars'
+  character(len=80) :: tracers   !='fv3_tracer'
+  character(len=80) :: sfcvars   !='fv3_sfcdata'
+  character(len=80) :: phyvars   !='fv3_phydata'
+  character(len=80) :: gridspec  !='fv3_grid_spec'
 
   logical :: ifexist
 
@@ -140,51 +144,12 @@ program gsdcloudanalysis_ref2tten
   call MPI_COMM_SIZE(mpi_comm_world,npe,ierror)
   call MPI_COMM_RANK(mpi_comm_world,mype,ierror)
 
-!  mype=0
-  write(6,*) 'total cores for this run is ',npe
-  if(npe < maxcores) then
-     write(6,*) 'ERROR, this run must use ',maxcores,' or more cores !!!'
-     call MPI_FINALIZE(ierror)
-     stop 1234
-  endif
-
-  mypeLocal=mype+1
-  if(mypeLocal <= maxcores) then
-!  standard output file for each core
-     write(radarfile,'(a,I2.2)') 'stdout_refltotten.',mypeLocal
-     open(6, file=trim(radarfile),form='formatted',status='unknown')
-     write(6,*) '===> deal with tten time level = ', mypeLocal
-!
-! 2.0  open and read background dimesion
-!          
-     rfv3io_mype=mype
-     fv3sar_bg_opt=0    ! 0=restart, 1=input
-     call bg_fv3regfilenameg%init
-     mype_t=mype
-     mype_q=mype
-     mype_p=mype
-     mype_ql=mype
-     mype_2d=mype
-
-     dynvars= bg_fv3regfilenameg%dynvars
-     tracers= bg_fv3regfilenameg%tracers
-     sfcvars= bg_fv3regfilenameg%sfcdata
-     phyvars= bg_fv3regfilenameg%phydata
-
-     call init_constants(.true.)
-     call init_constants_derived
-     krad_bot=7.0_r_single
-     dfi_radar_latent_heat_time_period=20.0_r_single
-     convection_refl_threshold=28.0_r_kind
-     l_tten_for_convection_only=.true.
-     l_convection_suppress=.false.
-     Nmsclvl_radar = -999
-     iunit_radar=25
-     iunit_lightning=26
-     iunit_satcast=27
-     rad_missing=1
-     lightning_missing=1
-
+  timelevel=1
+  fv3_io_layout_y=1
+  dfi_radar_latent_heat_time_period=20.0_r_single
+  convection_refl_threshold=28.0_r_kind
+  l_tten_for_convection_only=.true.
+  l_convection_suppress=.false.
 !
 !  read namelist
 !
@@ -193,16 +158,76 @@ program gsdcloudanalysis_ref2tten
     open(10,file='namelist_ref2tten',status='old')
        read(10,setup)
     close(10)
-    write(*,*) 'Namelist setup are:'
-    write(*,setup)
+    if(mype==0) then
+      write(*,*) 'Namelist setup are:'
+      write(*,setup)
+    endif
   else
-    write(*,*) 'No namelist file exist, use default values'
-    write(*,*) "dfi_radar_latent_heat_time_period=",  &
+    if(mype==0) then
+      write(*,*) 'No namelist file exist, use default values'
+      write(*,*) "dfi_radar_latent_heat_time_period=",  &
                                     dfi_radar_latent_heat_time_period
-    write(*,*) "convection_refl_threshold=",convection_refl_threshold
-    write(*,*) "l_tten_for_convection_only=",l_tten_for_convection_only
+      write(*,*) "convection_refl_threshold=",convection_refl_threshold
+      write(*,*) "l_tten_for_convection_only=",l_tten_for_convection_only
+      write(*,*) "fv3_io_layout_y=",fv3_io_layout_y
+      write(*,*) "timelevel=",timelevel
+    endif
+  endif
+!  mype=0
+  if(mype==0) write(6,*) 'total cores for this run is ',npe
+  if(npe /= fv3_io_layout_y) then
+     write(6,*) 'ERROR, this run must use ', fv3_io_layout_y,' cores !!!'
+     call MPI_FINALIZE(ierror)
+     stop 1234
   endif
 
+  mypeLocal=mype+1
+  if(mypeLocal <= fv3_io_layout_y) then
+!  standard output file for each core
+     write(radarfile,'(a,I2.2)') 'stdout_refltotten.',mype
+     open(6, file=trim(radarfile),form='formatted',status='unknown')
+     write(6,*) '===> deal with subdomain = ', mype
+!
+! 2.0  open and read background dimesion
+!          
+     rfv3io_mype=mype
+     fv3sar_bg_opt=0    ! 0=restart, 1=input
+     if(fv3_io_layout_y==1) then
+        call bg_fv3regfilenameg%init
+     else
+        write(gridspec,'(a,I4.4)') 'fv3_grid_spec.',mype
+        write(dynvars,'(a,I4.4)') 'fv3_dynvars.',mype
+        write(tracers,'(a,I4.4)') 'fv3_tracer.',mype
+        write(sfcvars,'(a,I4.4)') 'fv3_sfcdata.',mype
+        write(phyvars,'(a,I4.4)') 'fv3_phydata.',mype
+        call bg_fv3regfilenameg%init(grid_spec_input=trim(gridspec), &
+                 dynvars_input=trim(dynvars),tracers_input=trim(tracers),&
+                 sfcdata_input=trim(sfcvars),phydata_input=trim(phyvars))
+     endif
+     mype_t=mype
+     mype_q=mype
+     mype_p=mype
+     mype_ql=mype
+     mype_2d=mype
+
+     dynvars= trim(bg_fv3regfilenameg%dynvars)
+     tracers= trim(bg_fv3regfilenameg%tracers)
+     sfcvars= trim(bg_fv3regfilenameg%sfcdata)
+     phyvars= trim(bg_fv3regfilenameg%phydata)
+     write(6,*) trim(dynvars)
+     write(6,*) trim(tracers)
+     write(6,*) trim(sfcvars)
+     write(6,*) trim(phyvars)
+
+     call init_constants(.true.)
+     call init_constants_derived
+     krad_bot=7.0_r_single
+     Nmsclvl_radar = -999
+     iunit_radar=25
+     iunit_lightning=26
+     iunit_satcast=27
+     rad_missing=1
+     lightning_missing=1
 !
 ! 2.1 read in background fields
 !
@@ -214,6 +239,26 @@ program gsdcloudanalysis_ref2tten
 !     hbk         - 3D height above the ground (not the sea level)
 !
      call gsi_rfv3io_get_grid_specs(bg_fv3regfilenameg,ierror)
+
+     allocate(fv3_io_layout_end(fv3_io_layout_y))
+     fv3_io_layout_end=nlat_regional
+     if(fv3_io_layout_y > 1) then
+       allocate(io_layout_tmp(fv3_io_layout_y))
+       io_layout_tmp=0
+       fv3_io_layout_end=0
+       fv3_io_layout_end(mypeLocal)=nlat_regional 
+       call mpi_reduce(fv3_io_layout_end,io_layout_tmp, fv3_io_layout_y,&
+                      mpi_integer, mpi_max, 0,MPI_COMM_WORLD, ierror)
+       if(mype==0) then
+         fv3_io_layout_end(1)=io_layout_tmp(1)
+         do i=2,fv3_io_layout_y
+           fv3_io_layout_end(i)=fv3_io_layout_end(i-1) + io_layout_tmp(i)
+         enddo
+       endif
+       deallocate(io_layout_tmp)
+       call mpi_bcast(fv3_io_layout_end,fv3_io_layout_y,mpi_integer,0,MPI_COMM_WORLD, ierror)
+       if(mype==0) write(*,*) 'end of each subdomain ',mype,fv3_io_layout_end
+     endif
 
      allocate(ps_bk(nlon_regional,nlat_regional))
      allocate(zh(nlon_regional,nlat_regional))
@@ -309,7 +354,11 @@ program gsdcloudanalysis_ref2tten
 
         n=ntime
 
-        write(radarfile,'(a,I2.2)') 'RefInGSI3D.dat_',n
+        if(fv3_io_layout_y==1) then
+           write(radarfile,'(a,I2.2)') 'RefInGSI3D.dat_',n
+        else
+           write(radarfile,'(a,I4.4,a1,I2.2)') 'RefInGSI3D.dat.',mype,'_',n
+        endif
         write(6,*)
         write(6,*) 'processing ',trim(radarfile)
 
@@ -343,14 +392,21 @@ program gsdcloudanalysis_ref2tten
         if (ifexist) then
            open(iunit_lightning,file=trim(lightningfile),form='unformatted',status='old')
               read(iunit_lightning) header1,nlon_lightning,nlat_lightning,numlight,header2,header3
-              allocate(lightning_in(3,numlight))
+              allocate(lightning_in(header1,numlight))
               lightning_in=-9999.0_r_single
               read(iunit_lightning) lightning_in
            close(iunit_lightning)
            write(6,*) 'finished read ',trim(lightningfile), numlight
            allocate(lightning(nlon_regional,nlat_regional))
            lightning=-9999.0_r_single
-           call read_Lightning2cld(nlon_regional,nlat_regional,numlight,lightning_in,lightning)
+           ybegin=1
+           yend=nlat_regional
+           if(fv3_io_layout_y > 1) then
+              ybegin=1
+              if(mypeLocal>1) ybegin=fv3_io_layout_end(mypeLocal-1)+1
+              yend=fv3_io_layout_end(mypeLocal)
+           endif
+           call read_Lightning2cld(nlon_regional,nlat_regional,header1,numlight,ybegin,yend,lightning_in,lightning)
            deallocate(lightning_in)
            lightning_missing=0
         endif
@@ -422,7 +478,8 @@ program gsdcloudanalysis_ref2tten
         dfi_lhtp=dfi_radar_latent_heat_time_period
         call radar_ref2tten(nlon_regional,nlat_regional,nsig_regional,ref_mos_3d,& 
                      p_bk,t_bk,ges_tten,dfi_lhtp,krad_bot,pblh,  &
-                     l_tten_for_convection_only,convection_refl_threshold)
+                     l_tten_for_convection_only,convection_refl_threshold, &
+                     fv3_io_layout_y,fv3_io_layout_end,mype)
 ! for debug only     if(ntime==2) ges_tten=ref_mos_3d
         deallocate(ref_mos_3d)
         do k=1,nsig_regional
@@ -449,6 +506,7 @@ program gsdcloudanalysis_ref2tten
 !
      write(6,*) 'core', mype ,',finished, now release memory'
 !  deallocate(sat_ctp)
+     deallocate(h_bk)
      deallocate(t_bk)
      deallocate(p_bk)
      deallocate(pblh)
