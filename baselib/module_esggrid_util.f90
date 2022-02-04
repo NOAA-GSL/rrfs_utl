@@ -151,6 +151,17 @@ contains
        this%lx=397
        this%ly=233
        this%if_initial=.true.
+    elseif(trim(grid_type)=="RRFS_CONUS_3km") then
+       this%pdlat = 38.5_dp
+       this%pdlon = -97.5_dp
+       this%pdazi = 0.0_dp
+       this%delx = 0.0133917342306414_dp*dtor
+       this%dely = 0.0134551815344223_dp*dtor
+       this%a = 0.111918542944298_dp
+       this%k = -0.351476690016963_dp
+       this%lx=1748
+       this%ly=1038
+       this%if_initial=.true.
     else
        write(*,*) 'ERROR: esggrid_util, unknow grid type ', trim(grid_type)
        stop 123
