@@ -1,29 +1,28 @@
-SUBROUTINE read_Lightning2cld(mype,lunin,istart,jstart,  &
-                              nlon,nlat,numlight,lightning)
+SUBROUTINE read_Lightning2cld(obsfile,nlon,nlat,ybegin,yend,lightning,&
+                              istat_lightning)
 !
 !
 !$$$  subprogram documentation block
 !                .      .    .                                       .
-! subprogram:  read_NESDIS     read in lightning flash rate  
+! subprogram:  read_Lightning2cld     read in lightning flash rate  
 !
-!   PRGMMR: Ming Hu          ORG: GSD/AMB        DATE: 2008-11-30
+!   PRGMMR: Ming Hu          ORG: GSL/AVID        DATE: 2022-02-02
 !
 ! ABSTRACT: 
 !  This subroutine read in lightning flash rate
 !
 ! PROGRAM HISTORY LOG:
-!    2009-01-20  Hu  Add NCO document block
+!    2022-02-02  Hu  Add NCO document block
 !
 !
 !   input argument list:
 !     mype        - processor ID
 !     lunin       - unit in which data are read in
-!     jstart      - start lon of the whole array on each pe
-!     istart      - start lat of the whole array on each pe
 !     nlon        - no. of lons on subdomain (buffer points on ends)
 !     nlat        - no. of lats on subdomain (buffer points on ends)
-!     numlight    - number of observation
-!
+!     ybegin      - begin Y index for the domain
+!     yend        - end Y index for the domain
+
 !   output argument list:
 !     lightning   - lightning flash rate in analysis grid
 !
@@ -46,48 +45,78 @@ SUBROUTINE read_Lightning2cld(mype,lunin,istart,jstart,  &
   use kinds, only: r_kind,i_kind, r_single
   implicit none
 
-  integer(i_kind),intent(in) :: lunin
-  integer(i_kind),intent(in) :: mype
-  INTEGER(i_kind),intent(in) :: nlon,nlat
-  integer(i_kind),intent(in) :: istart
-  integer(i_kind),intent(in) :: jstart
-  INTEGER(i_kind),intent(in) :: numlight 
+  character(len=*), intent(in) :: obsfile
+  integer(i_kind),intent(in) :: nlon,nlat
+  integer(i_kind),intent(in) :: ybegin,yend
 
-  real(r_single), intent(out):: lightning(nlon,nlat)
+  real(r_single), intent(inout):: lightning(nlon,nlat)
+  integer(i_kind),intent(inout):: istat_lightning
 !
 !  local
 !
-  real(r_kind),allocatable :: light_in(:,:)
+  real(r_single),allocatable :: lightning_in(:,:)
 
-  character(10) :: obstype
-  integer(i_kind):: nreal,nchanl,ilat1s,ilon1s
-  character(20) :: isis
-
-  INTEGER(i_kind) :: i,ii,jj
-  INTEGER(i_kind) :: ib,jb
+  integer(i_kind) :: lunin
+  integer(i_kind) :: ilat1s,ilon1s
+  integer(i_kind) :: i,ii,jj
+  integer(i_kind) :: header1,nlon_lightning,nlat_lightning,numlight,header2,header3
+  logical :: fileexist
+  integer(i_kind) :: num
 
 !
-  ib=jstart   ! begin i point of this domain
-  jb=istart   ! begin j point of this domain
+!
+!
+  lightning=-9999.0_r_single
+  lunin=12
+  istat_lightning=0
+  inquire(file=trim(obsfile),exist=fileexist)
+  if(fileexist) then
+     write(6,*) 'read in lightning from=',trim(obsfile)
+     open(lunin, file=trim(obsfile),form='unformatted',status='old')
 
-  ilon1s=1
-  ilat1s=2
+     read(lunin) header1,nlon_lightning,nlat_lightning,numlight,&
+                        header2,header3
+     write(6,*) header1,nlon_lightning,nlat_lightning,numlight,header2,header3
+     allocate(lightning_in(header1,numlight))
+     lightning_in=-9999.0_r_single
+     read(lunin) lightning_in
+     close(lunin)
+  else
+     write(6,*) 'problem open lightning file=',trim(obsfile)
+     return
+  endif
 
-  read(lunin) obstype,isis,nreal,nchanl
+  ilon1s=header2
+  ilat1s=header3
 
-  allocate( light_in(nreal,numlight) )
-  light_in=-9999.0_r_kind
+  write(6,*) "process lightning obs for domain ", nlon,nlat,ybegin,yend
+  if(header1/= 4) then
+     write(*,*) 'ERROR: not match expected item size ',header1
+     stop 1234
+  endif
 
-  read(lunin)  light_in
+  do i=1,numlight,max(1,numlight/5)
+    write(6,'(10f10.2)') lightning_in(1:header1,i)
+  enddo
+
+  num=0
   DO i=1,numlight
-    ii=int(light_in(ilon1s,i)+0.001_r_kind) - ib + 2
-    jj=int(light_in(ilat1s,i)+0.001_r_kind) - jb + 2
-    if( ii < 1 .or. ii > nlon ) write(6,*) 'read_Lightning_cld: ', &
-                                'Error in read in lightning ii:',mype,ii,jj,i,ib,jb
-    if( jj < 1 .or. jj > nlat ) write(6,*) 'read_Lightning_cld:', &
-                                'Error in read in lightning jj:',mype,ii,jj,i,ib,jb
-    lightning(ii,jj)=light_in(3,i)
+    ii=int(lightning_in(ilon1s,i)+0.001_r_single)
+    jj=int(lightning_in(ilat1s,i)+0.001_r_single)
+
+    if( (ii >= 1 .and. ii <= nlon ) .and. &
+        (jj >= ybegin .and. jj <= yend ) ) then
+      jj=jj-ybegin+1
+      lightning(ii,jj)=lightning_in(4,i)
+      num=num+1
+    else
+!      write(6,*) 'lightning obs outside analysis domain ',i,ii,jj
+    endif
   ENDDO
-  deallocate(light_in)
+
+  deallocate(lightning_in)
+
+  if(num>0) istat_lightning=1
+  write(6,*) 'read in ligthning number=',num,istat_lightning
 
 END SUBROUTINE read_Lightning2cld

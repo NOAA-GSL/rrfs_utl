@@ -66,7 +66,7 @@ SUBROUTINE PrecipMxR_radar(mype,nlat,nlon,nsig,   &
   real(r_single),intent(in) :: t_bk(nlon,nlat,nsig)   ! potential temperature
   real(r_single),intent(in) :: p_bk(nlon,nlat,nsig)   ! height
 !
-  real(r_kind),intent(in)  :: ref_mos_3d(nlon,nlat,nsig)
+  real(r_single),intent(in)  :: ref_mos_3d(nlon,nlat,nsig)
 !
 !  Variables for cloud analysis
 !
@@ -74,10 +74,10 @@ SUBROUTINE PrecipMxR_radar(mype,nlat,nlon,nsig,   &
 !
 ! hydrometeors
 !
-  REAL(r_single),intent(out) :: qr_cld(nlon,nlat,nsig)  ! rain
-  REAL(r_single),intent(out) :: qnr_3d(nlon,nlat,nsig)  ! rain number concentration(/kg)
-  REAL(r_single),intent(out) :: qs_cld(nlon,nlat,nsig)  ! snow
-  REAL(r_single),intent(out) :: qg_cld(nlon,nlat,nsig)  ! graupel
+  REAL(r_single),intent(inout) :: qr_cld(nlon,nlat,nsig)  ! rain
+  REAL(r_single),intent(inout) :: qnr_3d(nlon,nlat,nsig)  ! rain number concentration(/kg)
+  REAL(r_single),intent(inout) :: qs_cld(nlon,nlat,nsig)  ! snow
+  REAL(r_single),intent(inout) :: qg_cld(nlon,nlat,nsig)  ! graupel
 
 !-----------------------------------------------------------
 !
@@ -100,13 +100,19 @@ SUBROUTINE PrecipMxR_radar(mype,nlat,nlon,nsig,   &
 !
 !  cldqropt = 2
 
-  DO j = 2,nlat-1
-    DO i = 2,nlon-1
+  DO j = 1,nlat
+    DO i = 1,nlon
       DO k = 1,nsig            
         t_3d(i,j,k) = t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp
         p_3d(i,j,k) = p_bk(i,j,k)*100.0_r_single
       END DO
     END DO
+  END DO
+  DO k = 1,nsig            
+    write(6,*) k,maxval(t_3d(:,:,k)),minval(t_3d(:,:,k))
+  END DO
+  DO k = 1,nsig            
+    write(6,*) k,maxval(p_3d(:,:,k)),minval(p_3d(:,:,k))
   END DO
 
 !-----------------------------------------------------------------------

@@ -39,7 +39,8 @@ module get_fv3sar_bk_mod
   use gsi_rfv3io_tten_mod, only: nlon_regional,nlat_regional,nsig_regional
   use gsi_rfv3io_tten_mod, only: eta1_ll
   use mpi_mod, only: npe, mype,mpi_comm_world
-  use mpi_mod, only: mpi_finish
+  use mpi_mod, only: mpi_finish,mpi_integer,mpi_sum
+  use namelist_mod, only: fv3_io_layout_y
 
   implicit none
   private
@@ -49,6 +50,7 @@ module get_fv3sar_bk_mod
   public :: aeta1_ll,pt_ll
   public :: pt_regional
   public :: xlon,xlat,xland,soiltbk
+  public :: fv3_io_layout_end
 !
   public :: read_fv3sar_bk
   public :: release_mem_fv3sar_bk
@@ -57,13 +59,14 @@ module get_fv3sar_bk_mod
   public :: read_fv3sar_fix
   public :: release_mem_fv3sar_fix
   public :: update_fv3sar
+  public :: read_fv3sar_layout
 !
 ! MPI variables
   integer :: mypeLocal
 !
 ! background
 !
-  integer, parameter :: maxcores=1
+  integer, parameter :: maxcores=10
   real(r_single)  pt_regional
   
   integer(i_kind) :: iunit
@@ -80,7 +83,11 @@ module get_fv3sar_bk_mod
 
   real(r_kind) :: pt_ll
   real(r_kind),allocatable :: aeta1_ll(:)   !
-
+!
+  integer(i_kind),allocatable:: fv3_io_layout_begin(:)
+  integer(i_kind),allocatable:: fv3_io_layout_end(:)
+  integer(i_kind),allocatable:: io_layout_tmp(:)
+!
 ! hydrometeors
   real(r_single),allocatable :: ges_ql(:,:,:)  ! cloud water
   real(r_single),allocatable :: ges_qi(:,:,:)  ! could ice
@@ -98,42 +105,75 @@ module get_fv3sar_bk_mod
   real(r_single),allocatable :: soiltbk(:,:)
 !
 ! backgrond files
-  character(len=:),allocatable :: dynvars   !='fv3_dynvars'
-  character(len=:),allocatable :: tracers   !='fv3_tracer'
-  character(len=:),allocatable :: sfcvars   !='fv3_sfcdata'
+  character(len=80) :: dynvars   !='fv3_dynvars'
+  character(len=80) :: tracers   !='fv3_tracer'
+  character(len=80) :: sfcvars   !='fv3_sfcdata'
+  character(len=80) :: gridspec  !='fv3_grid_spec'
 !
 
 contains
 !
+
+  subroutine read_fv3sar_layout
+!
+  use module_ncio, only : ncio
+
+  implicit none
+  type(ncio) :: geo
+  integer(i_kind) :: ix,iy,nlat
+  character(len=80) :: thisfv3file
+!
+   allocate(fv3_io_layout_begin(fv3_io_layout_y))
+   allocate(fv3_io_layout_end(fv3_io_layout_y))
+   fv3_io_layout_begin=0
+   fv3_io_layout_end=0
+
+   iy=0
+   do ix=1,fv3_io_layout_y
+      write(thisfv3file,'(a,I4.4)') 'fv3_grid_spec.',ix-1
+      call geo%open(trim(thisfv3file),'r',200)
+      call geo%get_dim("grid_yt",nlat)
+      call geo%close
+      fv3_io_layout_begin(ix)=iy+1
+      fv3_io_layout_end(ix)=iy+nlat
+      iy=fv3_io_layout_end(ix)
+   enddo  ! find dimension
+   write(6,'(a,20I5)') '  end index for each subdomain',fv3_io_layout_end
+
+  end subroutine read_fv3sar_layout
+
   subroutine read_fv3sar_bk
 !
   implicit none
-  integer, parameter :: maxcores=1
   real(r_single),allocatable :: field1(:)
 !
   integer(i_kind) :: mype_2d,mype_t,mype_q,mype_p,mype_ql
   integer(i_kind) :: i,j,k
   integer(i_kind) :: ierror
-
 !
 ! ===============================================================================
 !
 ! MPI setup
   write(6,*) 'total cores for this run is ',npe
-  if(npe < maxcores) then
-     write(6,*) 'ERROR, this run must use ',maxcores,' or more cores !!!'
-     call mpi_finish
-     stop 1234
-  endif
 
   mypeLocal=mype+1
-  if(mypeLocal <= maxcores) then
 !
 ! 2.0  open and read background dimesion
 !          
      rfv3io_mype=mype
      fv3sar_bg_opt=0    ! 0=restart, 1=input
-     call bg_fv3regfilenameg%init
+
+     if(fv3_io_layout_y==1) then
+        call bg_fv3regfilenameg%init
+     else
+        write(gridspec,'(a,I4.4)') 'fv3_grid_spec.',mype
+        write(dynvars,'(a,I4.4)') 'fv3_dynvars.',mype
+        write(tracers,'(a,I4.4)') 'fv3_tracer.',mype
+        write(sfcvars,'(a,I4.4)') 'fv3_sfcdata.',mype
+        call bg_fv3regfilenameg%init(grid_spec_input=trim(gridspec), &
+                 dynvars_input=trim(dynvars),tracers_input=trim(tracers),&
+                 sfcdata_input=trim(sfcvars))
+     endif
      mype_t=mype
      mype_q=mype
      mype_p=mype
@@ -143,8 +183,10 @@ contains
      dynvars= bg_fv3regfilenameg%dynvars
      tracers= bg_fv3regfilenameg%tracers
      sfcvars= bg_fv3regfilenameg%sfcdata
-
-     write(6,*) 'read in background ==========>'
+     
+     write(6,*) 'dynvars=',mype,trim(dynvars)
+     write(6,*) 'tracers=',mype,trim(tracers)
+     write(6,*) 'sfcvars=',mype,trim(sfcvars)
 
 ! 2.1 read in background fields
 !
@@ -156,6 +198,19 @@ contains
 !     hbk         - 3D height above the ground (not the sea level)
 !
      call gsi_rfv3io_get_grid_specs(bg_fv3regfilenameg,ierror)
+
+     if(fv3_io_layout_y > 1) then
+       call read_fv3sar_layout
+       write(6,*) 'end of each subdomain ',mype,fv3_io_layout_end
+     else
+       allocate(fv3_io_layout_begin(fv3_io_layout_y))
+       allocate(fv3_io_layout_end(fv3_io_layout_y))
+       fv3_io_layout_begin=1
+       fv3_io_layout_end=nlat_regional
+     endif
+
+
+     write(6,*) 'read in background ==========>', trim(dynvars)
 
      allocate(ps_bk(nlon_regional,nlat_regional))
      allocate(zh(nlon_regional,nlat_regional))
@@ -251,9 +306,6 @@ contains
 
 !     call gsi_fv3ncdf_write(tracers,'radar_tten',ges_tten,mype_t)
 !
-  endif ! mypeLocal <= maxcores
-
-  call MPI_Barrier(mpi_comm_world, ierror)
 
 end subroutine read_fv3sar_bk
 
@@ -276,7 +328,6 @@ end subroutine release_mem_fv3sar_bk
 subroutine read_fv3sar_hydr
 !
   implicit none
-  integer, parameter :: maxcores=1
   integer(i_kind) :: mype_2d,mype_t,mype_q,mype_p,mype_ql
   integer(i_kind) :: i,j,k
   integer(i_kind) :: ierror
@@ -285,21 +336,15 @@ subroutine read_fv3sar_hydr
 ! ===============================================================================
 !
 ! MPI setup
-  write(6,*) 'total cores for this run is ',npe
-  if(npe < maxcores) then
-     write(6,*) 'ERROR, this run must use ',maxcores,' or more cores !!!'
-     call mpi_finish
-     stop 1234
-  endif
 
   mypeLocal=mype+1
-  if(mypeLocal <= maxcores) then
 !
 ! 2.0  open and read background dimesion
 !          
      rfv3io_mype=mype
+     tracers= bg_fv3regfilenameg%tracers
 
-     write(6,*) 'read in hybrometeors==========>'
+     write(6,*) 'read in hybrometeors==========>', trim(tracers)
 ! 2.1 read in background fields
 !
 !    get cloud water
@@ -358,10 +403,6 @@ subroutine read_fv3sar_hydr
         write(6,*) 'qnc==',k,maxval(ges_qnc(:,:,k)),minval(ges_qnc(:,:,k))
      enddo 
 
-  endif ! mypeLocal <= maxcores
-
-  call MPI_Barrier(mpi_comm_world, ierror)
-
 end subroutine read_fv3sar_hydr
 
 subroutine release_mem_fv3sar_hydr
@@ -382,54 +423,57 @@ end subroutine release_mem_fv3sar_hydr
 
 subroutine read_fv3sar_fix
 !
+  use module_ncio, only : ncio
+
   implicit none
-  integer, parameter :: maxcores=1
+  type(ncio) :: geo
   integer(i_kind) :: i,j,k
-  integer(i_kind) :: ierror
-  integer(i_kind) :: rfv2io_mype
-  integer :: NCID
+  real(r_kind),allocatable :: tmp(:,:)
   CHARACTER*180   geofile
 
 !
 ! ===============================================================================
 !
 ! MPI setup
-  write(6,*) 'total cores for this run is ',npe
-  if(npe < maxcores) then
-     write(6,*) 'ERROR, this run must use ',maxcores,' or more cores !!!'
-     call mpi_finish
-     stop 1234
-  endif
 
   mypeLocal=mype+1
-  if(mypeLocal <= maxcores) then
 !
 ! 2.0  open and read background dimesion
 !          
-     rfv2io_mype=mype
      write(6,*) 'read in latlon and surface ==========>'
 
 ! 2.1 read in fix variables from background fields
 !
      allocate (xlon(nlon_regional,nlat_regional))
      allocate (xlat(nlon_regional,nlat_regional))
-     write(geofile,'(a,a)') './', 'fv3_grid_spec'
-     call OPEN_geo(geofile, NCID)
-     call GET_geo_sngl_fv3sar(NCID,nlon_regional,nlat_regional,xlat,xlon)
-     call CLOSE_geo(NCID)
-     write(*,*) 'FV3SAR grid'
-     write(*,*) 'nlonfv3,nlatfv3=',nlon_regional,nlat_regional
-     write(*,*) 'max, min lon=', maxval(xlon),minval(xlon)
-     write(*,*) 'max, min lat=', maxval(xlat),minval(xlat)
 
+     gridspec= bg_fv3regfilenameg%grid_spec
+     call geo%open(trim(gridspec),'r',200)
+     call geo%get_var("grid_lont",nlon_regional,nlat_regional,xlon)
+     call geo%get_var("grid_latt",nlon_regional,nlat_regional,xlat)
+     write(6,*) 'FV3SAR grid'
+     write(6,*) 'nlonfv3,nlatfv3=',nlon_regional,nlat_regional
+     write(6,*) 'max, min lon=', maxval(xlon),minval(xlon)
+     write(6,*) 'max, min lat=', maxval(xlat),minval(xlat)
+     call geo%close
+
+     allocate(tmp(nlon_regional,nlat_regional))
+     sfcvars= bg_fv3regfilenameg%sfcdata
+     call geo%open(trim(sfcvars),'r',200)
      allocate (xland(nlon_regional,nlat_regional))
-     call gsi_fv3ncdf2d_read(sfcvars,'SLMSK','slmsk',xland,rfv2io_mype)
-     write(*,*) 'land mask min and max=',minval(xland),maxval(xland)
+     call geo%get_var('slmsk',nlon_regional,nlat_regional,tmp)
+     xland=tmp
+     write(6,*) 'land mask min and max=',minval(xland),maxval(xland)
 
      allocate (soiltbk(nlon_regional,nlat_regional))
-     call gsi_fv3ncdf2d_read(sfcvars,'TISFC','tisfc',soiltbk,rfv2io_mype)
-     write(*,*) 'soil temperature min and max=',minval(soiltbk),maxval(soiltbk)
-  endif
+     if(fv3sar_bg_opt==0) then  ! restart
+        call geo%get_var('tsfc',nlon_regional,nlat_regional,tmp)
+     else
+        call geo%get_var('tisfc',nlon_regional,nlat_regional,tmp)
+     endif
+     soiltbk=tmp
+     write(6,*) 'soil temperature min and max=',minval(soiltbk),maxval(soiltbk)
+     call geo%close
 !
 
 end subroutine read_fv3sar_fix
@@ -444,6 +488,9 @@ subroutine release_mem_fv3sar_fix
      if(allocated(xlat))  deallocate(xlat)
      if(allocated(xland))  deallocate(xland)
      if(allocated(soiltbk))  deallocate(soiltbk)
+
+     if(allocated(fv3_io_layout_end))  deallocate(fv3_io_layout_end)
+     if(allocated(fv3_io_layout_begin))  deallocate(fv3_io_layout_begin)
   
 end subroutine release_mem_fv3sar_fix
 
@@ -451,9 +498,31 @@ subroutine update_fv3sar
 
   implicit none
   integer :: rfv3io_mype
-     rfv3io_mype=mype
-     call gsi_fv3ncdf_write(tracers,'liq_wat',ges_ql,rfv3io_mype)
-     call gsi_fv3ncdf_write(tracers,'ice_wat',ges_qi,rfv3io_mype)
+
+  tracers= bg_fv3regfilenameg%tracers
+
+  write(6,*) 'write hybrometeors==========>', trim(tracers)
+
+  rfv3io_mype=mype
+  call gsi_fv3ncdf_write(tracers,'liq_wat',ges_ql,rfv3io_mype)
+  call gsi_fv3ncdf_write(tracers,'ice_wat',ges_qi,rfv3io_mype)
+  call gsi_fv3ncdf_write(tracers,'rainwat',ges_qr,rfv3io_mype)
+  call gsi_fv3ncdf_write(tracers,'snowwat',ges_qs,rfv3io_mype)
+  call gsi_fv3ncdf_write(tracers,'graupel',ges_qg,rfv3io_mype)
+  if(fv3sar_bg_opt==0) then  ! restart
+    call gsi_fv3ncdf_write(tracers,'ice_nc',ges_qni,rfv3io_mype)
+    call gsi_fv3ncdf_write(tracers,'rain_nc',ges_qnr,rfv3io_mype)
+    call gsi_fv3ncdf_write(tracers,'water_nc',ges_qnc,rfv3io_mype)
+  endif
+
+  call gsi_fv3ncdf_write(tracers,'sphum',q_bk,rfv3io_mype)
+  dynvars= bg_fv3regfilenameg%dynvars
+  write(6,*) 'write T==========>', trim(dynvars)
+  if(fv3sar_bg_opt==0) then  ! restart
+    call gsi_fv3ncdf_write(dynvars,'T',t_bk,rfv3io_mype)
+  else
+    call gsi_fv3ncdf_write(dynvars,'t',t_bk,rfv3io_mype)
+  endif
 
 end subroutine update_fv3sar
 

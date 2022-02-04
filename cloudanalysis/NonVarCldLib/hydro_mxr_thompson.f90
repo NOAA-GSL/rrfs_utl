@@ -15,7 +15,7 @@ SUBROUTINE hydro_mxr_thompson (nx, ny, nz, t_3d, p_3d, ref_3d, qr_3d, qnr_3d, qs
 !     nx          - no. of lons on subdomain (buffer points on ends)
 !     ny          - no. of lats on subdomain (buffer points on ends)
 !     nz          - no. of levels
-!     t_3d        - 3D background temperature (K)
+!     t_3d        - 3D background temperature (K) (potentional T)
 !     p_3d        - 3D background pressure  (hPa)
 !     ref_3d      - 3D reflectivity in analysis grid (dBZ)
 !
@@ -33,6 +33,7 @@ SUBROUTINE hydro_mxr_thompson (nx, ny, nz, t_3d, p_3d, ref_3d, qr_3d, qnr_3d, qs
 !
 !-----------------------------------------------------------------------
 !
+  use constants, only: rd_over_cp, h1000
   use kinds, only: r_single, i_kind, r_kind
   IMPLICIT NONE
 !
@@ -40,16 +41,16 @@ SUBROUTINE hydro_mxr_thompson (nx, ny, nz, t_3d, p_3d, ref_3d, qr_3d, qnr_3d, qs
 !
 ! INPUT:
   INTEGER(i_kind),intent(in) :: nx,ny,nz            ! Model grid size
-  REAL(r_kind),   intent(inout) :: ref_3d(nx,ny,nz) ! radar reflectivity (dBZ)
+  REAL(r_single), intent(in) :: ref_3d(nx,ny,nz)    ! radar reflectivity (dBZ)
   REAL(r_single), intent(in) :: t_3d(nx,ny,nz)      ! Temperature (deg. Kelvin)
   REAL(r_single), intent(in) :: p_3d(nx,ny,nz)      ! Pressure (Pascal)
   INTEGER(i_kind),intent(in) :: mype
 !
 ! OUTPUT:
   INTEGER(i_kind),intent(out):: istatus
-  REAL(r_single),intent(out) :: qs_3d(nx,ny,nz)  ! snow mixing ratio (g/kg)
-  REAL(r_single),intent(out) :: qr_3d(nx,ny,nz)  ! rain mixing ratio (g/kg)
-  REAL(r_single),intent(out) :: qnr_3d(nx,ny,nz) ! rain number concentration (/kg)
+  REAL(r_single),intent(inout) :: qs_3d(nx,ny,nz)  ! snow mixing ratio (g/kg)
+  REAL(r_single),intent(inout) :: qr_3d(nx,ny,nz)  ! rain mixing ratio (g/kg)
+  REAL(r_single),intent(inout) :: qnr_3d(nx,ny,nz) ! rain number concentration (/kg)
 !
 ! PARAMETERS:
   REAL(r_kind), PARAMETER :: min_ref = 0.0_r_kind         ! minimum reflectivity (dBZ) for converting to qs and qr
@@ -87,6 +88,11 @@ SUBROUTINE hydro_mxr_thompson (nx, ny, nz, t_3d, p_3d, ref_3d, qr_3d, qnr_3d, qs
   REAL(r_kind) :: oams
   REAL(r_kind) :: qs          ! snow mixing ratio in kg / kg
   REAL(r_kind) :: qr          ! rain mixing ratio in kg / kg
+  REAL(r_kind) :: t_rk
+  REAL(r_kind) :: p_rk
+  REAL(r_kind) :: ref_rk
+  character(len=80) :: tmpfile
+  integer      :: lunin
 !
 ! for snow moments conversions (from Field et al. 2005)
   DATA sa / 5.065339, -0.062659, -3.032362, 0.029469, -0.000285,   &
@@ -102,6 +108,14 @@ SUBROUTINE hydro_mxr_thompson (nx, ny, nz, t_3d, p_3d, ref_3d, qr_3d, qnr_3d, qs
 
   istatus=0
 
+  write(6,*) 'check T and Q for hydrometeor retrival from radar reflectivity'
+  DO k = 1,nz
+    write(6,*) k,maxval(t_3d(:,:,k)),minval(t_3d(:,:,k))
+  END DO
+  DO k = 1,nz
+    write(6,*) k,maxval(p_3d(:,:,k)),minval(p_3d(:,:,k))
+  END DO
+
   f = (0.176_r_kind/0.93_r_kind) * (6.0_r_kind/PI)*(6.0_r_kind/PI) * (am_s/rho_i)*(am_s/rho_i)
   cse(1) = bm_s + 1.0_r_kind
   cse(2) = bm_s + 2.0_r_kind
@@ -114,14 +128,27 @@ SUBROUTINE hydro_mxr_thompson (nx, ny, nz, t_3d, p_3d, ref_3d, qr_3d, qnr_3d, qs
   crg(4) = 5040.0_r_kind
   am_r = PI * rho_w / 6.0_r_kind
 
+  lunin=13
+  write(tmpfile,'(a,I4.4)') 'bin_hydro_mxr_thompson.',mype
+  open(lunin, file=trim(tmpfile),form='unformatted')
+
   DO k = 2,nz-1
-    DO j = 2,ny-1
-      DO i = 2,nx-1
+    DO j = 1,ny
+      DO i = 1,nx
 
-        IF (ref_3d(i,j,k) >= min_ref) THEN
+        ref_rk=ref_3d(i,j,k)
+        IF (abs(ref_rk - min_ref) < 0.1_r_kind) THEN
+          qs_3d(i,j,k) = 0.0_r_kind
+          qr_3d(i,j,k) = 0.0_r_kind
+          qnr_3d(i,j,k) = 0.0_r_kind
+        ELSE IF (ref_rk > min_ref) THEN
+          t_rk = t_3d(i,j,k)*(p_3d(i,j,k)/h1000)**rd_over_cp
+          p_rk = p_3d(i,j,k)*100.0_r_kind
+          !write(lunin,'(a,3I5,3f12.4)') 'i,j,k,T,Q,REF=',i,j,k,t_rk,p_rk,ref_rk
+          write(lunin) t_rk,p_rk,ref_rk
 
-          rho = p_3d(i,j,k) / (rd*t_3d(i,j,k))
-          tc = t_3d(i,j,k) - 273.15_r_kind
+          rho = p_rk / (rd*t_rk)
+          tc = t_rk - 273.15_r_kind
 
           IF (tc <= 0.0_r_kind) THEN
             rfract = 0.0_r_kind
@@ -131,11 +158,10 @@ SUBROUTINE hydro_mxr_thompson (nx, ny, nz, t_3d, p_3d, ref_3d, qr_3d, qnr_3d, qs
             rfract = 0.20_r_kind*tc
           ENDIF
 
-          zes = ( 10.0_r_kind**( 0.1_r_kind * min(ref_3d(i,j,k), max_ref_snow) ) )  &
+          zes = ( 10.0_r_kind**( 0.1_r_kind * min(ref_rk, max_ref_snow) ) )  &
                 * (1.0_r_kind-rfract)                                               &
                 * 1.0e-18_r_kind      ! conversion from (mm**6 m**-3) to (m**6 m**-3)
-
-          zer = ( 10.0_r_kind**( 0.1_r_kind * min(ref_3d(i,j,k), max_ref_rain) ) )  &
+          zer = ( 10.0_r_kind**( 0.1_r_kind * min(ref_rk, max_ref_rain) ) )  &
                 * rfract                                                            &
                 * 1.0e-18_r_kind      ! conversion from (mm**6 m**-3) to (m**6 m**-3)
 
@@ -169,7 +195,7 @@ SUBROUTINE hydro_mxr_thompson (nx, ny, nz, t_3d, p_3d, ref_3d, qr_3d, qnr_3d, qs
 
 
 !          if(mype==51 ) then
-!            write(*,'(a10,3i5,2f10.5,3f8.2)') 'b=',i,j,k,qs_3d(i,j,k),qr_3d(i,j,k),ref_3d(i,j,k),&
+!            write(*,'(a10,3i5,2f10.5,3f8.2)') 'b=',i,j,k,qs_3d(i,j,k),qr_3d(i,j,k),ref_rk,&
 !                        p_3d(i,j,k)/100.0,tc
 !          endif
 
@@ -190,6 +216,7 @@ SUBROUTINE hydro_mxr_thompson (nx, ny, nz, t_3d, p_3d, ref_3d, qr_3d, qnr_3d, qs
 !
 !-----------------------------------------------------------------------
 !
+  close(lunin)
   istatus = 1
 !
   RETURN

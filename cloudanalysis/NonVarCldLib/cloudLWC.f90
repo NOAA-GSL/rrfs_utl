@@ -124,7 +124,7 @@ SUBROUTINE cloudLWC_stratiform(mype,nlat,nlon,nsig,q_bk,t_bk,p_bk, &
   cloudtmp_3d=-99999.9_r_kind
   do j=1,nlat
   do i=1,nlon
-     if(abs(p_bk(i,j,1) - 102621.0) < 1.0) write(*,*) i,j,p_bk(i,j,1)
+     if(abs(p_bk(i,j,1) - 102621.0) < 1.0) write(6,*) i,j,p_bk(i,j,1)
   enddo
   enddo
 !-----------------------------------------------------------------------

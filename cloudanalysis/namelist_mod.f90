@@ -73,10 +73,12 @@ module namelist_mod
 
     integer :: ios
     integer :: iyear,imonth,iday,ihour,iminute,isecond
-    namelist/setup/iyear,imonth,iday,ihour,iminute,isecond
+    integer :: fv3_io_layout_y
+    namelist/setup/iyear,imonth,iday,ihour,iminute,isecond,fv3_io_layout_y
 ! set subroutines to public
   public :: load_namelist
   public :: iyear,imonth,iday,ihour,iminute,isecond
+  public :: fv3_io_layout_y
 
 contains
 
@@ -113,6 +115,7 @@ contains
     ihour=10
     iminute=0
     isecond=0
+    fv3_io_layout_y=1
 
     open(11,file='gsiparm.anl')
 

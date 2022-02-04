@@ -1,4 +1,4 @@
-SUBROUTINE cloudCover_Surface(mype,nlat,nlon,nsig,thunderRadius,&
+SUBROUTINE cloudCover_Surface(mype,nlat,nlon,nsig,thunderRadius,ybegin,yend,&
                         cld_bld_hgt,t_bk,p_bk,q,h_bk,zh,  &
                         mxst_p,NVARCLD_P,numsao,OI,OJ,OCLD,OWX,Oelvtn,Odist,&
                         cld_cover_3d,cld_type_3d,wthr_type,pcp_type_3d,     &
@@ -74,6 +74,7 @@ SUBROUTINE cloudCover_Surface(mype,nlat,nlon,nsig,thunderRadius,&
   integer(i_kind),intent(in) :: nlat,nlon,nsig
   real(r_single), intent(in) :: thunderRadius
   real(r_kind),   intent(in) :: cld_bld_hgt
+  INTEGER(i_kind), intent(in) :: ybegin,yend
 !
 !  surface observation
 !
@@ -141,6 +142,7 @@ SUBROUTINE cloudCover_Surface(mype,nlat,nlon,nsig,thunderRadius,&
   integer(i_kind) :: firstcloud,cl_base_broken_k
   real(r_single)  ::    underlim
   integer(i_kind) :: npts_near_clr
+  integer(i_kind) :: nread,nskip
 
 
 !====================================================================
@@ -155,6 +157,8 @@ SUBROUTINE cloudCover_Surface(mype,nlat,nlon,nsig,thunderRadius,&
    vis2qc=-9999.0_r_single
    npts_near_clr=0
    zlev_clr = 3650.
+   nread=0
+   nskip=0
 !
 !
 !*****************************************************************
@@ -163,7 +167,16 @@ SUBROUTINE cloudCover_Surface(mype,nlat,nlon,nsig,thunderRadius,&
 
    loopstation: DO ista=1,numsao
      i1 = int(oi(ista)+0.0001_r_kind) 
-     j1 = int(oj(ista)+0.0001_r_kind)
+     j1 = int(oj(ista)+0.0001_r_kind)-ybegin+1
+
+     if ( ( i1 >=1 .and. i1 <= nlon ) .and. &
+          ( j1 >=1 .and. j1 <= nlat )) then
+        nread=nread+1
+     else
+        nskip=nskip+1
+        cycle
+     end if
+
      min_dist =  Odist(ista)
 
 !mh - grid point has the closest cloud station
@@ -369,6 +382,7 @@ SUBROUTINE cloudCover_Surface(mype,nlat,nlon,nsig,thunderRadius,&
 
    ENDDO  loopstation ! ista
 
+   write(6,*) "read metar cloud obs=",nread, " skip=",nskip
 
 !   Determine if the layer is dry or it has inversion.
 !  (in either case, the cloud will be cleared out)

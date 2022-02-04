@@ -444,7 +444,7 @@ SUBROUTINE cloudCover_NESDIS(mype,regional_time,nlat,nlon,nsig,&
    endif
 
    if (npts_ctp_change > 0) then
-   if(mype==0)  write (6,1121) npts_ctp_change, dctp/float(npts_ctp_change),  &
+      write (6,1121) npts_ctp_change, dctp/float(npts_ctp_change),  &
                 dctpabs/float(npts_ctp_change)
 1121    format (/'No. of pts w/ cloud-top pres change = ',i6          &
               /'Mean cloud-top pres change (old-new)= ',f8.1          &

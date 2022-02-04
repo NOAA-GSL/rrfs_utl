@@ -104,3 +104,79 @@ SUBROUTINE read_radar_ref(mype,lunin,istart,jstart,   &
   deallocate(ref_in)
 
 END SUBROUTINE read_radar_ref
+
+SUBROUTINE read_radar_ref_bin(mype,lunin,nlon,nlat,Nmsclvl,ref_mosaic31)
+!
+!
+!
+!$$$  subprogram documentation block
+!                .      .    .                                       .
+! subprogram:  read_NESDIS     read in radar reflectivity    
+!
+!   PRGMMR: Ming Hu          ORG: GSL/AVID        DATE: 2022-02-02
+!
+! ABSTRACT: 
+!  This subroutine read in radar reflectivity
+!
+! PROGRAM HISTORY LOG:
+!    2022-02-02  Hu  Add NCO document block
+!
+!
+!   input argument list:
+!     mype        - processor ID
+!     lunin       - unit in which data are read in
+!     nlon        - no. of lons on subdomain (buffer points on ends)
+!     nlat        - no. of lats on subdomain (buffer points on ends)
+!     Nmsclvl     - vertical level of radar observation ref_mosaic31
+!
+!   output argument list:
+!     ref_mosaic31- radar reflectivity horizontally in analysis grid and 
+!                       vertically in mosaic grid (height)
+!
+! USAGE:
+!   INPUT FILES: 
+!
+!   OUTPUT FILES:
+!
+! REMARKS:
+!
+! ATTRIBUTES:
+!   LANGUAGE: FORTRAN 90 
+!   MACHINE:  Linux cluster (WJET)
+!
+!$$$
+!
+!_____________________________________________________________________
+!
+  use kinds, only: r_single,i_kind
+  implicit none
+
+  INTEGER(i_kind),intent(in) :: mype
+  INTEGER(i_kind),intent(in) :: nlon,nlat
+  integer(i_kind),intent(in) :: lunin
+  INTEGER(i_kind),intent(in) :: Nmsclvl
+  real(r_single), intent(inout):: ref_mosaic31(nlon,nlat,Nmsclvl)
+  
+!
+!  local 
+!
+  INTEGER(i_kind) :: Nmsclvl_radar,nlon_radar,nlat_radar
+  integer :: k
+!
+  read(lunin) Nmsclvl_radar,nlon_radar,nlat_radar
+  if(nlon_radar == nlon .and. nlat_radar==nlat   &
+     .and. Nmsclvl_radar==Nmsclvl)  then
+     write(6,*) 'read reflectivity dimension=',Nmsclvl_radar,nlon_radar,nlat_radar
+     read(lunin) ref_mosaic31
+
+     do k=1,Nmsclvl_radar
+        write(6,*) 'ref_mosaic31=',k,maxval(ref_mosaic31(:,:,k)), &
+                                     minval(ref_mosaic31(:,:,k))
+     enddo
+  else
+     write(6,*) 'mismatch dimension in radar reflectivity obs:'
+     write(6,*) 'obs=',nlon_radar,nlat_radar,Nmsclvl_radar
+     write(6,*) 'input=',nlon,nlat,Nmsclvl
+  endif
+
+end SUBROUTINE read_radar_ref_bin

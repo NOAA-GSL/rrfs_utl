@@ -56,7 +56,7 @@ SUBROUTINE build_missing_REFcone(mype,nlon,nlat,nsig,krad_bot_in,ref_mos_3d,h_bk
   INTEGER(i_kind), intent(in)   :: mype
   INTEGER(i_kind), intent(in)   :: nlon,nlat,nsig
   real(r_single),  intent(in)   :: h_bk(nlon,nlat,nsig)           ! 3D height
-  real(r_kind),    intent(inout):: ref_mos_3d(nlon,nlat,nsig)     ! reflectivity in grid
+  real(r_single),  intent(inout):: ref_mos_3d(nlon,nlat,nsig)     ! reflectivity in grid
   real(r_single),  intent(in)   :: pblh(nlon,nlat)                ! PBL height
   real(r_single),  intent(in)   :: krad_bot_in                                   
 !

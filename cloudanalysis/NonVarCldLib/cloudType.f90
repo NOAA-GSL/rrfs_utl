@@ -114,7 +114,7 @@ SUBROUTINE cloudType(nlat,nlon,nsig,h_bk,t_bk,p_bk,radar_3d,       &
 !-----------------------------------------------------------------------
       nlvl=cloudlayers_i(i,j,1)
       if(nlvl > 10 ) then
-        write(*,*) 'warning: too many cloud levels'
+        write(6,*) 'warning: too many cloud levels'
         nlvl=10
       endif
       if(nlvl > 0 ) then

@@ -509,7 +509,7 @@ subroutine gsi_fv3ncdf_write(filename,varname,var,mype_io)
           write(6,*) 'unknow dimension szie=',ndim
        endif
 
-       print *,'write out ',trim(varname),' to ',trim(filename)
+       write(6,*) 'write out ',trim(varname),' to ',trim(filename)
        call check( nf90_put_var(gfile_loc,VarId,f3d) )
        call check( nf90_close(gfile_loc) )
     end if !mype_io

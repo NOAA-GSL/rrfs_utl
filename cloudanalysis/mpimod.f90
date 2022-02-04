@@ -36,6 +36,8 @@ module mpi_mod
   public :: mpi_setup, mpi_finish
   public :: npe, mype
   public :: mpi_comm_world
+  public :: mpi_integer, mpi_sum
+  public :: MPI_Barrier
 
 contains
 

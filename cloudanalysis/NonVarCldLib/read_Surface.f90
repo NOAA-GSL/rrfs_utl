@@ -126,8 +126,6 @@ SUBROUTINE read_Surface(mype,lunin,nlon,nlat,&
        cstation(i)=cstation1
        OI(i) = data_s(2,i) !- ib + 2  ! covert it to the local grid   
        OJ(i) = data_s(3,i) !- jb + 2  ! covert it to the local grid
-       if( OI(i) < 1 .or. OI(i) > nlon ) write(6,*) 'read_Surface: Error in reading ii:',mype,OI(i)!,ib,jb
-       if( OJ(i) < 1 .or. OJ(i) > nlat ) write(6,*) 'read_Surface: Error in reading jj:',mype,OJ(i)!,ib,jb
        Oelvtn(i)  = data_s(4,i)
        Odist(i)   = data_s(23,i)
        OIstation(i) = data_s(24,i)

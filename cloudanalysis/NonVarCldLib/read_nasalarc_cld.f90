@@ -1,4 +1,4 @@
-SUBROUTINE read_NASALaRC_fv3(mype,lunin,nlon,nlat,nasalarc)
+SUBROUTINE read_NASALaRC_fv3(mype,lunin,nlon,nlat,ybegin,yend,nasalarc)
 !
 !$$$  subprogram documentation block
 !                .      .    .                                       .
@@ -44,24 +44,31 @@ SUBROUTINE read_NASALaRC_fv3(mype,lunin,nlon,nlat,nasalarc)
   integer(i_kind),intent(in) :: lunin
   integer(i_kind),intent(in) :: mype
   integer(i_kind),intent(in) :: nlon,nlat
+  integer(i_kind),intent(in) :: ybegin,yend
   real(r_single), intent(out) :: nasalarc(nlon,nlat,5)
 !
   integer(i_kind) :: nlonfv3,nlatfv3
   integer(i_kind) :: ii,jj,k
+  real(r_single),allocatable :: tmp2d(:,:)
 !
   real(r_single), parameter :: miss_obs_real = -99999.0_r_single 
 !    
 !
   read(lunin)  nlonfv3,nlatfv3
-  if(nlonfv3 == nlon .and. nlatfv3 == nlat) then
-     read(lunin) ! xlonfv3
-     read(lunin) ! ylatfv3
+  write(6,*) 'read NASA LaRC obs=',nlonfv3,nlatfv3,ybegin,yend
+  allocate(tmp2d(nlonfv3,nlatfv3))
+  if(nlonfv3 == nlon .and. nlatfv3 >= nlat) then
      read(lunin) ! indexfv3
-     read(lunin) nasalarc(:,:,1)  ! w_pcldfv3
-     read(lunin) nasalarc(:,:,2)  ! w_tcldfv3
-     read(lunin) nasalarc(:,:,3)  ! w_fracfv3
-     read(lunin) nasalarc(:,:,4)  ! w_lwpfv3
-     read(lunin) nasalarc(:,:,5)  ! nlev_cldfv3
+     read(lunin) tmp2d  ! w_pcldfv3
+     nasalarc(:,:,1)=tmp2d(:,ybegin:yend)
+     read(lunin) tmp2d  ! w_tcldfv3
+     nasalarc(:,:,2)=tmp2d(:,ybegin:yend)
+     read(lunin) tmp2d  ! w_fracfv3
+     nasalarc(:,:,3)=tmp2d(:,ybegin:yend)
+     read(lunin) tmp2d  ! w_lwpfv3
+     nasalarc(:,:,4)=tmp2d(:,ybegin:yend)
+     read(lunin) tmp2d  ! nlev_cldfv3
+     nasalarc(:,:,5)=tmp2d(:,ybegin:yend)
      
      do k=1,5
         do jj=1,nlat
@@ -72,31 +79,19 @@ SUBROUTINE read_NASALaRC_fv3(mype,lunin,nlon,nlat,nasalarc)
            enddo
         enddo
      enddo  ! k
-
 !
-!  filling boundarys
-!
-!     do k=1,5
-!       do i=2,nlon-1
-!         nasalarc(i,1,k)=nasalarc(i,2,k)
-!         nasalarc(i,nlat,k)=nasalarc(i,nlat-1,k)
-!       enddo
-!       do j=2,nlat-1
-!         nasalarc(1,j,k)=nasalarc(2,j,k)
-!         nasalarc(nlon,j,k)=nasalarc(nlon-1,j,k)
-!       enddo
-!       nasalarc(1,1,k)=nasalarc(2,2,k)
-!       nasalarc(1,nlat,k)=nasalarc(2,nlat-1,k)
-!       nasalarc(nlon,1,k)=nasalarc(nlon-1,2,k)
-!       nasalarc(nlon,nlat,k)=nasalarc(nlon-1,nlat-1,k)
-!     enddo
-
   else
-     write(*,*) 'dimensions do not match='
-     write(*,*) nlonfv3,nlatfv3,nlon,nlat
+     write(6,*) 'dimensions do not match='
+     write(6,*) nlonfv3,nlatfv3,nlon,nlat
      stop 1234
   endif
   
+  ii=nlon/2
+  do jj=1,nlat,max(1,nlat/10)
+     write(6,'(5f12.4)') nasalarc(ii,jj,1:5)
+  enddo
+
+
 END SUBROUTINE read_NASALaRC_fv3
 
 SUBROUTINE read_NASALaRC(mype,lunin,numLaRC,istart,jstart,  &

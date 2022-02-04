@@ -53,17 +53,17 @@ SUBROUTINE vinterp_radar_ref(mype,nlon,nlat,nsig,Nmsclvl,ref_mos_3d,ref_mosaic31
   INTEGER(i_kind), intent(in) ::  Nmsclvl
   real(r_single),  intent(in) :: h_bk(nlon,nlat,nsig)                  ! 3D height
   real(r_single),  intent(in) :: zh(nlon,nlat)                         ! terrain
-  real(r_kind),    intent(in) :: ref_mosaic31(nlon,nlat,Nmsclvl)
-  real(r_kind),    intent(out):: ref_mos_3d(nlon,nlat,nsig)            ! reflectivity in grid
+  real(r_single),  intent(in) :: ref_mosaic31(nlon,nlat,Nmsclvl)
+  real(r_single),  intent(out):: ref_mos_3d(nlon,nlat,nsig)            ! reflectivity in grid
 !
 !  local
 !
-  real(r_kind)    :: msclvl21(21),msclvlAll(31)
+  real(r_kind)    :: msclvl21(21),msclvlAll(33)
   DATA msclvl21/1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7,  &
               8, 9, 10, 11, 12, 13, 14, 15, 16, 17/
   DATA msclvlAll/0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, &
                  3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, &
-                 9, 10, 11, 12, 13, 14, 15, 16, 18/
+                 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19/
 !
   REAL(r_kind)    :: heightGSI,upref,downref,wght
   INTEGER(i_kind) :: ilvl,numref
@@ -79,7 +79,7 @@ SUBROUTINE vinterp_radar_ref(mype,nlon,nlat,nsig,Nmsclvl,ref_mos_3d,ref_mosaic31
 !
   ref_mos_3d=-99999.0_r_kind
   numref=0
-  if (Nmsclvl == 31 ) then
+  if (Nmsclvl == 33 ) then
       DO k=1,Nmsclvl
         msclvlAll(k)=msclvlAll(k)*1000.0_r_kind
       ENDDO
@@ -95,8 +95,8 @@ SUBROUTINE vinterp_radar_ref(mype,nlon,nlat,nsig,Nmsclvl,ref_mos_3d,ref_mosaic31
   endif
   
   DO k2=1,nsig
-    DO j=2,nlat-1
-      DO i=2,nlon-1
+    DO j=1,nlat
+      DO i=1,nlon
         heightGSI=h_bk(i,j,k2)+zh(i,j)
         if(heightGSI >= msclvlAll(1) .and. heightGSI < msclvlAll(Nmsclvl) ) then
            do k=1,Nmsclvl-1
@@ -123,20 +123,20 @@ SUBROUTINE vinterp_radar_ref(mype,nlon,nlat,nsig,Nmsclvl,ref_mos_3d,ref_mosaic31
   ENDDO
 
 !
-  DO k2=1,nsig
-    DO i=2,nlon-1
-      ref_mos_3d(i,1,k2)=ref_mos_3d(i,2,k2)
-      ref_mos_3d(i,nlat,k2)=ref_mos_3d(i,nlat-1,k2)
-    ENDDO
-    DO j=2,nlat-1
-      ref_mos_3d(1,j,k2)=ref_mos_3d(2,j,k2)
-      ref_mos_3d(nlon,j,k2)=ref_mos_3d(nlon-1,j,k2)
-    ENDDO
-    ref_mos_3d(nlon,nlat,k2)=ref_mos_3d(nlon-1,nlat-1,k2)
-    ref_mos_3d(nlon,1,k2)=ref_mos_3d(nlon-1,2,k2)
-    ref_mos_3d(1,nlat,k2)=ref_mos_3d(2,nlat-1,k2)
-    ref_mos_3d(1,j,k2)=ref_mos_3d(2,2,k2)
-  ENDDO
-
+!  DO k2=1,nsig
+!    DO i=2,nlon-1
+!      ref_mos_3d(i,1,k2)=ref_mos_3d(i,2,k2)
+!      ref_mos_3d(i,nlat,k2)=ref_mos_3d(i,nlat-1,k2)
+!    ENDDO
+!    DO j=2,nlat-1
+!      ref_mos_3d(1,j,k2)=ref_mos_3d(2,j,k2)
+!      ref_mos_3d(nlon,j,k2)=ref_mos_3d(nlon-1,j,k2)
+!    ENDDO
+!    ref_mos_3d(nlon,nlat,k2)=ref_mos_3d(nlon-1,nlat-1,k2)
+!    ref_mos_3d(nlon,1,k2)=ref_mos_3d(nlon-1,2,k2)
+!    ref_mos_3d(1,nlat,k2)=ref_mos_3d(2,nlat-1,k2)
+!    ref_mos_3d(1,j,k2)=ref_mos_3d(2,2,k2)
+!  ENDDO
+!
 
 END SUBROUTINE vinterp_radar_ref
