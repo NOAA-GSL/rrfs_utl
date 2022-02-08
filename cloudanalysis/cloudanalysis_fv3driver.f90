@@ -413,7 +413,7 @@ program cloudanalysis
 !!
   fileexist=.false.
   if(fv3_io_layout_y==1) then
-    write(obsfile,'(a)') 'RefInGSI3D.dat'
+    write(obsfile,'(a)') 'RefInGSI3D.dat_01'
   else
     write(obsfile,'(a,I4.4,a)') 'RefInGSI3D.dat.',mype,'_01'
   endif
@@ -1230,12 +1230,14 @@ program cloudanalysis
               q_bk=ges_q
            ! =1 default T/Q adjustment
            elseif(i_T_Q_adjust==1) then
-              t_bk(i,j,k)=t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp * (one+fv*q_bk(i,j,k))
+              !t_bk(i,j,k)=t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp * (one+fv*q_bk(i,j,k))
+              t_bk(i,j,k)=t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp
               ! Here q is mixing ratio kg/kg, need to convert to specific humidity
               q_bk(i,j,k)=q_bk(i,j,k)/(1+q_bk(i,j,k)) 
            ! =2 T/Q adjustment only for case of clearing
            elseif(i_T_Q_adjust==2) then
-              t_bk(i,j,k)=max(ges_tv(i,j,k),t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp * (one+fv*q_bk(i,j,k)))
+              !t_bk(i,j,k)=max(ges_tv(i,j,k),t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp * (one+fv*q_bk(i,j,k)))
+              t_bk(i,j,k)=max(ges_tv(i,j,k),t_bk(i,j,k)*(p_bk(i,j,k)/h1000)**rd_over_cp)
               ! Here q is mixing ratio kg/kg, need to convert to specific humidity
               q_bk(i,j,k)=min(ges_q(i,j,k),q_bk(i,j,k)/(1+q_bk(i,j,k)))
            else

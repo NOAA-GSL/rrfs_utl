@@ -149,9 +149,9 @@ program  process_NASALaRC_cloud
      grid_type="none"
      userDX=3000.0
  
-     inquire(file='namelist_nasalarc', EXIST=ifexist )
+     inquire(file='namelist.nasalarc', EXIST=ifexist )
      if(ifexist) then
-       open(10,file='namelist_nasalarc',status='old')
+       open(10,file='namelist.nasalarc',status='old')
           read(10,setup)
        close(10)
        write(*,*) 'Namelist setup are:'

@@ -130,7 +130,8 @@ SUBROUTINE hydro_mxr_thompson (nx, ny, nz, t_3d, p_3d, ref_3d, qr_3d, qnr_3d, qs
 
   lunin=13
   write(tmpfile,'(a,I4.4)') 'bin_hydro_mxr_thompson.',mype
-  open(lunin, file=trim(tmpfile),form='unformatted')
+!  open(lunin, file=trim(tmpfile),form='unformatted')
+!  write(lunin),nx,ny,nz
 
   DO k = 2,nz-1
     DO j = 1,ny
@@ -144,8 +145,7 @@ SUBROUTINE hydro_mxr_thompson (nx, ny, nz, t_3d, p_3d, ref_3d, qr_3d, qnr_3d, qs
         ELSE IF (ref_rk > min_ref) THEN
           t_rk = t_3d(i,j,k)*(p_3d(i,j,k)/h1000)**rd_over_cp
           p_rk = p_3d(i,j,k)*100.0_r_kind
-          !write(lunin,'(a,3I5,3f12.4)') 'i,j,k,T,Q,REF=',i,j,k,t_rk,p_rk,ref_rk
-          write(lunin) t_rk,p_rk,ref_rk
+          !write(lunin) t_rk,p_rk,ref_rk
 
           rho = p_rk / (rd*t_rk)
           tc = t_rk - 273.15_r_kind
@@ -216,7 +216,7 @@ SUBROUTINE hydro_mxr_thompson (nx, ny, nz, t_3d, p_3d, ref_3d, qr_3d, qnr_3d, qs
 !
 !-----------------------------------------------------------------------
 !
-  close(lunin)
+!  close(lunin)
   istatus = 1
 !
   RETURN

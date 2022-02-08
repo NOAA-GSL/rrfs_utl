@@ -153,9 +153,9 @@ program gsdcloudanalysis_ref2tten
 !
 !  read namelist
 !
-  inquire(file='namelist_ref2tten', EXIST=ifexist )
+  inquire(file='namelist.ref2tten', EXIST=ifexist )
   if(ifexist) then
-    open(10,file='namelist_ref2tten',status='old')
+    open(10,file='namelist.ref2tten',status='old')
        read(10,setup)
     close(10)
     if(mype==0) then

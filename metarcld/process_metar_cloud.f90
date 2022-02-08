@@ -103,9 +103,9 @@ program  process_metar_cloud
      twindin=0.5
      grid_type="none"
  
-     inquire(file='namelist_metarcld', EXIST=ifexist )
+     inquire(file='namelist.metarcld', EXIST=ifexist )
      if(ifexist) then
-       open(10,file='namelist_metarcld',status='old')
+       open(10,file='namelist.metarcld',status='old')
           read(10,setup)
        close(10)
        write(*,*) 'Namelist setup are:'

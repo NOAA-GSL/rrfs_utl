@@ -87,7 +87,7 @@ program process_NSSL_mosaic
 
   fv3_io_layout_y=1
   datapath="./"
-  open(15, file='mosaic.namelist')
+  open(15, file='namelist.mosaic')
     read(15,setup)
   close(15)
 !
