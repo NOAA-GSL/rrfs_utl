@@ -496,8 +496,13 @@ end subroutine release_mem_fv3sar_fix
 
 subroutine update_fv3sar
 
+  use module_ncio, only : ncio
   implicit none
+
+  type(ncio) :: fv3file
   integer :: rfv3io_mype
+  real(r_single),allocatable:: t_tmp(:,:,:)
+  integer :: k
 
   tracers= bg_fv3regfilenameg%tracers
 
@@ -517,11 +522,25 @@ subroutine update_fv3sar
 
   call gsi_fv3ncdf_write(tracers,'sphum',q_bk,rfv3io_mype)
   dynvars= bg_fv3regfilenameg%dynvars
+
   write(6,*) 'write T==========>', trim(dynvars)
   if(fv3sar_bg_opt==0) then  ! restart
     call gsi_fv3ncdf_write(dynvars,'T',t_bk,rfv3io_mype)
   else
-    call gsi_fv3ncdf_write(dynvars,'t',t_bk,rfv3io_mype)
+    allocate(t_tmp(nlon_regional,nlat_regional,nsig_regional+1))
+    call fv3file%open(trim(dynvars),'r',200)
+    call fv3file%get_var("t",nlon_regional,nlat_regional,nsig_regional+1,t_tmp)
+    call fv3file%close
+
+    do k=1,nsig_regional
+      t_tmp(:,:,nsig_regional+1-k+1)=t_bk(:,:,k)
+    enddo
+
+    call fv3file%open(trim(dynvars),'w',200)
+    call fv3file%replace_var("t",nlon_regional,nlat_regional,nsig_regional+1,t_tmp)
+    call fv3file%close
+!    call gsi_fv3ncdf_write(dynvars,'t',t_bk,rfv3io_mype)
+    deallocate(t_tmp)
   endif
 
 end subroutine update_fv3sar

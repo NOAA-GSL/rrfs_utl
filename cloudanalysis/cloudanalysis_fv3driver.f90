@@ -1278,21 +1278,21 @@ program cloudanalysis
      do j=1,lat2
         do i=1,lon2
            ges_qg(i,j,k)=ref_mos_3d(i,j,k)
-           ges_qnr(i,j,k)=ref_mos_3d_tten(i,j,k)
+           ges_qs(i,j,k)=ref_mos_3d_tten(i,j,k)
            if(k<=33) then
            !  ges_qni(i,j,k)=ref_mosaic31(i,j,k)
            endif
            if(k<=5 .and. istat_nasalarc == 1) then
-             ges_qnc(i,j,k)=nasalarc_cld(i,j,k)
+             ges_qr(i,j,k)=nasalarc_cld(i,j,k)
            endif
            if(k==6) then
-             ges_qnc(i,j,k)=lightning(i,j)
+             ges_qr(i,j,k)=lightning(i,j)
            endif
         enddo
      enddo
   enddo
 
- ges_qni=-99999
+ ges_qi=-99999
  loopstation: DO ista=1,numsao
      i = int(oi(ista)+0.0001_r_kind)
      j = int(oj(ista)+0.0001_r_kind)-ybegin+1
@@ -1300,9 +1300,9 @@ program cloudanalysis
      if ( ( i >=1 .and. i <= lon2 ) .and. &
           ( j >=1 .and. j <= lat2 )) then
         do k=1,nvarcld_p
-           ges_qni(i,j,k)=ocld(k,ista)
+           ges_qi(i,j,k)=ocld(k,ista)
         enddo
-        ges_qni(i,j,nvarcld_p+1)=Odist(ista)
+        ges_qi(i,j,nvarcld_p+1)=Odist(ista)
      end if
    enddo loopstation
 
