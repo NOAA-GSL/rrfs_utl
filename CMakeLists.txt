@@ -28,12 +28,13 @@ find_package(MPI REQUIRED)
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 find_package(NetCDF REQUIRED Fortran)
 
+# NCEPLibs dependencies
+find_package(bacio REQUIRED)
 
 SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../../build/src/GSI/src/GSI-build")
 
 
 #----------------------------Normally no changes needed after this line ------------------------
-SET(NETCDFENV  "$ENV{NETCDF}")
 
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
@@ -42,7 +43,6 @@ set(Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/include")
 set(CMAKE_Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/include")
 
 SET(GSIINC  "${GSIBUILD}/include")
-SET(NETCDFINC  "${NETCDFENV}/include")
 SET(G2INC  "$ENV{G2_INC4}")
 SET(IPINC  "$ENV{IP_INC4}")
 
@@ -59,7 +59,7 @@ SET(GSILIBS "${GSIBUILD}/lib")
 SET(LIBBUFR "$ENV{BUFR_LIB4}")
 SET(LIBW3EMC "$ENV{W3EMC_LIB4}")
 SET(LIBW3NCO "$ENV{W3NCO_LIB4}")
-SET(LIBBACIO "$ENV{BACIO_LIB4}")
+#SET(LIBBACIO "$ENV{BACIO_LIB4}")
 SET(LIBG2     "$ENV{G2_LIB4}")
 SET(LIBG2TMPL "$ENV{G2TMPL_LIB}")
 SET(LIBSP     "$ENV{SP_LIB4}")

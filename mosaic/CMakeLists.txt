@@ -8,7 +8,20 @@ set(EXE "process_NSSL_mosaic.exe")
 add_executable(${EXE} ${src_all})
 set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-target_link_libraries( ${EXE} NetCDF::NetCDF_Fortran ${LIBBASE} ${wrflib} ${GSILIB} ${LIBCRTM} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${LIBBUFR} ${LIBBACIO} ${LIBSP} ${MPI_Fortran_LIBRARIES} )
+target_link_libraries( ${EXE} NetCDF::NetCDF_Fortran ${LIBBASE}
+                              ${wrflib}
+                              ${GSILIB}
+                              ${LIBCRTM}
+                              ${LIBG2}
+                              ${LIBG2TMPL}
+                              ${LIBW3NCO}
+                              ${LIBZ}
+                              ${LIBPNG}
+                              ${LIBJASPER}
+                              ${LIBBUFR}
+                              bacio::bacio_4
+                              ${LIBSP}
+                              ${MPI_Fortran_LIBRARIES} )
 #target_link_libraries( ${EXE} PUBLIC NetCDF::NetCDF_Fortran)
 install(TARGETS ${EXE}
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

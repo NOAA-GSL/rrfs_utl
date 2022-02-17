@@ -5,9 +5,31 @@ include_directories( ${GSIINC} ${NETCDFINC} ${G2INC} )
 
 set(EXE "update_GVF.exe")
 add_executable(${EXE} ${src_all} update_GVF.f90  )
-target_link_libraries( ${EXE} ${LIBBASE} ${wrflibio} NetCDF::NetCDF_Fortran ${GSILIB} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${LIBBACIO} ${MPI_Fortran_LIBRARIES} )
+target_link_libraries( ${EXE} ${LIBBASE}
+                              ${wrflibio}
+                              NetCDF::NetCDF_Fortran
+                              ${GSILIB}
+                              ${LIBG2}
+                              ${LIBG2TMPL}
+                              ${LIBW3NCO}
+                              ${LIBZ}
+                              ${LIBPNG}
+                              ${LIBJASPER}
+                              bacio::bacio_4
+                              ${MPI_Fortran_LIBRARIES} )
 
 
 set(EXE "gen_annual_maxmin_GVF.exe")
 add_executable(${EXE} ${src_all} gen_annual_maxmin_GVF.f90)
-target_link_libraries( ${EXE} ${LIBBASE} ${wrflibio} NetCDF::NetCDF_Fortran ${GSILIB} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${LIBBACIO} ${MPI_Fortran_LIBRARIES} )
+target_link_libraries( ${EXE} ${LIBBASE}
+                              ${wrflibio}
+                              NetCDF::NetCDF_Fortran
+                              ${GSILIB}
+                              ${LIBG2}
+                              ${LIBG2TMPL}
+                              ${LIBW3NCO}
+                              ${LIBZ}
+                              ${LIBPNG}
+                              ${LIBJASPER}
+                              bacio::bacio_4
+                              ${MPI_Fortran_LIBRARIES} )
