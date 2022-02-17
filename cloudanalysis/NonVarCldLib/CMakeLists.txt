@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 2.6)
-
 #option(BUILD_GSDCLOUD_ARW "Build the GSD cloud analysis " ON)
 #set(GSDCLOUD_DIR "${CMAKE_SOURCE_DIR}/cloudanalysis/NoVarCldLib")
 #set(gsdcloud gsdcloud_arw)

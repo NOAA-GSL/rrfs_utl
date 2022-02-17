@@ -1,67 +1,36 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.15)
 
-set(ENV{CC} "icc")
-set(ENV{CXX} "icpc")
-set(ENV{FC} "mpif90 -f90=ifort")
+project(RRFS_Utl
+	VERSION 1.0.0
+	LANGUAGES C Fortran)
 
-project(data_process)
-enable_language (Fortran)
-enable_language (C)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+set(CMAKE_DIRECTORY_LABELS ${PROJECT_NAME})
 
-site_name(HOSTNAME)
-message("The hostname is  ${HOSTNAME}" )
-string(REGEX MATCH "cheyenne" HOST-Cheyenne ${HOSTNAME}  )
-string(REGEX MATCH "tfe[0-9]" HOST-Theia ${HOSTNAME} )
-string(REGEX MATCH "hfe[0-9]" HOST-Hera  ${HOSTNAME} )
-string(REGEX MATCH "m1"       HOST-Dell  ${HOSTNAME} )
-string(REGEX MATCH "v1"       HOST-Dell  ${HOSTNAME} )
-string(REGEX MATCH "Orion"    HOST-Orion ${HOSTNAME} )
-if(EXISTS /jetmon)
-  set(HOST-Jet "True" )
-elseif(EXISTS /ioddev_dell)
-  set(HOST-Dell "True" )
+if(NOT CMAKE_BUILD_TYPE MATCHES "^(Debug|Release|RelWithDebInfo|MinSizeRel|Production)$")
+  message(STATUS "Setting build type to 'Release' as none was specified.")
+  set(CMAKE_BUILD_TYPE
+      "Release"
+      CACHE STRING "Choose the type of build." FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo" "Production")
 endif()
 
-### Do the following to load required compiling modules on Jet
-#     source /home/rtrr/PARM_EXEC/modulefiles/modulefile.jet.GSI_UPP_WRF 
-###
-
-if(HOST-Cheyenne)
-  set(COMUPP "/glade/p/ral/jntp/gge/precompiled/GSD_UPP/comupp")
-  set(wrfframe "/glade/p/ral/jntp/gge/precompiled/WRFV3.9/frame/pack_utils.o")
-  set(WPSBUILD "/glade/p/ral/jntp/gge/precompiled/WPSV3.9.0.01")
-  ### MPI_Fortran_LIBRARIES
-  SET(MPILIB  "/usr/lib64/libpthread.so;/glade/u/apps/ch/opt/mpt/2.19/lib/libmpi.so")
-  ### BLAS_iomp5_LIBRARY
-  SET(LIBIOMP5  "/glade/u/apps/opt/intel/2017u1/compilers_and_libraries/linux/lib/intel64/libiomp5.so")
-  SET(LIBPNG    "/usr/lib64/libpng.so")
-elseif(HOST-Jet)
-elseif(HOST-Hera)
-elseif(HOST-Orion)
-elseif(HOST-Dell)
-  set(ENV{CC} "mpcc")
-  set(ENV{CXX} "mpCC")
-  set(ENV{FC} "mpfort")
-  SET(LIBZ      "/usr/lib64/libz.so")
-  SET(LIBJASPER "$ENV{JASPERLIB}/libjasper.so.1.0.0")
-else()
-  message(FATAL_ERROR "
-       Unknow host ${HOSTNAME}
-
-        ")
+if(NOT CMAKE_C_COMPILER_ID MATCHES "^(GNU|Intel|Clang|AppleClang)$")
+  message(WARNING "${CMAKE_C_COMPILER_ID} is not supported.")
 endif()
 
-if(DEFINED ENV{GSI_BUILD_PATH})
-   set(GSIBUILD "$ENV{GSI_BUILD_PATH}" CACHE INTERNAL "GSI BUILD LOCATION" )
-else()
-   if(HOST-Cheyenne)
-     SET(GSIBUILD  "/glade/p/ral/jntp/gge/precompiled/GSI/build")
-   else()
-#     SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../gsi/build")
-     SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../../GSI/src/GSI-build")
-     message("GSIBUILD: ${GSIBUILD}")
-   endif()
+if(NOT CMAKE_Fortran_COMPILER_ID MATCHES "^(GNU|Intel)$")
+  message(WARNING "${CMAKE_Fortran_COMPILER_ID} is not supported.")
 endif()
+
+# Dependencies
+find_package(MPI REQUIRED)
+include_directories(SYSTEM ${MPI_INCLUDE_PATH})
+find_package(NetCDF REQUIRED Fortran)
+
+
+SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../../build/src/GSI/src/GSI-build")
+
 
 #----------------------------Normally no changes needed after this line ------------------------
 SET(NETCDFENV  "$ENV{NETCDF}")
@@ -81,23 +50,6 @@ SET(GSILIB  "${GSIBUILD}/lib/libgsilib_shrd.a")
 SET(wrflib  "${GSIBUILD}/lib/libgsilib_wrf.a")
 SET(wrflibio  "$ENV{WRF_IO_LIB}")
 
-if(HOST-Dell)
-  SET(LIBZ      "$ENV{ZLIB_LIBRARIES}/libz.a")
-  SET(NETCDFLIB  "-L${NETCDFENV}/lib -lnetcdff -lnetcdf -L$ENV{HDF5_LIBRARIES} -lhdf5_hl -lhdf5_hl_cpp -lhdf5 -lhdf5_cpp")
-elseif(HOST-Orion)
-  SET(LIBZ      "$ENV{Z_LIB}")
-  SET(NETCDFLIB  "-L${NETCDFENV}/lib -lnetcdff -lnetcdf -L$ENV{HDF5_LIBRARIES} -lhdf5_hl -lhdf5_hl_cpp -lhdf5 -lhdf5_cpp")
-elseif(HOST-Jet)
-  SET(LIBZ      "$ENV{Z_LIB}")
-  SET(NETCDFLIB  "-L${NETCDFENV}/lib -lnetcdff -lnetcdf -L$ENV{HDF5_LIBRARIES} -lhdf5_hl -lhdf5_hl_cpp -lhdf5 -lhdf5_cpp")
-elseif(HOST-Hera)
-#  SET(LIBZ      "$ENV{Z_LIB}")
-  SET(LIBZ      "-L$ENV{ZLIB_LIBRARIES} -lz")
-  SET(NETCDFLIB  "-L${NETCDFENV}/lib -lnetcdff -lnetcdf -L$ENV{HDF5_LIBRARIES} -lhdf5_hl -lhdf5_hl_cpp -lhdf5 -lhdf5_cpp")
-else()
-  SET(LIBZ      "/usr/lib64/libz.so")
-  SET(NETCDFLIB  "-L${NETCDFENV}/lib -lnetcdff -lnetcdf")
-endif()
 #SET(LIBPNG "$ENV{PNG_LIB}")
 SET(LIBPNG "-L$ENV{PNG_LIBRARIES} -lpng")
 #SET(LIBJASPER "$ENV{JASPER_LIB}")

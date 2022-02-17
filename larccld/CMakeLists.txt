@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 2.8)
-
 file(GLOB src_all ${CMAKE_CURRENT_SOURCE_DIR}/*90)
 set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 file(GLOB src_c ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
@@ -10,6 +8,6 @@ include_directories( ${GSIINC} ${NETCDFINC} )
 set(EXE "process_larccld.exe")
 add_executable(${EXE} ${src_c} ${src_all} )
 #set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-target_link_libraries( ${EXE} ${LIBBASE} ${wrflib} ${wrfframe} ${NETCDFLIB} ${LIBZ} ${GSILIB} ${LIBW3EMC_UPP} ${LIBW3NCO_UPP} ${LIBBACIO} ${LIBBUFR} ${MPILIB} )
+target_link_libraries( ${EXE} ${LIBBASE} NetCDF::NetCDF_Fortran ${wrflib} ${wrfframe} ${LIBZ} ${GSILIB} ${LIBW3EMC_UPP} ${LIBW3NCO_UPP} ${LIBBACIO} ${LIBBUFR} ${MPI_Fortran_LIBRARIES} ${MPI_C_LIBRARIES})
 install(TARGETS ${EXE}
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
