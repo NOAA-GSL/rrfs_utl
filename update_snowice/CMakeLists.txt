@@ -8,7 +8,6 @@ add_executable(${EXE} ${src_all})
 set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
 target_link_libraries( ${EXE} ${LIBBASE}
-                              ${LIBIP}
                               NetCDF::NetCDF_Fortran
                               ${GSILIB}
                               ${LIBG2}
@@ -18,6 +17,7 @@ target_link_libraries( ${EXE} ${LIBBASE}
                               ${LIBJASPER}
                               ${LIBZ}
                               bacio::bacio_4
-                              ${LIBSP}
+                              ip::ip_4
+                              sp::sp_4
                               ${MPI_Fortran_LIBRARIES} )
 
