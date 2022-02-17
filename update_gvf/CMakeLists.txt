@@ -11,7 +11,7 @@ target_link_libraries( ${EXE} ${LIBBASE}
                               ${GSILIB}
                               ${LIBG2}
                               ${LIBG2TMPL}
-                              ${LIBW3NCO}
+                              w3nco::w3nco_4
                               ${LIBZ}
                               ${LIBPNG}
                               ${LIBJASPER}
@@ -27,7 +27,7 @@ target_link_libraries( ${EXE} ${LIBBASE}
                               ${GSILIB}
                               ${LIBG2}
                               ${LIBG2TMPL}
-                              ${LIBW3NCO}
+                              w3nco::w3nco_4
                               ${LIBZ}
                               ${LIBPNG}
                               ${LIBJASPER}

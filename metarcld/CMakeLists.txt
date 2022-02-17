@@ -5,6 +5,15 @@ include_directories( ${GSIINC} ${NETCDFINC} )
 
 set(EXE "process_metarcld.exe")
 add_executable(${EXE} ${src_all} )
-target_link_libraries( ${EXE} ${LIBBASE} NetCDF::NetCDF_Fortran ${wrflib} ${wrfframe} ${LIBZ} ${GSILIB} ${LIBW3EMC} ${LIBW3NCO} ${LIBBACIO} ${LIBBUFR} ${MPI_Fortran_LIBRARIES} )
+target_link_libraries( ${EXE} ${LIBBASE}
+                              NetCDF::NetCDF_Fortran
+                              ${wrflib}
+                              ${wrfframe}
+                              ${LIBZ}
+                              ${GSILIB}
+                              w3emc::w3emc_4
+                              w3nco::w3nco_4
+                              ${LIBBUFR}
+                              ${MPI_Fortran_LIBRARIES} )
 install(TARGETS ${EXE}
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

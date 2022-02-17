@@ -13,7 +13,7 @@ target_link_libraries( ${EXE} ${wrflibio}
                               ${GSILIB}
                               ${LIBG2}
                               ${LIBG2TMPL}
-                              ${LIBW3NCO}
+                              w3nco::w3nco_4
                               ${LIBZ}
                               ${LIBPNG}
                               ${LIBJASPER}

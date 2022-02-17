@@ -32,6 +32,8 @@ find_package(NetCDF REQUIRED Fortran)
 find_package(bacio REQUIRED)
 find_package(sp REQUIRED)
 find_package(ip REQUIRED)
+find_package(w3emc REQUIRED)
+find_package(w3nco REQUIRED)
 
 SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../../build/src/GSI/src/GSI-build")
 
@@ -59,8 +61,6 @@ SET(LIBJASPER "-L$ENV{JASPER_LIBRARIES} -ljasper")
 
 SET(GSILIBS "${GSIBUILD}/lib")
 SET(LIBBUFR "$ENV{BUFR_LIB4}")
-SET(LIBW3EMC "$ENV{W3EMC_LIB4}")
-SET(LIBW3NCO "$ENV{W3NCO_LIB4}")
 SET(LIBG2     "$ENV{G2_LIB4}")
 SET(LIBG2TMPL "$ENV{G2TMPL_LIB}")
 SET(LIBCRTM   "$ENV{CRTM_LIB}")

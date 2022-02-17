@@ -6,6 +6,14 @@ set_source_files_properties(${src_c} PROPERTIES COMPILE_FLAGS ${C_FLAGS})
 include_directories( ${GSIINC} ${NETCDFINC} )
 
 ADD_EXECUTABLE(process_Lightning.exe process_Lightning.f90 ${src_c} ${src_all} )
-TARGET_LINK_LIBRARIES(process_Lightning.exe NetCDF::NetCDF_Fortran ${LIBBASE} ${LIBZ} ${LIBBUFR} ${LIBW3EMC} ${LIBW3NCO} ${LIBBACIO} ${CONSTANTS} ${MPI_Fortran_LIBRARIES} ${MPI_C_LIBRARIES})
+TARGET_LINK_LIBRARIES(process_Lightning.exe ${LIBBASE}
+                                            NetCDF::NetCDF_Fortran
+                                            ${LIBZ}
+                                            ${LIBBUFR}
+                                            w3emc::w3emc_4
+                                            w3nco::w3nco_4
+                                            ${CONSTANTS}
+                                            ${MPI_Fortran_LIBRARIES}
+                                            ${MPI_C_LIBRARIES})
 install(TARGETS process_Lightning.exe
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
