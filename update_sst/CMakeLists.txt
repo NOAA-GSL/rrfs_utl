@@ -2,13 +2,13 @@
 file(GLOB src_all ${CMAKE_CURRENT_SOURCE_DIR}/*.f90)
 set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 
-include_directories( ${GSIINC} ${G2INC} ${NETCDFINC} )
+include_directories( ${GSIINC} )
 
 set(EXE "process_updatesst")
 add_executable(${EXE} ${src_all})
 set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-target_link_libraries( ${EXE} ${wrflibio}
+target_link_libraries( ${EXE} wrf_io::wrf_io
                               NetCDF::NetCDF_Fortran
                               ${GSILIB}
                               g2::g2_4

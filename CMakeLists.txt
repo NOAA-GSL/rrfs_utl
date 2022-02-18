@@ -38,6 +38,9 @@ find_package(w3emc REQUIRED)
 find_package(w3nco REQUIRED)
 find_package(bufr REQUIRED)
 
+# Other dependencies
+find_package(wrf_io REQUIRED)
+
 SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../../build/src/GSI/src/GSI-build")
 
 
@@ -53,7 +56,6 @@ SET(GSIINC  "${GSIBUILD}/include")
 
 SET(GSILIB  "${GSIBUILD}/lib/libgsilib_shrd.a")
 SET(wrflib  "${GSIBUILD}/lib/libgsilib_wrf.a")
-SET(wrflibio  "$ENV{WRF_IO_LIB}")
 
 #SET(LIBPNG "$ENV{PNG_LIB}")
 SET(LIBPNG "-L$ENV{PNG_LIBRARIES} -lpng")
