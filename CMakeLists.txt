@@ -62,7 +62,6 @@ SET(LIBJASPER "-L$ENV{JASPER_LIBRARIES} -ljasper")
 SET(GSILIBS "${GSIBUILD}/lib")
 SET(LIBG2     "$ENV{G2_LIB4}")
 SET(LIBG2TMPL "$ENV{G2TMPL_LIB}")
-SET(LIBCRTM   "$ENV{CRTM_LIB}")
 SET(CONSTANTS "${GSIBUILD}/src/gsi/CMakeFiles/gsilib_wrf.dir/constants.f90.o")
 
 SET(Fortran_FLAGS "-O3 -fp-model precise -assume byterecl -fpe0 -DLINUX -g -traceback")
