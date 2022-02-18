@@ -11,8 +11,8 @@ set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
 target_link_libraries( ${EXE} ${wrflibio}
                               NetCDF::NetCDF_Fortran
                               ${GSILIB}
-                              ${LIBG2}
-                              ${LIBG2TMPL}
+                              g2::g2_4
+                              g2tmpl::g2tmpl
                               w3nco::w3nco_4
                               ${LIBZ}
                               ${LIBPNG}

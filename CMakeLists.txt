@@ -30,6 +30,8 @@ find_package(NetCDF REQUIRED Fortran)
 
 # NCEPLibs dependencies
 find_package(bacio REQUIRED)
+find_package(g2 REQUIRED)
+find_package(g2tmpl REQUIRED)
 find_package(sp REQUIRED)
 find_package(ip REQUIRED)
 find_package(w3emc REQUIRED)
@@ -48,7 +50,6 @@ set(Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/include")
 set(CMAKE_Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/include")
 
 SET(GSIINC  "${GSIBUILD}/include")
-SET(G2INC  "$ENV{G2_INC4}")
 
 SET(GSILIB  "${GSIBUILD}/lib/libgsilib_shrd.a")
 SET(wrflib  "${GSIBUILD}/lib/libgsilib_wrf.a")
@@ -60,8 +61,6 @@ SET(LIBPNG "-L$ENV{PNG_LIBRARIES} -lpng")
 SET(LIBJASPER "-L$ENV{JASPER_LIBRARIES} -ljasper")
 
 SET(GSILIBS "${GSIBUILD}/lib")
-SET(LIBG2     "$ENV{G2_LIB4}")
-SET(LIBG2TMPL "$ENV{G2TMPL_LIB}")
 SET(CONSTANTS "${GSIBUILD}/src/gsi/CMakeFiles/gsilib_wrf.dir/constants.f90.o")
 
 SET(Fortran_FLAGS "-O3 -fp-model precise -assume byterecl -fpe0 -DLINUX -g -traceback")

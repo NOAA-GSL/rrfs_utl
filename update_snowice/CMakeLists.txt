@@ -1,7 +1,7 @@
 file(GLOB src_all  grib2_read_snow_mod.f90 module_imssnow.f90 update_snowice_fv3lam.f90 process_imssnow_fv3lam.f90)
 set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 
-include_directories( ${GSIINC} ${IPINC} ${G2INC} ${NETCDFINC} )
+include_directories( ${GSIINC} )
 
 set(EXE "process_imssnow_fv3lam.exe")
 add_executable(${EXE} ${src_all})
@@ -10,9 +10,8 @@ set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
 target_link_libraries( ${EXE} ${LIBBASE}
                               NetCDF::NetCDF_Fortran
                               ${GSILIB}
-                              ${LIBG2}
-                              ${LIBG2TMPL}
-                              ${LIBW3NCO}
+                              g2::g2_4
+                              g2tmpl::g2tmpl
                               ${LIBPNG}
                               ${LIBJASPER}
                               ${LIBZ}
