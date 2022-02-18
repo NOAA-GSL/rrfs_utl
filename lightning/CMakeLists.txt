@@ -9,7 +9,7 @@ ADD_EXECUTABLE(process_Lightning.exe process_Lightning.f90 ${src_c} ${src_all} )
 TARGET_LINK_LIBRARIES(process_Lightning.exe ${LIBBASE}
                                             NetCDF::NetCDF_Fortran
                                             ${LIBZ}
-                                            ${LIBBUFR}
+                                            bufr::bufr_4
                                             w3emc::w3emc_4
                                             w3nco::w3nco_4
                                             ${CONSTANTS}

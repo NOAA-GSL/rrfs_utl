@@ -34,6 +34,7 @@ find_package(sp REQUIRED)
 find_package(ip REQUIRED)
 find_package(w3emc REQUIRED)
 find_package(w3nco REQUIRED)
+find_package(bufr REQUIRED)
 
 SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../../build/src/GSI/src/GSI-build")
 
@@ -48,7 +49,6 @@ set(CMAKE_Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/include")
 
 SET(GSIINC  "${GSIBUILD}/include")
 SET(G2INC  "$ENV{G2_INC4}")
-SET(IPINC  "$ENV{IP_INC4}")
 
 SET(GSILIB  "${GSIBUILD}/lib/libgsilib_shrd.a")
 SET(wrflib  "${GSIBUILD}/lib/libgsilib_wrf.a")
@@ -60,7 +60,6 @@ SET(LIBPNG "-L$ENV{PNG_LIBRARIES} -lpng")
 SET(LIBJASPER "-L$ENV{JASPER_LIBRARIES} -ljasper")
 
 SET(GSILIBS "${GSIBUILD}/lib")
-SET(LIBBUFR "$ENV{BUFR_LIB4}")
 SET(LIBG2     "$ENV{G2_LIB4}")
 SET(LIBG2TMPL "$ENV{G2TMPL_LIB}")
 SET(LIBCRTM   "$ENV{CRTM_LIB}")

@@ -18,7 +18,7 @@ target_link_libraries( ${EXE} NetCDF::NetCDF_Fortran ${LIBBASE}
                               ${LIBZ}
                               ${LIBPNG}
                               ${LIBJASPER}
-                              ${LIBBUFR}
+                              bufr::bufr_4
                               bacio::bacio_4
                               ${LIBSP}
                               ${MPI_Fortran_LIBRARIES} )

@@ -8,6 +8,16 @@ include_directories( ${GSIINC} ${NETCDFINC} )
 set(EXE "process_larccld.exe")
 add_executable(${EXE} ${src_c} ${src_all} )
 #set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-target_link_libraries( ${EXE} ${LIBBASE} NetCDF::NetCDF_Fortran ${wrflib} ${wrfframe} ${LIBZ} ${GSILIB} ${LIBW3EMC_UPP} ${LIBW3NCO_UPP} ${LIBBACIO} ${LIBBUFR} ${MPI_Fortran_LIBRARIES} ${MPI_C_LIBRARIES})
+target_link_libraries( ${EXE} ${LIBBASE}
+                              NetCDF::NetCDF_Fortran
+                              ${wrflib}
+                              ${wrfframe}
+                              ${LIBZ}
+                              ${GSILIB}
+                              ${LIBW3EMC_UPP}
+                              ${LIBW3NCO_UPP}
+                              bufr::bufr_4
+                              ${MPI_Fortran_LIBRARIES}
+                              ${MPI_C_LIBRARIES})
 install(TARGETS ${EXE}
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
