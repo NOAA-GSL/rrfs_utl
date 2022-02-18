@@ -3,7 +3,7 @@ set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS
 file(GLOB src_c ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 set_source_files_properties(${src_c} PROPERTIES COMPILE_FLAGS ${C_FLAGS})
 
-include_directories( ${GSIINC} ${NETCDFINC} )
+include_directories( ${GSIINC} )
 
 set(EXE "process_larccld.exe")
 add_executable(${EXE} ${src_c} ${src_all} )
@@ -12,10 +12,7 @@ target_link_libraries( ${EXE} ${LIBBASE}
                               NetCDF::NetCDF_Fortran
                               ${wrflib}
                               ${wrfframe}
-                              ${LIBZ}
                               ${GSILIB}
-                              ${LIBW3EMC_UPP}
-                              ${LIBW3NCO_UPP}
                               bufr::bufr_4
                               ${MPI_Fortran_LIBRARIES}
                               ${MPI_C_LIBRARIES})

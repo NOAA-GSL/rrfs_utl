@@ -14,9 +14,6 @@ target_link_libraries( ${EXE} wrf_io::wrf_io
                               g2::g2_4
                               g2tmpl::g2tmpl
                               w3nco::w3nco_4
-                              ${LIBZ}
-                              ${LIBPNG}
-                              ${LIBJASPER}
                               bacio::bacio_4
                               ${MPI_Fortran_LIBRARIES} )
 

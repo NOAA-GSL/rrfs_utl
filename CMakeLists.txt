@@ -57,11 +57,6 @@ SET(GSIINC  "${GSIBUILD}/include")
 SET(GSILIB  "${GSIBUILD}/lib/libgsilib_shrd.a")
 SET(wrflib  "${GSIBUILD}/lib/libgsilib_wrf.a")
 
-#SET(LIBPNG "$ENV{PNG_LIB}")
-SET(LIBPNG "-L$ENV{PNG_LIBRARIES} -lpng")
-#SET(LIBJASPER "$ENV{JASPER_LIB}")
-SET(LIBJASPER "-L$ENV{JASPER_LIBRARIES} -ljasper")
-
 SET(GSILIBS "${GSIBUILD}/lib")
 SET(CONSTANTS "${GSIBUILD}/src/gsi/CMakeFiles/gsilib_wrf.dir/constants.f90.o")
 

@@ -12,9 +12,6 @@ target_link_libraries( ${EXE} ${LIBBASE}
                               ${GSILIB}
                               g2::g2_4
                               g2tmpl::g2tmpl
-                              ${LIBPNG}
-                              ${LIBJASPER}
-                              ${LIBZ}
                               bacio::bacio_4
                               ip::ip_4
                               sp::sp_4
