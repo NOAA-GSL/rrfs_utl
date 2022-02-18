@@ -7,7 +7,8 @@ set(EXE "use_raphrrr_sfc.exe")
 add_executable(${EXE} ${src_all})
 set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-target_link_libraries( ${EXE} ${LIBBASE}
+target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
+                              ${PROJECT_NAME}::map_util
                               NetCDF::NetCDF_Fortran
                               ${GSILIB}
                               MPI::MPI_Fortran )

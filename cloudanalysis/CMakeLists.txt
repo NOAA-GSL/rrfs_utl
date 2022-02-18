@@ -14,7 +14,7 @@ endif(BUILD_GSDCLOUD_ARW)
 set(EXE "fv3lam_nonvarcldana.exe")
 add_executable(${EXE} ${src_all})
 set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-target_link_libraries( ${EXE} ${LIBBASE}
+target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
                               NetCDF::NetCDF_Fortran
                               ${wrflib}
                               ${GSDCLOUD_LIBRARY}

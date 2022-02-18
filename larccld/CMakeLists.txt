@@ -8,7 +8,9 @@ include_directories( ${GSIINC} )
 set(EXE "process_larccld.exe")
 add_executable(${EXE} ${src_c} ${src_all} )
 #set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-target_link_libraries( ${EXE} ${LIBBASE}
+target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
+                              ${PROJECT_NAME}::esggrid_util
+                              ${PROJECT_NAME}::pesglib
                               NetCDF::NetCDF_Fortran
                               ${wrflib}
                               ${wrfframe}

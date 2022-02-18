@@ -5,7 +5,7 @@ include_directories( ${GSIINC} )
 
 set(EXE "update_GVF.exe")
 add_executable(${EXE} ${src_all} update_GVF.f90  )
-target_link_libraries( ${EXE} ${LIBBASE}
+target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
                               NetCDF::NetCDF_Fortran
                               ${GSILIB}
                               g2::g2_4
@@ -17,8 +17,7 @@ target_link_libraries( ${EXE} ${LIBBASE}
 
 set(EXE "gen_annual_maxmin_GVF.exe")
 add_executable(${EXE} ${src_all} gen_annual_maxmin_GVF.f90)
-target_link_libraries( ${EXE} ${LIBBASE}
-                              NetCDF::NetCDF_Fortran
+target_link_libraries( ${EXE} NetCDF::NetCDF_Fortran
                               ${GSILIB}
                               g2::g2_4
                               g2tmpl::g2tmpl

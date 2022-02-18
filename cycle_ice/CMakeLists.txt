@@ -5,7 +5,7 @@ include_directories( ${GSIINC} )
 
 set(EXE "cycle_ice.exe")
 add_executable(${EXE} ${src_all} cycle_ice.f90  )
-target_link_libraries( ${EXE} ${LIBBASE}
+target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
                               NetCDF::NetCDF_Fortran
                               ${GSILIB}
                               MPI::MPI_Fortran )

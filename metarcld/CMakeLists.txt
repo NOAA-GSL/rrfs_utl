@@ -5,7 +5,9 @@ include_directories( ${GSIINC} )
 
 set(EXE "process_metarcld.exe")
 add_executable(${EXE} ${src_all} )
-target_link_libraries( ${EXE} ${LIBBASE}
+target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
+                              ${PROJECT_NAME}::esggrid_util
+                              ${PROJECT_NAME}::pesglib
                               NetCDF::NetCDF_Fortran
                               ${wrflib}
                               ${wrfframe}

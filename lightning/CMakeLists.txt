@@ -6,7 +6,9 @@ set_source_files_properties(${src_c} PROPERTIES COMPILE_FLAGS ${C_FLAGS})
 include_directories( ${GSIINC} )
 
 ADD_EXECUTABLE(process_Lightning.exe process_Lightning.f90 ${src_c} ${src_all} )
-TARGET_LINK_LIBRARIES(process_Lightning.exe ${LIBBASE}
+TARGET_LINK_LIBRARIES(process_Lightning.exe ${PROJECT_NAME}::ncio
+                                            ${PROJECT_NAME}::esggrid_util
+                                            ${PROJECT_NAME}::pesglib
                                             NetCDF::NetCDF_Fortran
                                             bufr::bufr_4
                                             w3emc::w3emc_4

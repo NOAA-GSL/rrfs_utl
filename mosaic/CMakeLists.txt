@@ -8,7 +8,8 @@ set(EXE "process_NSSL_mosaic.exe")
 add_executable(${EXE} ${src_all})
 set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-target_link_libraries( ${EXE} NetCDF::NetCDF_Fortran ${LIBBASE}
+target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
+                              NetCDF::NetCDF_Fortran
                               ${wrflib}
                               ${GSILIB}
                               g2::g2_4
