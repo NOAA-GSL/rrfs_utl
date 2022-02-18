@@ -12,7 +12,7 @@ target_link_libraries( ${EXE} ${LIBBASE}
                               g2tmpl::g2tmpl
                               w3nco::w3nco_4
                               bacio::bacio_4
-                              ${MPI_Fortran_LIBRARIES} )
+                              MPI::MPI_Fortran )
 
 
 set(EXE "gen_annual_maxmin_GVF.exe")
@@ -24,4 +24,4 @@ target_link_libraries( ${EXE} ${LIBBASE}
                               g2tmpl::g2tmpl
                               w3nco::w3nco_4
                               bacio::bacio_4
-                              ${MPI_Fortran_LIBRARIES} )
+                              MPI::MPI_Fortran )

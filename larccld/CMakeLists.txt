@@ -14,7 +14,7 @@ target_link_libraries( ${EXE} ${LIBBASE}
                               ${wrfframe}
                               ${GSILIB}
                               bufr::bufr_4
-                              ${MPI_Fortran_LIBRARIES}
-                              ${MPI_C_LIBRARIES})
+                              MPI::MPI_Fortran
+                              MPI::MPI_C )
 install(TARGETS ${EXE}
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

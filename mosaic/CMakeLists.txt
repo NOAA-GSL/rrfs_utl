@@ -15,7 +15,7 @@ target_link_libraries( ${EXE} NetCDF::NetCDF_Fortran ${LIBBASE}
                               g2tmpl::g2tmpl
                               bufr::bufr_4
                               bacio::bacio_4
-                              ${MPI_Fortran_LIBRARIES} )
+                              MPI::MPI_Fortran )
 
 install(TARGETS ${EXE}
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
@@ -24,6 +24,13 @@ install(TARGETS ${EXE}
 #add_executable(${EXE} ${src_all_enkf} process_NSSL_mosaic_to_dart_and_netcdf.f90)
 #set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 #set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-#target_link_libraries( ${EXE} NetCDF::NetCDF_Fortran ${wrflib} ${GSILIB} g2::g2_4 g2tmpl::g2tmpl bufr::bufr_4 bacio::bacio_4 ${MPI_Fortran_LIBRARIES} )
+#target_link_libraries( ${EXE} NetCDF::NetCDF_Fortran
+#                              ${wrflib}
+#                              ${GSILIB}
+#                              g2::g2_4
+#                              g2tmpl::g2tmpl
+#                              bufr::bufr_4
+#                              bacio::bacio_4
+#                              MPI::MPI_Fortran )
 #install(TARGETS ${EXE}
 #        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

@@ -10,5 +10,5 @@ set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
 target_link_libraries( ${EXE} ${LIBBASE}
                               NetCDF::NetCDF_Fortran
                               ${GSILIB}
-                              ${MPI_Fortran_LIBRARIES} )
+                              MPI::MPI_Fortran )
 

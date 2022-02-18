@@ -9,7 +9,7 @@ set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 target_link_libraries( ${EXE} NetCDF::NetCDF_Fortran
                               ${wrflib}
                               ${GSILIB}
-                              ${MPI_Fortran_LIBRARIES} )
+                              MPI::MPI_Fortran )
 install(TARGETS ${EXE}
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 

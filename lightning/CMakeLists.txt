@@ -12,7 +12,7 @@ TARGET_LINK_LIBRARIES(process_Lightning.exe ${LIBBASE}
                                             w3emc::w3emc_4
                                             w3nco::w3nco_4
                                             ${CONSTANTS}
-                                            ${MPI_Fortran_LIBRARIES}
-                                            ${MPI_C_LIBRARIES})
+                                            MPI::MPI_Fortran
+                                            MPI::MPI_C )
 install(TARGETS process_Lightning.exe
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

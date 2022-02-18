@@ -25,7 +25,6 @@ endif()
 
 # Dependencies
 find_package(MPI REQUIRED)
-include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 find_package(NetCDF REQUIRED Fortran)
 
 # NCEPLibs dependencies

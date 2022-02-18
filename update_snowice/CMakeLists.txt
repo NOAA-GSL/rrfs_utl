@@ -15,5 +15,5 @@ target_link_libraries( ${EXE} ${LIBBASE}
                               bacio::bacio_4
                               ip::ip_4
                               sp::sp_4
-                              ${MPI_Fortran_LIBRARIES} )
+                              MPI::MPI_Fortran )
 

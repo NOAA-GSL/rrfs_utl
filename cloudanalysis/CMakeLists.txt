@@ -18,6 +18,6 @@ target_link_libraries( ${EXE} ${LIBBASE}
                               NetCDF::NetCDF_Fortran
                               ${wrflib}
                               ${GSDCLOUD_LIBRARY}
-                              ${MPI_Fortran_LIBRARIES} )
+                              MPI::MPI_Fortran )
 install(TARGETS ${EXE}
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

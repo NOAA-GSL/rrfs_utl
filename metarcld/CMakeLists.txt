@@ -13,6 +13,6 @@ target_link_libraries( ${EXE} ${LIBBASE}
                               w3emc::w3emc_4
                               w3nco::w3nco_4
                               bufr::bufr_4
-                              ${MPI_Fortran_LIBRARIES} )
+                              MPI::MPI_Fortran )
 install(TARGETS ${EXE}
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
