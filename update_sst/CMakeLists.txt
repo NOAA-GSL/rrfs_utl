@@ -7,13 +7,15 @@ include_directories( ${GSIINC} )
 set(EXE "process_updatesst")
 add_executable(${EXE} ${src_all})
 set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-target_link_libraries( ${EXE} wrf_io::wrf_io
-                              NetCDF::NetCDF_Fortran
-                              ${GSILIB}
-                              g2::g2_4
-                              g2tmpl::g2tmpl
-                              w3nco::w3nco_4
-                              bacio::bacio_4
-                              MPI::MPI_Fortran )
+target_link_libraries( ${EXE} PUBLIC wrf_io::wrf_io
+                              PUBLIC NetCDF::NetCDF_Fortran
+                              PUBLIC ${GSILIB}
+                              PUBLIC g2::g2_4
+                              PUBLIC g2tmpl::g2tmpl
+                              PUBLIC w3nco::w3nco_4
+                              PUBLIC bacio::bacio_4
+                              PUBLIC MPI::MPI_Fortran )
 
+if(OpenMP_Fortran_FOUND)
+  target_link_libraries( ${EXE} PRIVATE OpenMP::OpenMP_Fortran)
+endif()

@@ -7,16 +7,19 @@ include_directories( ${GSIINC} )
 set(EXE "process_NSSL_mosaic.exe")
 add_executable(${EXE} ${src_all})
 set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
-                              NetCDF::NetCDF_Fortran
-                              ${wrflib}
-                              ${GSILIB}
-                              g2::g2_4
-                              g2tmpl::g2tmpl
-                              bufr::bufr_4
-                              bacio::bacio_4
-                              MPI::MPI_Fortran )
+target_link_libraries( ${EXE} PUBLIC ${PROJECT_NAME}::ncio
+                              PUBLIC NetCDF::NetCDF_Fortran
+                              PUBLIC ${wrflib}
+                              PUBLIC ${GSILIB}
+                              PUBLIC g2::g2_4
+                              PUBLIC g2tmpl::g2tmpl
+                              PUBLIC bufr::bufr_4
+                              PUBLIC bacio::bacio_4
+                              PUBLIC MPI::MPI_Fortran )
+
+if(OpenMP_Fortran_FOUND)
+  target_link_libraries( ${EXE} PRIVATE OpenMP::OpenMP_Fortran)
+endif()
 
 install(TARGETS ${EXE}
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
@@ -24,14 +27,18 @@ install(TARGETS ${EXE}
 #set(EXE "process_NSSL_mosaic_enkf.exe")
 #add_executable(${EXE} ${src_all_enkf} process_NSSL_mosaic_to_dart_and_netcdf.f90)
 #set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-#set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-#target_link_libraries( ${EXE} NetCDF::NetCDF_Fortran
-#                              ${wrflib}
-#                              ${GSILIB}
-#                              g2::g2_4
-#                              g2tmpl::g2tmpl
-#                              bufr::bufr_4
-#                              bacio::bacio_4
-#                              MPI::MPI_Fortran )
+#target_link_libraries( ${EXE} PUBLIC NetCDF::NetCDF_Fortran
+#                              PUBLIC ${wrflib}
+#                              PUBLIC ${GSILIB}
+#                              PUBLIC g2::g2_4
+#                              PUBLIC g2tmpl::g2tmpl
+#                              PUBLIC bufr::bufr_4
+#                              PUBLIC bacio::bacio_4
+#                              PUBLIC MPI::MPI_Fortran )
+#
+#if(OpenMP_Fortran_FOUND)
+#  target_link_libraries( ${EXE} PRIVATE OpenMP::OpenMP_Fortran)
+#endif()
+#
 #install(TARGETS ${EXE}
 #        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

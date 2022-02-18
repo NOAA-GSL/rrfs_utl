@@ -23,9 +23,18 @@ if(NOT CMAKE_Fortran_COMPILER_ID MATCHES "^(GNU|Intel)$")
   message(WARNING "${CMAKE_Fortran_COMPILER_ID} is not supported.")
 endif()
 
+# User options
+option(OPENMP "Enable OpenMP Threading" ON)
+
+# Echo user options
+message(STATUS "OPENMP ................. ${OPENMP}")
+
 # Dependencies
 find_package(MPI REQUIRED)
 find_package(NetCDF REQUIRED Fortran)
+if(OPENMP)
+  find_package(OpenMP REQUIRED)
+endif()
 
 # NCEPLibs dependencies
 find_package(bacio REQUIRED)
@@ -60,7 +69,6 @@ SET(GSILIBS "${GSIBUILD}/lib")
 SET(CONSTANTS "${GSIBUILD}/src/gsi/CMakeFiles/gsilib_wrf.dir/constants.f90.o")
 
 SET(Fortran_FLAGS "-O3 -fp-model precise -assume byterecl -fpe0 -DLINUX -g -traceback")
-SET(Fortran_LINK_FLAGS "-qopenmp")
 SET(Fortran_FLAGS_bigEndian "-convert big_endian")
 SET(C_FLAGS "-D_UNDERSCORE -DLINUX -Dfunder -DFortranByte=char -DFortranInt=int -DFortranLlong='long long'")
 
