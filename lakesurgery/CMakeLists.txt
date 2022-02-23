@@ -13,3 +13,10 @@ target_link_libraries( ${EXE} PUBLIC wrf_io::wrf_io
 if(OpenMP_Fortran_FOUND)
   target_link_libraries( ${EXE} PRIVATE OpenMP::OpenMP_Fortran)
 endif()
+
+install(
+  TARGETS ${EXE}
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

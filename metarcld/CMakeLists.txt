@@ -16,5 +16,10 @@ target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
                               w3nco::w3nco_4
                               bufr::bufr_4
                               MPI::MPI_Fortran )
-install(TARGETS ${EXE}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+
+install(
+  TARGETS ${EXE}
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

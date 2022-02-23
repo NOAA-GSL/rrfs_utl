@@ -21,8 +21,12 @@ if(OpenMP_Fortran_FOUND)
   target_link_libraries( ${EXE} PRIVATE OpenMP::OpenMP_Fortran)
 endif()
 
-install(TARGETS ${EXE}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(
+  TARGETS ${EXE}
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 #set(EXE "process_NSSL_mosaic_enkf.exe")
 #add_executable(${EXE} ${src_all_enkf} process_NSSL_mosaic_to_dart_and_netcdf.f90)

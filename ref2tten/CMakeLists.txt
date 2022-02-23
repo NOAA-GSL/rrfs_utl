@@ -10,6 +10,11 @@ target_link_libraries( ${EXE} NetCDF::NetCDF_Fortran
                               ${wrflib}
                               ${GSILIB}
                               MPI::MPI_Fortran )
-install(TARGETS ${EXE}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+
+install(
+  TARGETS ${EXE}
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
