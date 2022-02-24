@@ -61,7 +61,6 @@ SET(GSILIB  "${GSIBUILD}/lib/libgsilib_shrd.a")
 SET(wrflib  "${GSIBUILD}/lib/libgsilib_wrf.a")
 
 SET(Fortran_FLAGS "-O3 -fp-model precise -assume byterecl -fpe0 -DLINUX -g -traceback")
-SET(Fortran_FLAGS_bigEndian "-convert big_endian")
 
 add_subdirectory(baselib/regional_esg_grid.fd)
 add_subdirectory(baselib)

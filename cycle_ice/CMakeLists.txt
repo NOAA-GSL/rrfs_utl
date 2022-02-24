@@ -1,5 +1,4 @@
 file(GLOB src_all)
-#set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS_bigEndian} )
 
 include_directories( ${GSIINC} )
 
