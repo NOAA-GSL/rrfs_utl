@@ -7,16 +7,16 @@ include_directories( ${GSIINC} )
 
 set(EXE process_Lightning.exe)
 ADD_EXECUTABLE(${EXE} process_Lightning.f90 ${src_c} ${src_all} )
-TARGET_LINK_LIBRARIES(${EXE} ${PROJECT_NAME}::ncio
-                             ${PROJECT_NAME}::esggrid_util
-                             ${PROJECT_NAME}::pesglib
-                             NetCDF::NetCDF_Fortran
-                             bufr::bufr_4
-                             w3emc::w3emc_4
-                             w3nco::w3nco_4
-                             ${CONSTANTS}
-                             MPI::MPI_Fortran
-                             MPI::MPI_C )
+TARGET_LINK_LIBRARIES(${EXE} PUBLIC ${PROJECT_NAME}::ncio
+                             PUBLIC ${PROJECT_NAME}::esggrid_util
+                             PUBLIC ${PROJECT_NAME}::pesglib
+                             PUBLIC NetCDF::NetCDF_Fortran
+                             PUBLIC bufr::bufr_4
+                             PUBLIC w3emc::w3emc_4
+                             PUBLIC w3nco::w3nco_4
+                             PUBLIC ${GSILIB}
+                             PUBLIC MPI::MPI_Fortran
+                             PUBLIC MPI::MPI_C )
 
 install(
   TARGETS ${EXE}

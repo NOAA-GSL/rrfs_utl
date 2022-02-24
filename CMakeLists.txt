@@ -51,18 +51,14 @@ find_package(wrf_io REQUIRED)
 
 # Other dependencies
 
-SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../../build/src/GSI/src/GSI-build")
-
+#SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../../build/src/GSI/src/GSI-build")
+set(GSIBUILD "${PROJECT_BINARY_DIR}/../../../GSI/src/GSI-build")
 
 #----------------------------Normally no changes needed after this line ------------------------
 
 SET(GSIINC  "${GSIBUILD}/include")
-
 SET(GSILIB  "${GSIBUILD}/lib/libgsilib_shrd.a")
 SET(wrflib  "${GSIBUILD}/lib/libgsilib_wrf.a")
-
-SET(GSILIBS "${GSIBUILD}/lib")
-SET(CONSTANTS "${GSIBUILD}/src/gsi/CMakeFiles/gsilib_wrf.dir/constants.f90.o")
 
 SET(Fortran_FLAGS "-O3 -fp-model precise -assume byterecl -fpe0 -DLINUX -g -traceback")
 SET(Fortran_FLAGS_bigEndian "-convert big_endian")
