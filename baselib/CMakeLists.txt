@@ -1,5 +1,4 @@
 file(GLOB src_all kinds.f90  module_map_utils.f90  module_ncio.f90  module_time.f90)
-set_source_files_properties(${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
 
 set(module_dir "${CMAKE_CURRENT_BINARY_DIR}/include")
 

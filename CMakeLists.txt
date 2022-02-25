@@ -7,6 +7,7 @@ project(RRFS_Utl
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(CMAKE_DIRECTORY_LABELS ${PROJECT_NAME})
 
+include(compiler_flags)
 include(GNUInstallDirs)
 
 if(NOT CMAKE_BUILD_TYPE MATCHES "^(Debug|Release|RelWithDebInfo|MinSizeRel|Production)$")
@@ -53,14 +54,9 @@ find_package(wrf_io REQUIRED)
 
 SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../../build/src/GSI/src/GSI-build")
 #set(GSIBUILD "${PROJECT_BINARY_DIR}/../../../GSI/src/GSI-build")
-
-#----------------------------Normally no changes needed after this line ------------------------
-
 SET(GSIINC  "${GSIBUILD}/include")
 SET(GSILIB  "${GSIBUILD}/lib/libgsilib_shrd.a")
 SET(wrflib  "${GSIBUILD}/lib/libgsilib_wrf.a")
-
-SET(Fortran_FLAGS "-O3 -fp-model precise -assume byterecl -fpe0 -DLINUX -g -traceback")
 
 add_subdirectory(baselib/regional_esg_grid.fd)
 add_subdirectory(baselib)
