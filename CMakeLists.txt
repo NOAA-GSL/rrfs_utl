@@ -52,8 +52,8 @@ find_package(wrf_io REQUIRED)
 
 # Other dependencies
 
-SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../../build/src/GSI/src/GSI-build")
-#set(GSIBUILD "${PROJECT_BINARY_DIR}/../../../GSI/src/GSI-build")
+#SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../../build/src/GSI/src/GSI-build")
+set(GSIBUILD "${PROJECT_BINARY_DIR}/../../../GSI/src/GSI-build")
 SET(GSIINC  "${GSIBUILD}/include")
 SET(GSILIB  "${GSIBUILD}/lib/libgsilib_shrd.a")
 SET(wrflib  "${GSIBUILD}/lib/libgsilib_wrf.a")
