@@ -6,7 +6,7 @@ set(EXE "lakesurgery.exe")
 add_executable(${EXE} ${src_all})
 target_link_libraries( ${EXE} PUBLIC wrf_io::wrf_io
                               PUBLIC NetCDF::NetCDF_Fortran
-                              PUBLIC ${GSILIB}
+                              PRIVATE gsi::gsi
                               PUBLIC MPI::MPI_Fortran )
 if(OpenMP_Fortran_FOUND)
   target_link_libraries( ${EXE} PRIVATE OpenMP::OpenMP_Fortran)

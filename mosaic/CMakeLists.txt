@@ -7,8 +7,7 @@ set(EXE "process_NSSL_mosaic.exe")
 add_executable(${EXE} ${src_all})
 target_link_libraries( ${EXE} PUBLIC ${PROJECT_NAME}::ncio
                               PUBLIC NetCDF::NetCDF_Fortran
-                              PUBLIC ${wrflib}
-                              PUBLIC ${GSILIB}
+                              PRIVATE gsi::gsi
                               PUBLIC g2::g2_4
                               PUBLIC g2tmpl::g2tmpl
                               PUBLIC bufr::bufr_4

@@ -11,7 +11,7 @@ TARGET_LINK_LIBRARIES(${EXE} PUBLIC ${PROJECT_NAME}::ncio
                              PUBLIC bufr::bufr_4
                              PUBLIC w3emc::w3emc_4
                              PUBLIC w3nco::w3nco_4
-                             PUBLIC ${GSILIB}
+                             PRIVATE gsi::gsi
                              PUBLIC MPI::MPI_Fortran
                              PUBLIC MPI::MPI_C )
 

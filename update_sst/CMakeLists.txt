@@ -7,7 +7,7 @@ set(EXE "process_updatesst")
 add_executable(${EXE} ${src_all})
 target_link_libraries( ${EXE} PUBLIC wrf_io::wrf_io
                               PUBLIC NetCDF::NetCDF_Fortran
-                              PUBLIC ${GSILIB}
+                              PRIVATE gsi::gsi
                               PUBLIC g2::g2_4
                               PUBLIC g2tmpl::g2tmpl
                               PUBLIC w3nco::w3nco_4

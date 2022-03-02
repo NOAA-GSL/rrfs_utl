@@ -51,12 +51,15 @@ find_package(bufr REQUIRED)
 find_package(wrf_io REQUIRED)
 
 # Other dependencies
+#find_package(ncdiag REQUIRED)
+find_package(gsi REQUIRED)
 
-#SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../../build/src/GSI/src/GSI-build")
-set(GSIBUILD "${PROJECT_BINARY_DIR}/../../../GSI/src/GSI-build")
-SET(GSIINC  "${GSIBUILD}/include")
-SET(GSILIB  "${GSIBUILD}/lib/libgsilib_shrd.a")
-SET(wrflib  "${GSIBUILD}/lib/libgsilib_wrf.a")
+##SET(GSIBUILD  "${PROJECT_BINARY_DIR}/../../../build/src/GSI/src/GSI-build")
+#set(GSIBUILD "${PROJECT_BINARY_DIR}/../../../GSI/src/GSI-build")
+#SET(GSIINC  "${GSIBUILD}/include")
+#SET(GSILIB  "${GSIBUILD}/lib/libgsilib_shrd.a")
+#SET(wrflib  "${GSIBUILD}/lib/libgsilib_wrf.a")
+
 
 add_subdirectory(baselib/regional_esg_grid.fd)
 add_subdirectory(baselib)

@@ -4,10 +4,9 @@ include_directories( ${GSIINC} )
 
 set(EXE "ref2tten.exe")
 add_executable(${EXE} ${src_all})
-target_link_libraries( ${EXE} NetCDF::NetCDF_Fortran
-                              ${wrflib}
-                              ${GSILIB}
-                              MPI::MPI_Fortran )
+target_link_libraries( ${EXE} PUBLIC NetCDF::NetCDF_Fortran
+                              PRIVATE gsi::gsi
+                              PUBLIC MPI::MPI_Fortran )
 
 install(
   TARGETS ${EXE}

@@ -8,9 +8,7 @@ target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
                               ${PROJECT_NAME}::esggrid_util
                               ${PROJECT_NAME}::pesglib
                               NetCDF::NetCDF_Fortran
-                              ${wrflib}
-                              ${wrfframe}
-                              ${GSILIB}
+                              gsi::gsi
                               bufr::bufr_4
                               MPI::MPI_Fortran
                               MPI::MPI_C )
