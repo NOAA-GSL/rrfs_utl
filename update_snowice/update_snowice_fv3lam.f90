@@ -775,18 +775,38 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
   deallocate(tmp8b3d)
 ! SNCOVR
   tmp8b2d=snowc(1:nlon_regional,1:nlat_regional)
+  do j=1,nlat_regional
+     do i =1,nlon_regional
+        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+     enddo
+  enddo
   write(6,*)' max,min snowc=',maxval(tmp8b2d),minval(tmp8b2d)
   call fv3grid%replace_var("sncovr",nlon,nlat,tmp8b2d)
 ! 'SNODL'
   tmp8b2d=snowh(1:nlon_regional,1:nlat_regional)*1.e3 ! convert to [mm]
+  do j=1,nlat_regional
+     do i =1,nlon_regional
+        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+     enddo
+  enddo
   write(6,*)' max,min snowh=',maxval(tmp8b2d),minval(tmp8b2d)
   call fv3grid%replace_var("snodl",nlon,nlat,tmp8b2d)
 ! 'SNWDPH'
   tmp8b2d=snowh(1:nlon_regional,1:nlat_regional)*1.e3 ! convert to [mm]
+  do j=1,nlat_regional
+     do i =1,nlon_regional
+        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+     enddo
+  enddo
   write(6,*)' max,min snowh=',maxval(tmp8b2d),minval(tmp8b2d)
   call fv3grid%replace_var("snwdph",nlon,nlat,tmp8b2d)
 ! 'WEASDL'
   tmp8b2d=snow(1:nlon_regional,1:nlat_regional)
+  do j=1,nlat_regional
+     do i =1,nlon_regional
+        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+     enddo
+  enddo
   write(6,*)' max,min snow=',maxval(tmp8b2d),minval(tmp8b2d)
   call fv3grid%replace_var("weasdl",nlon,nlat,tmp8b2d)
 ! TSFC
