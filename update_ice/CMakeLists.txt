@@ -5,6 +5,6 @@ file(GLOB src_all)
 
 include_directories( ${GSIINC} ${NETCDFINC} ${G2INC} )
 
-set(EXE "cycle_ice.exe")
-add_executable(${EXE} ${src_all} cycle_ice.f90  )
+set(EXE "update_ice.exe")
+add_executable(${EXE} ${src_all} update_ice.f90  )
 target_link_libraries( ${EXE} ${LIBBASE} ${wrflibio} ${NETCDFLIB} ${GSILIB} ${LIBW3NCO} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${MPILIB} ${LIBBACIO} ${LIBIOMP5})

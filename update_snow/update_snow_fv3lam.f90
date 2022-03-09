@@ -1,4 +1,4 @@
-subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
+subroutine update_snow_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
 !$$$  documentation block
 !                .      .    .                                       .
 !   update_snowice_fv3lam: update snow ice based on ims observations
@@ -37,7 +37,7 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
 !
 !$$$
 
-  use kinds, only: r_single,i_kind
+  use kinds, only: r_double,i_kind
   use module_ncio, only: ncio
   implicit none
 
@@ -61,31 +61,36 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
   integer(i_kind) iyear,imonth,iday,ihour,iminute,isecond
   integer(i_kind) nlon_regional,nlat_regional,nsig_regional
   integer(i_kind) nsig_soil_regional
-  real(r_single),allocatable::precip(:,:)
-  real(r_single),allocatable::surftemp(:,:)
-  real(r_single),allocatable::tskin(:,:)
-  real(r_single),allocatable::tsnow(:,:)
-  real(r_single),allocatable::soilmoisture(:,:,:)
-  real(r_single),allocatable::soiltemp(:,:,:)
+  real(r_double),allocatable::precip(:,:)
+  real(r_double),allocatable::surftemp(:,:)
+  real(r_double),allocatable::tskin(:,:)
+  real(r_double),allocatable::tsnow(:,:)
+  real(r_double),allocatable::soilmoisture(:,:,:)
+  real(r_double),allocatable::soiltemp(:,:,:)
 
-  real(r_single),allocatable::snow(:,:)
-  real(r_single),allocatable::snowh(:,:)
-  real(r_single),allocatable::snowc(:,:)
-  real(r_single),allocatable::seaice(:,:)
+  real(r_double),allocatable::weasd(:,:)
+  real(r_double),allocatable::snow(:,:)
+  real(r_double),allocatable::weasdi(:,:)
+  real(r_double),allocatable::snwdph(:,:)
+  real(r_double),allocatable::snowh(:,:)
+  real(r_double),allocatable::snodi(:,:)
+  real(r_double),allocatable::snowc(:,:)
+  real(r_double),allocatable::snowc_ice(:,:)
+  real(r_double),allocatable::seaice(:,:)
 
-  real(r_single),allocatable::snowRRbk(:,:)
-  real(r_single),allocatable::snowhRRbk(:,:)
-  real(r_single),allocatable::snowcRRbk(:,:)
-  real(r_single),allocatable::tskinRRbk(:,:)
-  real(r_single),allocatable::tsnowRRbk(:,:)
-  real(r_single),allocatable::soiltempRRbk(:,:,:)
-  real(r_single),allocatable::surftempRRbk(:,:)
+  real(r_double),allocatable::snowRRbk(:,:)
+  real(r_double),allocatable::snowhRRbk(:,:)
+  real(r_double),allocatable::snowcRRbk(:,:)
+  real(r_double),allocatable::tskinRRbk(:,:)
+  real(r_double),allocatable::tsnowRRbk(:,:)
+  real(r_double),allocatable::soiltempRRbk(:,:,:)
+  real(r_double),allocatable::surftempRRbk(:,:)
 !  surface parameters
-  real(r_single),allocatable::landmask(:,:)
+  real(r_double),allocatable::landmask(:,:)
 !
 !
   integer(i_kind)   :: halo
-  real(r_single)    :: xice_threshold
+  real(r_double)    :: xice_threshold
   integer(i_kind)   :: fractional_seaice
 !
   integer(i_kind)   :: num_seaice2water, num_water2seaice
@@ -196,58 +201,89 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
 
   write(6,*)' nlon,lat,sig_regional=',nlon_regional,nlat_regional,nsig_regional
 
+  allocate(weasd(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo))
   allocate(snow(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo))
+  allocate(weasdi(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo))
+  allocate(snwdph(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo))
   allocate(snowh(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo))
+  allocate(snodi(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo))
   allocate(snowc(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo))
+  allocate(snowc_ice(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo))
   allocate(seaice(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo))
   allocate(tskin(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo))
   allocate(tsnow(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo))
   allocate(landmask(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo))
-  snow=0.0
+  snwdph=0.0
   snowh=0.0
+  snodi=0.0
+  weasd=0.0
+  snow=0.0
+  weasdi=0.0
   snowc=0.0
+  snowc_ice=0.0
   seaice=0.0
   tskin=0.0
   tsnow=0.0
   landmask=0
   
-!  rmse_var='TSK'
+!  rmse_var='TSFCL' skin temperature on land
   call fv3grid%get_var("tsfcl",nlon,nlat,tmp8b2d)
   tskin(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
   write(6,*)' max,min skin temp (K)=',maxval(tskin),minval(tskin)
 !
-!  rmse_var='SOILT1'
+!  rmse_var='TSNOW_LAND' snow temperature on land
   call fv3grid%get_var("tsnow_land",nlon,nlat,tmp8b2d)
   tsnow(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
   write(6,*)' max,min snow temp (K)=',maxval(tsnow),minval(tsnow)
 !
-!  rmse_var='SNOW' [mm]
+!  rmse_var='WEASD (SHELEG)' [mm] combined swe
+  call fv3grid%get_var("sheleg",nlon,nlat,tmp8b2d)
+  weasd(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
+  write(6,*)' max,min combined WEASD=',maxval(snow),minval(snow)
+!
+!  rmse_var='SNOW' [mm] swe on land
   call fv3grid%get_var("weasdl",nlon,nlat,tmp8b2d)
   snow(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
   write(6,*)' max,min SNOW=',maxval(snow),minval(snow)
 !
-!  rmse_var='SNOWH'
-!  call fv3grid%get_var("snwdph",nlon,nlat,tmp8b2d)
-!??? not used in this code???  snowdp=tmp8b2d(:,:)
-!  write(6,*)' max,min SNOWH=',maxval(snowh),minval(snowh)
-!  rmse_var='SNOWH' [mm]
+!  rmse_var='WEASDI' [mm] swe on ice
+  call fv3grid%get_var("weasdi",nlon,nlat,tmp8b2d)
+  weasdi(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
+  write(6,*)' max,min WEASDI=',maxval(weasdi),minval(weasdi)
+!
+!  rmse_var='SNWDPH' [mm] combined snow depth
+  call fv3grid%get_var("snwdph",nlon,nlat,tmp8b2d)
+  snwdph(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)*1.e-3 ! convert to [m]
+  write(6,*)' max,min SNWDPH=',maxval(snwdph),minval(snwdph)
+
+!  rmse_var='SNODL' [mm] snow depth on land
   call fv3grid%get_var("snodl",nlon,nlat,tmp8b2d)
   snowh(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)*1.e-3 ! convert to [m]
-  write(6,*)' max,min SNOWH=',maxval(snowh),minval(snowh)
+  write(6,*)' max,min SNODL=',maxval(snowh),minval(snowh)
+
+!  rmse_var='SNODI' [mm] snow_depth on ice
+  call fv3grid%get_var("snodi",nlon,nlat,tmp8b2d)
+  snodi(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)*1.e-3 ! convert to [m]
+  write(6,*)' max,min SNODI=',maxval(snodi),minval(snodi)
 !
-!  rmse_var='SNOWC' [fraction]
+!  rmse_var='SNCOVR' [fraction] combined snow fraction
   call fv3grid%get_var("sncovr",nlon,nlat,tmp8b2d)
   snowc(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
   write(6,*)' max,min SNOWC=',maxval(snowc),minval(snowc)
 !
-!  rmse_var='SEAICE'
+!  rmse_var='SNCOVR_ICE' [fraction] snow fraction on ice
+  call fv3grid%get_var("sncovr_ice",nlon,nlat,tmp8b2d)
+  snowc_ice(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
+  write(6,*)' max,min SNOWC_ICE=',maxval(snowc_ice),minval(snowc_ice)
+!
+!  rmse_var='SEAICE' fraction of ice
   call fv3grid%get_var("fice",nlon,nlat,tmp8b2d)
   seaice(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
   write(6,*)' max,min SEAICE=',maxval(seaice),minval(seaice)
 !
   allocate(soiltemp(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo,nsig_soil_regional))
   allocate(soiltempRRbk(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo,nsig_soil_regional))
-!  rmse_var='TSLB'
+!  rmse_var='TSLB' soil temperature
   call fv3grid%get_var("tslb",nlon,nlat,nsig_soil_regional,tmp8b3d)
   do k=1,nsig_soil_regional
      soiltemp(1:nlon_regional,1:nlat_regional,k)=tmp8b3d(:,:,k)
@@ -256,7 +292,7 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
 !
   deallocate(tmp8b3d)
 !
-!  rmse_var='LANDMASK' 0 - water, 1 - land, 2 - ice
+!  rmse_var='SLMSK' 0 - water, 1 - land, 2 - ice
   call fv3grid%get_var("slmsk",nlon,nlat,tmp8b2d)
   landmask(1:nlon_regional,1:nlat_regional)=tmp8b2d
   write(6,*)' max,min LANDMASK=',maxval(landmask),minval(landmask)
@@ -494,26 +530,33 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
           !print *, 'Temperature inside snow is corrected ', i,j, tsnow(i,j),snowc(i,j)
 
     if(landmask(i,j) == 1 ) then  ! on land
+
+        snowc_ice(i,j) = 0. ! on land snowc_ice=0
+        weasdi   (i,j) = 0.
+        snodi    (i,j) = 0.
+
       if(snowiceRR(i,j) < 1.0e-12 .and. snow(i,j) > 0.0 ) then 
       !-- No snow in IMS but there is snow in RRFS
-          write(6,*) 'trim snow',i,j,snow(i,j),snowh(i,j),precip(i,j),surftemp(i,j),snowiceRR(i,j) 
-        if(snow(i,j) > 1.)then 
-        !-- use trimmed snow only when it is > 1 mm
-          numtrimsnow=numtrimsnow+1
-          itr=i
-          jtr=j
+        if(precip(i,j) < 1.0e-12) then   ! no precip
+!          write(6,*) 'trim snow',i,j,snow(i,j),snowh(i,j),precip(i,j),surftemp(i,j),snowiceRR(i,j) 
+          if(snow(i,j) > 1.)then 
+            !-- use trimmed snow only when it is > 1 mm
+            numtrimsnow=numtrimsnow+1
+            itr=i
+            jtr=j
 
-          ! save values of snow to be trimmed
-          snowtr=snow(i,j)
-          snowhtr=snowh(i,j)
-          snowctr=snowc(i,j)
-          snowtrimsum=snowtrimsum+snow(i,j)
-        endif
+            ! save values of snow to be trimmed
+            snowtr=snow(i,j)
+            snowhtr=snowh(i,j)
+            snowctr=snowc(i,j)
+            snowtrimsum=snowtrimsum+snow(i,j)
+          endif
 
           ! trim snow
-          snow(i,j) = 0.0_4
-          snowh(i,j) = 0.0_4
-          snowc(i,j) = 0.0_4
+          snow(i,j)   = 0.0_8
+          snowh(i,j)  = 0.0_8
+          snowc(i,j)  = 0.0_8
+        endif
       endif
 
       !tgs snow building
@@ -521,7 +564,7 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
       ! Snow in IMS, but no snow in RRFS
         if(surftemp(i,j) < 278.0 ) then   
         !-- build only if T < 278K
-           write(6,*) 'build snow at i,j',i,j,'precip,surftemp,snowiceRR',precip(i,j),surftemp(i,j),snowiceRR(i,j)
+!           write(6,*) 'build snow at i,j',i,j,'precip,surftemp,snowiceRR',precip(i,j),surftemp(i,j),snowiceRR(i,j)
 
            snowsum = 0.
            snowhsum = 0.
@@ -543,7 +586,7 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
              if(landmask(ii,jj) == 1) then  ! land
                if(ii.eq.itr.and.jj.eq.jtr) then 
                !-- snow trimmed at the neighbor point
-                 print *,'trimmed snow at ii,jj', ii,jj,itr,jtr
+               !  print *,'trimmed snow at ii,jj', ii,jj,itr,jtr
                  numnb=100
                endif
                if( numnb== 100) exit
@@ -579,18 +622,18 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
              soilt2av=soilt2sum/numnb
              soilt3av=soilt3sum/numnb
              surftempav=surftempsum/numnb
-             write(6,*) 'snow neighbors found, numnb =',numnb, &
-               'snowsum,snowav,snowhav,snowcav,tskinav,tsnowav,soilt1av,soilt2av,soilt3av,surftempav', &
-                snowsum,snowav,snowhav,snowcav,tskinav,tsnowav,soilt1av,soilt2av,soilt3av,surftempav
+!             write(6,*) 'snow neighbors found, numnb =',numnb, &
+!               'snowsum,snowav,snowhav,snowcav,tskinav,tsnowav,soilt1av,soilt2av,soilt3av,surftempav', &
+!                snowsum,snowav,snowhav,snowcav,tskinav,tsnowav,soilt1av,soilt2av,soilt3av,surftempav
            endif
 
            numbuildsnow=numbuildsnow+1
            if(numnb == 100) then ! use point with trimmed snow
              if(snowhtr > 1.e-12) then
                numusetrim=numusetrim+1
-               write(6,*) 'trimmed snow at itr,jtr',itr,jtr,'is used to build snow at point i,j',i,j
-               write(6,*) 'snowtr, snowhtr, snowctr, tskin(itr,jtr), tsnow(itr,jtr)', &
-                           snowtr, snowhtr, snowctr,tskin(itr,jtr),tsnow(itr,jtr)
+!               write(6,*) 'trimmed snow at itr,jtr',itr,jtr,'is used to build snow at point i,j',i,j
+!               write(6,*) 'snowtr, snowhtr, snowctr, tskin(itr,jtr), tsnow(itr,jtr)', &
+!                           snowtr, snowhtr, snowctr,tskin(itr,jtr),tsnow(itr,jtr)
                rhosn=max(58.8,min(500.,snowtr/snowhtr))
                snow(i,j) = max(1.,snowtr) ! not less than 1 mm SWE
                snowh(i,j) = snow(i,j)/rhosn
@@ -619,7 +662,7 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
 
              if(numnb.ge.1) then ! use neighbor's average
                if(snowhav > 1.e-12 .and. snowav > 1.e-12) then
-                 write(6,*)'build snow based on neighbor points ',numnb
+!                 write(6,*)'build snow based on neighbor points ',numnb
                  rhosn=max(58.8,min(500.,snowav/snowhav))
                  snow(i,j) = max(1.,snowav)
                  snowh(i,j) = snow(i,j)/rhosn
@@ -632,8 +675,8 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
                else
                !tgs 22apr15 - this warning is OK in the cold-start run
                !-- This warning in the cycled run indicates a problem.
-                 write(6,*) ' WARNING in snow build from the neighbors average '
-                 write(6,*) 'Set snow to min value - i,j,snowhav,rhosn',i,j,snowhav,rhosn
+!                 write(6,*) ' WARNING in snow build from the neighbors average '
+!                 write(6,*) 'Set snow to min value - i,j,snowhav,rhosn',i,j,snowhav,rhosn
                  numbuildmin=numbuildmin+1
                  snow(i,j) = 1.0
                  snowh(i,j) = 1.0/250. ! rhosn=250.,snowh[m]=snow[mm]/rhosn
@@ -645,7 +688,7 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
                  soiltemp(i,j,3) = min(soiltemp(i,j,3),273.)
                endif
              else ! no neighbors with snow
-               write(6,*) 'set snow to min value - 1mm of SWE'
+!               write(6,*) 'set snow to min value - 1mm of SWE'
                numbuildmin=numbuildmin+1
                snow(i,j) = 1.0  
                snowh(i,j) = 1.0/250. ! rhosn=250.,snowh[mm]=snow[mm]*1.e3/rhosn
@@ -658,21 +701,21 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
              endif
            endif  !  if(numnb == 100) then
            snowbuiltsum=snowbuiltsum+snow(i,j)
-           write(6,*) 'BUILD - snow,snowh,snowc,tskin,tsnow,soiltemp1,soiltemp2,soiltemp3', &
-              i,j,snow(i,j),snowh(i,j),snowc(i,j),tskin(i,j),tsnow(i,j),soiltemp(i,j,1),soiltemp(i,j,2),soiltemp(i,j,3)       
+!           write(6,*) 'BUILD - snow,snowh,snowc,tskin,tsnow,soiltemp1,soiltemp2,soiltemp3', &
+!              i,j,snow(i,j),snowh(i,j),snowc(i,j),tskin(i,j),tsnow(i,j),soiltemp(i,j,1),soiltemp(i,j,2),soiltemp(i,j,3)       
         endif
       endif
-    endif
+    endif ! land
 
 ! limit snow depth not to exceed 5.e4 mm (50 m)
-    if((snowh(i,j) >= 0.0_4 .and. snowh(i,j) <=50.) .and. (snow(i,j)  <=20000. .and. snow(i,j)  >=0.0_4) ) then
-    elseif(snowh(i,j) < 0.0_4 .or. snow(i,j)  < 0.0_4) then
-      snowh(i,j)=0.0_4
-      snow(i,j) = 0.0_4
+    if((snowh(i,j) >= 0.0_8 .and. snowh(i,j) <=50.) .and. (snow(i,j)  <=20000. .and. snow(i,j)  >=0.0_8) ) then
+    elseif(snowh(i,j) < 0.0_8 .or. snow(i,j)  < 0.0_8) then
+      snowh(i,j)=0.0_8
+      snow(i,j) = 0.0_8
     elseif(snowh(i,j) > 50. .or. snow(i,j)  > 20000.) then
-      write(6,*) 'Huge snow value i,j,snowh(i,j),snow(i,j)',i,j,snowh(i,j),snow(i,j)
-      newvalue=0.0_4
-      newvalueh=0.0_4
+!      write(6,*) 'Huge snow value i,j,snowh(i,j),snow(i,j)',i,j,snowh(i,j),snow(i,j)
+      newvalue=0.0_8
+      newvalueh=0.0_8
       num=0
       numh=0
       do jjj=j-1,j+1
@@ -693,21 +736,24 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
         snowh(i,j)=snowh(iii,jjj)
       endif
 
-      write(6,*)'Corrected snow value i,j,snowh(i,j),snow(i,j)',i,j,snowh(i,j),snow(i,j)
+!      write(6,*)'Corrected snow value i,j,snowh(i,j),snow(i,j)',i,j,snowh(i,j),snow(i,j)
     else
       write(6,*) '===>Error<===: strange point i,j,snowh(i,j),snow(i,j)',i,j,snowh(i,j),snow(i,j)
-      snowh(i,j) = 0.0_4
-      snow(i,j)  = 0.0_4
-      snowc(i,j) = 0.0_4
+      snowh(i,j) = 0.0_8
+      snow(i,j)  = 0.0_8
+      snowc(i,j) = 0.0_8
     endif
 ! check consistency of snow variables after snow trim
-    if((snow(i,j) <0.0_4 .and. abs(snow(i,j) ) <1.0e-10 .and. snowh(i,j) > 0.0_4)                   &
-      .or. (snowh(i,j) <0.0_4 .and. abs(snowh(i,j) ) <1.0e-10 .and.snow(i,j) > 0.0_4)) then
-      write(6,*) 'Inconsistency of snow and snowh AFTER snow trim at i,j,snow,snowh', i,j,snow(i,j),snowh(i,j)
-      snow(i,j)  = 0.0_4
-      snowh(i,j) = 0.0_4
-      snowc(i,j) = 0.0_4
-      write(6,*) 'Corrected snow and snowh at i,j,snow,snowh',i,j,snow(i,j),snowh(i,j)
+!    if((snow(i,j) <0.0_8 .and. abs(snow(i,j) ) <1.0e-10 .and. snowh(i,j) > 0.0_8)                   &
+!      .or. (snowh(i,j) <0.0_8 .and. abs(snowh(i,j) ) <1.0e-10 .and.snow(i,j) > 0.0_8)) then
+    if((snow(i,j) <= 0.0_8 .and. snowh(i,j) > 0.0_8)                   &
+      .or. (snowh(i,j) <= 0.0_8 .and.snow(i,j) > 0.0_8)) then
+
+!      write(6,*) 'Inconsistency of snow and snowh AFTER snow trim at i,j,snow,snowh', i,j,snow(i,j),snowh(i,j)
+      snow(i,j)  = 0.0_8
+      snowh(i,j) = 0.0_8
+      snowc(i,j) = 0.0_8
+!      write(6,*) 'Corrected snow and snowh at i,j,snow,snowh',i,j,snow(i,j),snowh(i,j)
     endif 
   ENDDO
   ENDDO
@@ -725,13 +771,36 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
 !
   DO J=1,nlat
   DO I=1,nlon
-    if( landmask(i,j) == 0 .and. snow(i,j) > 0.0_4) then    ! snow on open water
-      snow(i,j) = 0.0_4
-      snowh(i,j) = 0.0_4
-      snowc(i,j) = 0.0_4
+    if( landmask(i,j) == 0 .and. snow(i,j) > 0.0_8) then    ! snow on open water
+      weasd (i,j) = 0.0_8
+      snow(i,j)   = 0.0_8
+      weasdi(i,j) = 0.0_8
+      snwdph(i,j) = 0.0_8
+      snowh(i,j)  = 0.0_8
+      snodi (i,j) = 0.0_8
+      snowc(i,j)  = 0.0_8
+      snowc_ice(i,j) = 0.0_8
     endif
   ENDDO
   ENDDO
+!
+! update combined snow variables
+!
+  DO J=1,nlat
+  DO I=1,nlon
+    if( landmask(i,j) == 2) then    ! snow on ice 
+      snwdph(i,j) = snodi(i,j)
+      weasd(i,j)  = weasdi(i,j)
+      snowc(i,j)  = snowc_ice(i,j)
+    elseif(landmask(i,j) == 1) then ! snow on land
+      snwdph(i,j) = snowh(i,j)
+      weasd(i,j)  = snow(i,j)
+      weasdi(i,j) = 0.0_8
+      snodi (i,j) = 0.0_8
+    endif
+  ENDDO
+  ENDDO
+
 
 !
   deallocate(snowRRbk)
@@ -773,53 +842,89 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
   enddo
   call fv3grid%replace_var("tslb",nlon,nlat,nsig_soil_regional,tmp8b3d)
   deallocate(tmp8b3d)
-! SNCOVR
+! SNCOVR (combined)
   tmp8b2d=snowc(1:nlon_regional,1:nlat_regional)
   do j=1,nlat_regional
      do i =1,nlon_regional
         if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
      enddo
   enddo
-  write(6,*)' max,min snowc=',maxval(tmp8b2d),minval(tmp8b2d)
+  write(6,*)' max,min sncovr=',maxval(tmp8b2d),minval(tmp8b2d)
   call fv3grid%replace_var("sncovr",nlon,nlat,tmp8b2d)
-! 'SNODL'
+! SNCOVR_ice
+  tmp8b2d=snowc_ice(1:nlon_regional,1:nlat_regional)
+  do j=1,nlat_regional
+     do i =1,nlon_regional
+        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+     enddo
+  enddo
+  write(6,*)' max,min sncovr_ice=',maxval(tmp8b2d),minval(tmp8b2d)
+  call fv3grid%replace_var("sncovr_ice",nlon,nlat,tmp8b2d)
+! 'SNODL' on land
   tmp8b2d=snowh(1:nlon_regional,1:nlat_regional)*1.e3 ! convert to [mm]
   do j=1,nlat_regional
      do i =1,nlon_regional
         if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
      enddo
   enddo
-  write(6,*)' max,min snowh=',maxval(tmp8b2d),minval(tmp8b2d)
+  write(6,*)' max,min snodl=',maxval(tmp8b2d),minval(tmp8b2d)
   call fv3grid%replace_var("snodl",nlon,nlat,tmp8b2d)
-! 'SNWDPH'
-  tmp8b2d=snowh(1:nlon_regional,1:nlat_regional)*1.e3 ! convert to [mm]
+! 'SNODI' on ice
+  tmp8b2d=snodi(1:nlon_regional,1:nlat_regional)*1.e3 ! convert to [mm]
   do j=1,nlat_regional
      do i =1,nlon_regional
         if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
      enddo
   enddo
-  write(6,*)' max,min snowh=',maxval(tmp8b2d),minval(tmp8b2d)
+  write(6,*)' max,min snodi=',maxval(tmp8b2d),minval(tmp8b2d)
+  call fv3grid%replace_var("snodi",nlon,nlat,tmp8b2d)
+! 'SNWDPH' combined
+  tmp8b2d=snwdph(1:nlon_regional,1:nlat_regional)*1.e3 ! convert to [mm]
+  do j=1,nlat_regional
+     do i =1,nlon_regional
+        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+     enddo
+  enddo
+  write(6,*)' max,min snowdph=',maxval(tmp8b2d),minval(tmp8b2d)
   call fv3grid%replace_var("snwdph",nlon,nlat,tmp8b2d)
-! 'WEASDL'
+! 'WEASDL' on land
   tmp8b2d=snow(1:nlon_regional,1:nlat_regional)
   do j=1,nlat_regional
      do i =1,nlon_regional
         if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
      enddo
   enddo
-  write(6,*)' max,min snow=',maxval(tmp8b2d),minval(tmp8b2d)
+  write(6,*)' max,min weasdl=',maxval(tmp8b2d),minval(tmp8b2d)
   call fv3grid%replace_var("weasdl",nlon,nlat,tmp8b2d)
+! 'WEASDI' on ice
+  tmp8b2d=weasdi(1:nlon_regional,1:nlat_regional)
+  do j=1,nlat_regional
+     do i =1,nlon_regional
+        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+     enddo
+  enddo
+  write(6,*)' max,min weasdi=',maxval(tmp8b2d),minval(tmp8b2d)
+  call fv3grid%replace_var("weasdi",nlon,nlat,tmp8b2d)
+! 'WEASD' combined
+  tmp8b2d=weasd(1:nlon_regional,1:nlat_regional)
+  do j=1,nlat_regional
+     do i =1,nlon_regional
+        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+     enddo
+  enddo
+  write(6,*)' max,min sheleg=',maxval(tmp8b2d),minval(tmp8b2d)
+  call fv3grid%replace_var("sheleg",nlon,nlat,tmp8b2d)
 ! TSFC
   tmp8b2d=tskin(1:nlon_regional,1:nlat_regional)
-  write(6,*)' max,min tsk=',maxval(tmp8b2d),minval(tmp8b2d)
+  write(6,*)' max,min tsfc=',maxval(tmp8b2d),minval(tmp8b2d)
   call fv3grid%replace_var("tsfc",nlon,nlat,tmp8b2d)
 ! TSFCL
   tmp8b2d=tskin(1:nlon_regional,1:nlat_regional)
-  write(6,*)' max,min tsk=',maxval(tmp8b2d),minval(tmp8b2d)
+  write(6,*)' max,min tsfcl=',maxval(tmp8b2d),minval(tmp8b2d)
   call fv3grid%replace_var("tsfcl",nlon,nlat,tmp8b2d)
 ! TSNOW_LAND
   tmp8b2d=tsnow(1:nlon_regional,1:nlat_regional)
-  write(6,*)' max,min soilt1=',maxval(tmp8b2d),minval(tmp8b2d)
+  write(6,*)' max,min tsnow_land=',maxval(tmp8b2d),minval(tmp8b2d)
   call fv3grid%replace_var("tsnow_land",nlon,nlat,tmp8b2d)
 !
   deallocate(tmp8b2d)
@@ -839,4 +944,4 @@ subroutine update_snowice_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
   deallocate(precip)
   deallocate(surftemp)
 
-end subroutine update_snowice_fv3lam
+end subroutine update_snow_fv3lam

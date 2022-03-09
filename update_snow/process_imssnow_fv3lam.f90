@@ -171,7 +171,7 @@ PROGRAM process_imssnow
 !
 !  trim snow cover field based on NESDIS snow cover data
 !
-           call update_snowice_fv3lam(snowice, xland, nlon,nlat,id,fv3_io_layout_y)
+           call update_snow_fv3lam(snowice, xland, nlon,nlat,id,fv3_io_layout_y)
 !
            deallocate(snowice)
            deallocate(xlandIMS)
