@@ -1,39 +1,26 @@
-file(GLOB src_all nc_readwrt_mod.f90 grib2_read_mod.f90)
-#set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
+list(APPEND src_update_gvf
+  nc_readwrt_mod.f90
+  grib2_read_mod.f90)
 
-include_directories( ${GSIINC} )
+add_executable(update_GVF.exe ${src_update_gvf} update_GVF.f90)
+target_link_libraries(update_GVF.exe PRIVATE ${PROJECT_NAME}::ncio
+                                     PRIVATE NetCDF::NetCDF_Fortran
+                                     PRIVATE g2::g2_4
+                                     PRIVATE g2tmpl::g2tmpl
+                                     PRIVATE w3nco::w3nco_4
+                                     PRIVATE bacio::bacio_4
+                                     PRIVATE MPI::MPI_Fortran)
 
-set(EXE "update_GVF.exe")
-add_executable(${EXE} ${src_all} update_GVF.f90  )
-target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
-                              NetCDF::NetCDF_Fortran
-                              ${GSILIB}
-                              g2::g2_4
-                              g2tmpl::g2tmpl
-                              w3nco::w3nco_4
-                              bacio::bacio_4
-                              MPI::MPI_Fortran )
-
-install(
-  TARGETS ${EXE}
-  EXPORT ${PROJECT_NAME}Exports
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
-
-set(EXE "gen_annual_maxmin_GVF.exe")
-add_executable(${EXE} ${src_all} gen_annual_maxmin_GVF.f90)
-target_link_libraries( ${EXE} NetCDF::NetCDF_Fortran
-                              ${GSILIB}
-                              g2::g2_4
-                              g2tmpl::g2tmpl
-                              w3nco::w3nco_4
-                              bacio::bacio_4
-                              MPI::MPI_Fortran )
+add_executable(gen_annual_maxmin_GVF.exe ${src_update_gvf} gen_annual_maxmin_GVF.f90)
+target_link_libraries(gen_annual_maxmin_GVF.exe PRIVATE NetCDF::NetCDF_Fortran
+                                                PRIVATE g2::g2_4
+                                                PRIVATE g2tmpl::g2tmpl
+                                                PRIVATE w3nco::w3nco_4
+                                                PRIVATE bacio::bacio_4
+                                                PRIVATE MPI::MPI_Fortran)
 
 install(
-  TARGETS ${EXE}
+  TARGETS update_GVF.exe gen_annual_maxmin_GVF.exe
   EXPORT ${PROJECT_NAME}Exports
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

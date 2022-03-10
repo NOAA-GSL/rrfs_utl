@@ -1,5 +1,3 @@
-file(GLOB src_all kinds.f90  module_map_utils.f90  module_ncio.f90  module_time.f90)
-
 set(module_dir "${CMAKE_CURRENT_BINARY_DIR}/include")
 
 add_library(kinds STATIC kinds.f90)

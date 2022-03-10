@@ -1,21 +1,22 @@
-file(GLOB src_all ${CMAKE_CURRENT_SOURCE_DIR}/*90)
+list(APPEND src_metarcld
+  cld_parm_array_module.f90
+  process_metar_cloud.f90
+  read_prepbufr_metarcld.f90
+  reorg_metar_cloud_regular.f90)
 
-include_directories( ${GSIINC} )
-
-set(EXE "process_metarcld.exe")
-add_executable(${EXE} ${src_all} )
-target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
-                              ${PROJECT_NAME}::esggrid_util
-                              ${PROJECT_NAME}::pesglib
-                              NetCDF::NetCDF_Fortran
-                              gsi::gsi
-                              w3emc::w3emc_4
-                              w3nco::w3nco_4
-                              bufr::bufr_4
-                              MPI::MPI_Fortran )
+add_executable(process_metarcld.exe ${src_metarcld})
+target_link_libraries(process_metarcld.exe PRIVATE ${PROJECT_NAME}::ncio
+                                           PRIVATE ${PROJECT_NAME}::esggrid_util
+                                           PRIVATE ${PROJECT_NAME}::pesglib
+                                           PRIVATE NetCDF::NetCDF_Fortran
+                                           PRIVATE gsi::gsi
+                                           PRIVATE w3emc::w3emc_4
+                                           PRIVATE w3nco::w3nco_4
+                                           PRIVATE bufr::bufr_4
+                                           PRIVATE MPI::MPI_Fortran)
 
 install(
-  TARGETS ${EXE}
+  TARGETS process_metarcld.exe
   EXPORT ${PROJECT_NAME}Exports
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

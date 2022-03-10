@@ -1,20 +1,21 @@
-file(GLOB src_all ${CMAKE_CURRENT_SOURCE_DIR}/*90)
+list(APPEND src_larccld
+  netCDFsub.f90
+  process_NASALaRC_cloud.f90
+  read_NASALaRC_cloud.f90
+  write_bufr_NASALaRC.f90)
 
-include_directories( ${GSIINC} )
-
-set(EXE "process_larccld.exe")
-add_executable(${EXE} ${src_all} )
-target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
-                              ${PROJECT_NAME}::esggrid_util
-                              ${PROJECT_NAME}::pesglib
-                              NetCDF::NetCDF_Fortran
-                              gsi::gsi
-                              bufr::bufr_4
-                              MPI::MPI_Fortran
-                              MPI::MPI_C )
+add_executable(process_larccld.exe ${src_larccld})
+target_link_libraries(process_larccld.exe PRIVATE ${PROJECT_NAME}::ncio
+                                          PRIVATE ${PROJECT_NAME}::esggrid_util
+                                          PRIVATE ${PROJECT_NAME}::pesglib
+                                          PRIVATE NetCDF::NetCDF_Fortran
+                                          PRIVATE gsi::gsi
+                                          PRIVATE bufr::bufr_4
+                                          PRIVATE MPI::MPI_Fortran
+                                          PRIVATE MPI::MPI_C)
 
 install(
-  TARGETS ${EXE}
+  TARGETS process_larccld.exe
   EXPORT ${PROJECT_NAME}Exports
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

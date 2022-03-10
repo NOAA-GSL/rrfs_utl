@@ -1,14 +1,44 @@
-file(GLOB src_all ${CMAKE_CURRENT_SOURCE_DIR}/*.f90)
-set(GSDCLOUD_Fortran_FLAGS "-O3 -g -traceback" CACHE INTERNAL "")
-set_source_files_properties( ${src_all} COMPILE_FLAGS ${GSDCLOUD_Fortran_FLAGS})
+list(APPEND src_gsdcloud_arw
+  adaslib.f90
+  ARPS_cldLib.f90
+  BackgroundCld.f90
+  BckgrndCC.f90
+  build_missing_REFcone.f90
+  cloudCover_NESDIS.f90
+  cloudCover_radar.f90
+  cloudCover_Surface.f90
+  cloudLayers.f90
+  cloudLWC.f90
+  cloud_saturation.f90
+  cloudType.f90
+  constants.f90
+  convert_lghtn2ref.f90
+  get_sfm_1d_gnl.f90
+  hydro_mxr_thompson.f90
+  map_ctp.f90
+  map_ctp_lar.f90
+  mthermo.f90
+  pbl_height.f90
+  pcp_mxr_ARPSlib.f90
+  PrecipMxr_radar.f90
+  PrecipType.f90
+  radar_ref2tten.f90
+  read_Lightning_cld.f90
+  read_nasalarc_cld.f90
+  read_NESDIS.f90
+  read_radar_ref.f90
+  read_Surface.f90
+  smooth.f90
+  TempAdjust.f90
+  vinterp_radar_ref.f90)
 
-set(module_dir "${CMAKE_CURRENT_BINARY_DIR}/include")
-add_library( gsdcloud_arw STATIC ${src_all} )
+add_library(gsdcloud_arw STATIC ${src_gsdcloud_arw})
 add_library(${PROJECT_NAME}::gsdcloud_arw ALIAS gsdcloud_arw)
-target_link_libraries( gsdcloud_arw PUBLIC ${PROJECT_NAME}::kinds)
-set_target_properties( gsdcloud_arw PROPERTIES Fortran_MODULE_DIRECTORY "${module_dir}")
-target_include_directories( gsdcloud_arw PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
-                                                $<INSTALL_INTERFACE:include>)
+target_link_libraries(gsdcloud_arw PUBLIC ${PROJECT_NAME}::kinds
+                                   PUBLIC ${PROJECT_NAME}::ncio)
+set_target_properties(gsdcloud_arw PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include)
+target_include_directories(gsdcloud_arw PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+                                               $<INSTALL_INTERFACE:include>)
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include DESTINATION ${CMAKE_INSTALL_PREFIX})
 
 install(

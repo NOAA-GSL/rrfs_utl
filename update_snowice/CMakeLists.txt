@@ -1,25 +1,25 @@
-file(GLOB src_all  grib2_read_snow_mod.f90 module_imssnow.f90 update_snowice_fv3lam.f90 process_imssnow_fv3lam.f90)
+list(APPEND src_update_snowice
+  grib2_read_snow_mod.f90
+  module_imssnow.f90
+  update_snowice_fv3lam.f90
+  process_imssnow_fv3lam.f90)
 
-include_directories( ${GSIINC} )
-
-set(EXE "process_imssnow_fv3lam.exe")
-add_executable(${EXE} ${src_all})
-target_link_libraries( ${EXE} PUBLIC ${PROJECT_NAME}::ncio
-                              PUBLIC NetCDF::NetCDF_Fortran
-                              PUBLIC ${GSILIB}
-                              PUBLIC g2::g2_4
-                              PUBLIC g2tmpl::g2tmpl
-                              PUBLIC bacio::bacio_4
-                              PUBLIC ip::ip_4
-                              PUBLIC sp::sp_4
-                              PUBLIC MPI::MPI_Fortran )
+add_executable(process_imssnow_fv3lam.exe ${src_update_snowice})
+target_link_libraries(process_imssnow_fv3lam.exe PRIVATE ${PROJECT_NAME}::ncio
+                                                 PRIVATE NetCDF::NetCDF_Fortran
+                                                 PRIVATE g2::g2_4
+                                                 PRIVATE g2tmpl::g2tmpl
+                                                 PRIVATE bacio::bacio_4
+                                                 PRIVATE ip::ip_4
+                                                 PRIVATE sp::sp_4
+                                                 PRIVATE MPI::MPI_Fortran)
 
 if(OpenMP_Fortran_FOUND)
-  target_link_libraries( ${EXE} PRIVATE OpenMP::OpenMP_Fortran)
+  target_link_libraries(process_imssnow_fv3lam.exe PRIVATE OpenMP::OpenMP_Fortran)
 endif()
 
 install(
-  TARGETS ${EXE}
+  TARGETS process_imssnow_fv3lam.exe
   EXPORT ${PROJECT_NAME}Exports
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

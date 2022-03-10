@@ -1,16 +1,13 @@
-file(GLOB src_all)
+list(APPEND src_cycle_ice
+  cycle_ice.f90)
 
-include_directories( ${GSIINC} )
-
-set(EXE "cycle_ice.exe")
-add_executable(${EXE} ${src_all} cycle_ice.f90  )
-target_link_libraries( ${EXE} ${PROJECT_NAME}::ncio
-                              NetCDF::NetCDF_Fortran
-                              ${GSILIB}
-                              MPI::MPI_Fortran )
+add_executable(cycle_ice.exe ${src_cycle_ice})
+target_link_libraries(cycle_ice.exe PRIVATE ${PROJECT_NAME}::ncio
+                                    PRIVATE NetCDF::NetCDF_Fortran
+                                    PRIVATE MPI::MPI_Fortran)
 
 install(
-  TARGETS ${EXE}
+  TARGETS cycle_ice.exe
   EXPORT ${PROJECT_NAME}Exports
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

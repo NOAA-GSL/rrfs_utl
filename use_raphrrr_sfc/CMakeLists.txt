@@ -1,20 +1,21 @@
-file(GLOB src_all netCDFsub_geo.f90 module_surface.f90 use_raphrrr_sfc.f90)
+list(APPEND src_use_raphrrr_sfc
+  netCDFsub_geo.f90
+  module_surface.f90
+  use_raphrrr_sfc.f90)
 
-set(EXE "use_raphrrr_sfc.exe")
-add_executable(${EXE} ${src_all})
-target_link_libraries( ${EXE} PUBLIC ${PROJECT_NAME}::ncio
-                              PUBLIC ${PROJECT_NAME}::map_util
-                              PUBLIC ${PROJECT_NAME}::kinds
-                              PUBLIC NetCDF::NetCDF_Fortran
-                              PUBLIC ${GSILIB}
-                              PUBLIC MPI::MPI_Fortran )
+add_executable(use_raphrrr_sfc.exe ${src_use_raphrrr_sfc})
+target_link_libraries(use_raphrrr_sfc.exe PRIVATE ${PROJECT_NAME}::map_util
+                                          PRIVATE ${PROJECT_NAME}::kinds
+                                          PRIVATE ${PROJECT_NAME}::ncio
+                                          PRIVATE NetCDF::NetCDF_Fortran
+                                          PRIVATE MPI::MPI_Fortran)
 
 if(OpenMP_Fortran_FOUND)
-  target_link_libraries( ${EXE} PRIVATE OpenMP::OpenMP_Fortran)
+  target_link_libraries(use_raphrrr_sfc.exe PRIVATE OpenMP::OpenMP_Fortran)
 endif()
 
 install(
-  TARGETS ${EXE}
+  TARGETS use_raphrrr_sfc.exe
   EXPORT ${PROJECT_NAME}Exports
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

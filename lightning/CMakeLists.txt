@@ -1,22 +1,25 @@
-file(GLOB src_all ${CMAKE_CURRENT_SOURCE_DIR}/*90)
+list(APPEND src_lightning
+  Check_Lightning_QC.f90
+  Check_NLDN.f90
+  netCDFsub_lightning.f90
+  process_Lightning.f90
+  read_lightning_bufr.f90
+  write_bufr_lght.f90)
 
-include_directories( ${GSIINC} )
-
-set(EXE process_Lightning.exe)
-ADD_EXECUTABLE(${EXE} process_Lightning.f90 ${src_all} )
-TARGET_LINK_LIBRARIES(${EXE} PUBLIC ${PROJECT_NAME}::ncio
-                             PUBLIC ${PROJECT_NAME}::esggrid_util
-                             PUBLIC ${PROJECT_NAME}::pesglib
-                             PUBLIC NetCDF::NetCDF_Fortran
-                             PUBLIC bufr::bufr_4
-                             PUBLIC w3emc::w3emc_4
-                             PUBLIC w3nco::w3nco_4
-                             PRIVATE gsi::gsi
-                             PUBLIC MPI::MPI_Fortran
-                             PUBLIC MPI::MPI_C )
+add_executable(process_Lightning.exe ${src_lightning})
+target_link_libraries(process_Lightning.exe PRIVATE ${PROJECT_NAME}::ncio
+                                            PRIVATE ${PROJECT_NAME}::esggrid_util
+                                            PRIVATE ${PROJECT_NAME}::pesglib
+                                            PRIVATE NetCDF::NetCDF_Fortran
+                                            PRIVATE bufr::bufr_4
+                                            PRIVATE w3emc::w3emc_4
+                                            PRIVATE w3nco::w3nco_4
+                                            PRIVATE gsi::gsi
+                                            PRIVATE MPI::MPI_Fortran
+                                            PRIVATE MPI::MPI_C)
 
 install(
-  TARGETS ${EXE}
+  TARGETS process_Lightning.exe
   EXPORT ${PROJECT_NAME}Exports
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
