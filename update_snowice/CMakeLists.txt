@@ -6,6 +6,7 @@ list(APPEND src_update_snowice
 
 add_executable(process_imssnow_fv3lam.exe ${src_update_snowice})
 target_link_libraries(process_imssnow_fv3lam.exe PRIVATE ${PROJECT_NAME}::ncio
+                                                 PRIVATE gsi::gsi
                                                  PRIVATE NetCDF::NetCDF_Fortran
                                                  PRIVATE g2::g2_4
                                                  PRIVATE g2tmpl::g2tmpl

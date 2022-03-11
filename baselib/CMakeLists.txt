@@ -1,13 +1,5 @@
 set(module_dir "${CMAKE_CURRENT_BINARY_DIR}/include")
 
-add_library(kinds STATIC kinds.f90)
-add_library(${PROJECT_NAME}::kinds ALIAS kinds)
-set_target_properties(kinds PROPERTIES Fortran_MODULE_DIRECTORY "${module_dir}")
-target_include_directories(kinds PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
-                                        $<INSTALL_INTERFACE:include>)
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include DESTINATION ${CMAKE_INSTALL_PREFIX})
-list(APPEND BASE_LIB_Targets kinds)
-
 add_library(ncio STATIC module_ncio.f90)
 add_library(${PROJECT_NAME}::ncio ALIAS ncio)
 set_target_properties(ncio PROPERTIES Fortran_MODULE_DIRECTORY "${module_dir}")
@@ -16,16 +8,9 @@ target_include_directories(ncio PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include DESTINATION ${CMAKE_INSTALL_PREFIX})
 list(APPEND BASE_LIB_Targets ncio)
 
-add_library (timelib STATIC module_time.f90)
-add_library(${PROJECT_NAME}::timelib ALIAS timelib)
-set_target_properties(timelib PROPERTIES Fortran_MODULE_DIRECTORY "${module_dir}")
-target_include_directories(timelib PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
-                                          $<INSTALL_INTERFACE:include>)
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include DESTINATION ${CMAKE_INSTALL_PREFIX})
-list(APPEND BASE_LIB_Targets timelib)
-
-add_library (map_util STATIC kinds.f90 module_map_utils.f90)
+add_library (map_util STATIC module_map_utils.f90)
 add_library(${PROJECT_NAME}::map_util ALIAS map_util)
+target_link_libraries(map_util PUBLIC gsi::gsi)
 set_target_properties(map_util PROPERTIES Fortran_MODULE_DIRECTORY "${module_dir}")
 target_include_directories(map_util PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
                                            $<INSTALL_INTERFACE:include>)

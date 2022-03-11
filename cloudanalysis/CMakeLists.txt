@@ -10,6 +10,7 @@ list(APPEND src_cloudanalysis
 add_executable(fv3lam_nonvarcldana.exe ${src_cloudanalysis})
 target_link_libraries(fv3lam_nonvarcldana.exe PRIVATE ${PROJECT_NAME}::ncio
                                               PRIVATE ${PROJECT_NAME}::gsdcloud_arw
+                                              PRIVATE gsi::gsi
                                               PRIVATE NetCDF::NetCDF_Fortran
                                               PRIVATE MPI::MPI_Fortran)
 

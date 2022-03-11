@@ -34,8 +34,8 @@ list(APPEND src_gsdcloud_arw
 
 add_library(gsdcloud_arw STATIC ${src_gsdcloud_arw})
 add_library(${PROJECT_NAME}::gsdcloud_arw ALIAS gsdcloud_arw)
-target_link_libraries(gsdcloud_arw PUBLIC ${PROJECT_NAME}::kinds
-                                   PUBLIC ${PROJECT_NAME}::ncio)
+target_link_libraries(gsdcloud_arw PUBLIC ${PROJECT_NAME}::ncio
+                                   PUBLIC gsi::gsi)
 set_target_properties(gsdcloud_arw PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include)
 target_include_directories(gsdcloud_arw PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
                                                $<INSTALL_INTERFACE:include>)
