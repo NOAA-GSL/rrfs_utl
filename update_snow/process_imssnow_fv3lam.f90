@@ -171,7 +171,7 @@ PROGRAM process_imssnow
 !
 !  trim snow cover field based on NESDIS snow cover data
 !
-           call update_snowice_fv3lam(snowice, xland, nlon,nlat,id,fv3_io_layout_y)
+           call update_snow_fv3lam(snowice, xland, nlon,nlat,id,fv3_io_layout_y)
 !
            deallocate(snowice)
            deallocate(xlandIMS)
@@ -179,8 +179,8 @@ PROGRAM process_imssnow
 
         call imssnow%close()
      else
-        write(*,*) 'file is not exist: ',trim(snowfile)
-        write(*,*) 'stop update snow/ice'
+        write(6,*) 'file is not exist: ',trim(snowfile)
+        write(6,*) 'stop update snow/ice'
      endif
 
   endif !mypeLocal <= fv3_io_layout_y
@@ -190,7 +190,7 @@ PROGRAM process_imssnow
 
 !
   call MPI_FINALIZE(ierror)
-  write(*,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
+  write(6,*) "=== RAPHRRR PREPROCCESS SUCCESS ==="
 !
 
 END PROGRAM process_imssnow
