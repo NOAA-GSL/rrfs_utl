@@ -9,7 +9,9 @@ list(APPEND src_adjust_soiltq
 set(EXE "adjust_soiltq.exe")
 add_executable(adjust_soiltq.exe ${src_adjust_soiltq})
 target_link_libraries(adjust_soiltq.exe PRIVATE ${PROJECT_NAME}::ncio
+                                        PRIVATE w3emc::w3emc_4
                                         PRIVATE gsi::gsi
+                                        PRIVATE PRIVATE NetCDF::NetCDF_Fortran
                                         PRIVATE MPI::MPI_Fortran)
 
 if(OpenMP_Fortran_FOUND)
