@@ -282,7 +282,8 @@ module constants
 ! Minimum values for soil adjustment 
   real(r_single),parameter:: soilmoistmin = 0.002_r_single   ! minimum soil
                                                              ! moisture (sand)
-  real(r_kind), parameter :: partialSnowThreshold = 32._r_kind ! mm
+  real(r_kind), parameter :: partialSnowThreshold = 0.99 ! snow cover fraction
+  !real(r_kind), parameter :: partialSnowThreshold = 32._r_kind ! mm
 
 ! Constant used to detect missing input value
   integer(i_kind),parameter:: i_missing=-9999

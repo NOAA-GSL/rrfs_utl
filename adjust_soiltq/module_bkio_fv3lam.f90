@@ -44,14 +44,32 @@ module module_bkio_fv3lam
       integer             :: nlon
       integer             :: nlat
       integer             :: nsoil
+      real(r_kind)        :: p_top
       integer             :: fv3_io_layout_y
       integer,allocatable :: fv3_layout_begin(:)
       integer,allocatable :: fv3_layout_end(:)
+
+! ges_xlon: longitude in degree
+! ges_xlat: latitudde in degree
+! sno     : snow depth (snodl)
+! sncovr  : snow coverage (sncovr)
+! landmask: land mask (0,1,2)
+! ges_p1  : lowest model level Pressure (cp caculcted from delp using 2mb top)
+! ges_t1  : lowest model level T (K: t)
+! ges_q1  : lowest model level Q (kg/kg: specific humidity: from sphum)
+! sumqc   : maximum qi and qc in a column  (kg/kg: mixing ratio?: from liq_wat,ice_wat)
+! qsatg   : lowest model level Q saturation (kg/kg, specific humidity: calculated)
+! ges_tsk    :  surface temperature (K: from tsfcl)
+! ges_soilt1 :  top level soil temperature (K: from tsnow_land)
+! ges_tslb   :  soil temperature (K: from tslb)
+! ges_smois  :  soil moisture (mixing ratio: from smois)
+
 
       real(r_kind),allocatable,dimension(:,:)  :: ges_xlon
       real(r_kind),allocatable,dimension(:,:)  :: ges_xlat
       real(r_kind),allocatable,dimension(:,:)  :: coast_prox
       real(r_kind),allocatable,dimension(:,:)  :: sno
+      real(r_kind),allocatable,dimension(:,:)  :: sncovr
       real(r_kind),allocatable,dimension(:,:)  :: landmask
 
       real(r_kind),dimension(:,:),pointer  :: ges_p1
@@ -61,6 +79,7 @@ module module_bkio_fv3lam
       real(r_kind),allocatable,dimension(:,:)  :: qsatg
 
       real(r_kind),dimension(:,:),pointer  :: ges_tsk   
+      real(r_kind),dimension(:,:),pointer  :: tsk_comp   
       real(r_kind),dimension(:,:),pointer  :: ges_soilt1
       real(r_kind),dimension(:,:,:),pointer:: ges_tslb
       real(r_kind),dimension(:,:,:),pointer:: ges_smois
@@ -134,6 +153,7 @@ contains
     if(allocated(this%ges_xlat)) deallocate(this%ges_xlat)
     if(allocated(this%coast_prox)) deallocate(this%coast_prox)
     if(allocated(this%sno)) deallocate(this%sno)
+    if(allocated(this%sncovr)) deallocate(this%sncovr)
     if(allocated(this%landmask)) deallocate(this%landmask)
 
     if(associated(this%ges_p1)) deallocate(this%ges_p1)
@@ -143,6 +163,7 @@ contains
     if(allocated(this%qsatg)) deallocate(this%qsatg)
 
     if(associated(this%ges_tsk)) deallocate(this%ges_tsk)
+    if(associated(this%tsk_comp)) deallocate(this%tsk_comp)
     if(associated(this%ges_soilt1)) deallocate(this%ges_soilt1)
     if(associated(this%ges_tslb)) deallocate(this%ges_tslb)
     if(associated(this%ges_smois)) deallocate(this%ges_smois)
@@ -193,10 +214,13 @@ contains
 ! 
        allocate(r2d8b(nlon,nlat_local))
        r2d8b(:,:)=this%ges_tsk(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
+       call fv3io%replace_var("tsfcl",nlon,nlat_local,r2d8b)
+
+       r2d8b(:,:)=this%tsk_comp(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
        call fv3io%replace_var("tsfc",nlon,nlat_local,r2d8b)
 
        r2d8b(:,:)=this%ges_soilt1(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
-       call fv3io%replace_var("tsfcl",nlon,nlat_local,r2d8b)
+       call fv3io%replace_var("tsnow_land",nlon,nlat_local,r2d8b)
 
        deallocate(r2d8b)
 
@@ -290,13 +314,25 @@ contains
     real(r_kind),allocatable :: r3d8b(:,:,:)
     real,allocatable :: r3d4b(:,:,:)
     real,allocatable :: r3d4b2(:,:,:)
+    real,allocatable :: r1d4b(:)
 !
 !
 !
     fv3_io_layout_y=this%fv3_io_layout_y   
     nlon=this%nlon
     nlat=this%fv3_layout_end(fv3_io_layout_y)
+!
+! read model top pressure
+    call fv3io%open('./fv_core.res.nc','r',200)
+    call fv3io%get_dim("xaxis_1",nz)
+    allocate(r1d4b(nz))
+    call fv3io%get_var("ak",nz,r1d4b)
+    this%p_top=r1d4b(1)
+    call fv3io%close
+    deallocate(r1d4b)
+    write(6,*) 'model top pressure (pa)=',this%p_top
 
+!
     allocate(this%ges_p1(nlon,nlat))
     allocate(this%ges_t1(nlon,nlat))
     allocate(this%ges_q1(nlon,nlat))
@@ -356,7 +392,7 @@ contains
        allocate(r3d4b(nlon,nlat_local,nz+1))
        allocate(r2d8b(nlon,nlat_local))
        call fv3io%get_var("delp",nlon,nlat_local,nz,r3d4b(:,:,1:nz))
-       r3d4b(:,:,nz+1)=200.0_8  ! eta1_ll(nz+1)
+       r3d4b(:,:,nz+1)=this%p_top
        do k=nz,1,-1
           r3d4b(:,:,k)=r3d4b(:,:,k)+r3d4b(:,:,k+1)
        enddo
@@ -434,6 +470,7 @@ contains
 
     allocate(this%coast_prox(nlon,nlat))
     allocate(this%sno(nlon,nlat))
+    allocate(this%sncovr(nlon,nlat))
     allocate(this%landmask(nlon,nlat))
 
     do id=1,fv3_io_layout_y
@@ -446,7 +483,7 @@ contains
 
        call fv3io%open(trim(thisfv3file),'r',200)
        call fv3io%get_dim("zaxis_1",nz)
-! slmsk
+! slmsk: 0 - water, 1 - land, 2 - ice
        allocate(r2d8b(nlon,nlat_local))
        call fv3io%get_var("slmsk",nlon,nlat_local,r2d8b)
        this%landmask(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
@@ -470,6 +507,7 @@ contains
     write(6,*) 'coast_prox=',maxval(this%coast_prox),minval(this%coast_prox)
 
     allocate(this%ges_tsk(nlon,nlat))
+    allocate(this%tsk_comp(nlon,nlat))
     allocate(this%ges_soilt1(nlon,nlat))
     allocate(this%ges_tslb(nlon,nlat,nz))
     allocate(this%ges_smois(nlon,nlat,nz))
@@ -485,14 +523,25 @@ contains
        call fv3io%open(trim(thisfv3file),'r',200)
 ! 
        allocate(r2d8b(nlon,nlat_local))
-       call fv3io%get_var("tsfc",nlon,nlat_local,r2d8b)
+       call fv3io%get_var("tsfcl",nlon,nlat_local,r2d8b)
+       !-- skin temperature on land
        this%ges_tsk(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
 
-       call fv3io%get_var("tsfcl",nlon,nlat_local,r2d8b)
+       call fv3io%get_var("tsfc",nlon,nlat_local,r2d8b)
+       !-- skin temperature composite
+       this%tsk_comp(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
+
+       call fv3io%get_var("tsnow_land",nlon,nlat_local,r2d8b)
+       !-- snow temperautre on land
        this%ges_soilt1(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
 
-       call fv3io%get_var("snodl",nlon,nlat_local,r2d8b)
-       this%sno(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
+       call fv3io%get_var("snodl",nlon,nlat_local,r2d8b) 
+       !--  snodl is snow depth on land, units [mm], convert to [m]
+       this%sno(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)*1.e-3
+
+       call fv3io%get_var("sncovr",nlon,nlat_local,r2d8b) 
+       !-- snow cover: 0-1
+       this%sncovr(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
 
        deallocate(r2d8b)
 

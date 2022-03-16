@@ -51,6 +51,7 @@ PROGRAM check_process_imssnow
   real(r_kind),allocatable,dimension(:,:,:)  :: ges_tslb
   real(r_kind),allocatable,dimension(:,:)  :: ges_tsk
   real(r_kind),allocatable,dimension(:,:)  :: ges_soilt1
+  real(r_kind),allocatable,dimension(:,:)  :: tsk_comp
   integer :: k
 !
 !**********************************************************************
@@ -105,34 +106,41 @@ PROGRAM check_process_imssnow
      ges_tslb=fv3bk%ges_tslb
      ges_tsk=fv3bk%ges_tsk
      ges_soilt1=fv3bk%ges_soilt1
+     tsk_comp=fv3bk%tsk_comp
 !
      call gsl_update_soil_tq(fv3bk)
 !
      allocate(deltaT(fv3bk%nlon,fv3bk%nlat))
      allocate(delta(fv3bk%nlon,fv3bk%nlat))
-     deltaT=fv3bk%ges_t1-fv3bk%ges_tsk
+     deltaT=fv3bk%ges_tsk - fv3bk%ges_t1  ! surface T minutes 1st level T
      do k=1,fv3bk%nsoil
         delta(:,:)=fv3bk%ges_smois(:,:,k)-ges_smois(:,:,k)
         call unfill_fv3_grid2t_ldmk(delta,fv3bk%nlon,fv3bk%nlat, &
-                                    fv3bk%landmask,fv3bk%sno,deltaT,2)
+                                    fv3bk%landmask,fv3bk%sncovr,deltaT,2)
         fv3bk%ges_smois(:,:,k)=ges_smois(:,:,k)+delta(:,:)
 
         delta(:,:)=fv3bk%ges_tslb(:,:,k)-ges_tslb(:,:,k)
         call unfill_fv3_grid2t_ldmk(delta,fv3bk%nlon,fv3bk%nlat, &
-                                    fv3bk%landmask,fv3bk%sno,deltaT,3)
+                                    fv3bk%landmask,fv3bk%sncovr,deltaT,3)
         fv3bk%ges_tslb(:,:,k)=ges_tslb(:,:,k)+delta(:,:)
      enddo
 
      delta(:,:)=fv3bk%ges_tsk(:,:)-ges_tsk(:,:)
      call unfill_fv3_grid2t_ldmk(delta,fv3bk%nlon,fv3bk%nlat, &
-                                 fv3bk%landmask,fv3bk%sno,deltaT,1)
+                                 fv3bk%landmask,fv3bk%sncovr,deltaT,1)
      fv3bk%ges_tsk(:,:)=ges_tsk(:,:)+delta(:,:)
 
      delta(:,:)=fv3bk%ges_soilt1(:,:)-ges_soilt1(:,:)
      call unfill_fv3_grid2t_ldmk(delta,fv3bk%nlon,fv3bk%nlat, &
-                                 fv3bk%landmask,fv3bk%sno,deltaT,4)
+                                 fv3bk%landmask,fv3bk%sncovr,deltaT,4)
      fv3bk%ges_soilt1(:,:)=ges_soilt1(:,:)+delta(:,:)
 
+     delta(:,:)=fv3bk%tsk_comp(:,:)-tsk_comp(:,:)
+     call unfill_fv3_grid2t_ldmk(delta,fv3bk%nlon,fv3bk%nlat, &
+                                 fv3bk%landmask,fv3bk%sncovr,deltaT,4)
+     fv3bk%tsk_comp(:,:)=tsk_comp(:,:)+delta(:,:)
+
+     deallocate(tsk_comp)
      deallocate(ges_soilt1)
      deallocate(ges_tsk)
      deallocate(ges_tslb)
