@@ -51,6 +51,7 @@ find_package(bufr REQUIRED)
 find_package(wrf_io REQUIRED)
 
 # Other dependencies
+find_package(ncdiag REQUIRED)
 find_package(gsi REQUIRED)
 
 add_subdirectory(baselib/regional_esg_grid.fd)
