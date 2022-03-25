@@ -43,9 +43,8 @@ PROGRAM check_process_imssnow
   namelist/setup/ fv3_io_layout_y
   logical :: ifexist
 !
-  integer, parameter :: numbdy=6
+  integer, parameter :: numbdy=18
   character(len=20) :: bdyvar(numbdy)
-  character(len=20) :: bkvar(numbdy)
   integer :: nn
 !
 !**********************************************************************
@@ -58,17 +57,23 @@ PROGRAM check_process_imssnow
   call MPI_COMM_RANK(mpi_comm_world,mype,ierror)
 
   bdyvar(1)="ps"
-  bdyvar(2)="zh"
+  bdyvar(2)="w"
   bdyvar(3)="t"
   bdyvar(4)="sphum"
-  bdyvar(5)="u"
-  bdyvar(6)="v"
-  bkvar(1)="delp"
-  bkvar(2)="DZ"
-  bkvar(3)="T"
-  bkvar(4)="sphum"
-  bkvar(5)="u"
-  bkvar(6)="v"
+  bdyvar(5)="liq_wat"
+  bdyvar(6)="o3mr"
+  bdyvar(7)="ice_wat"
+  bdyvar(8)="rainwat"
+  bdyvar(9)="snowwat"
+  bdyvar(10)="graupel"
+  bdyvar(11)="ice_aero"
+  bdyvar(12)="ice_aero"
+  bdyvar(13)="ice_aero"
+  bdyvar(14)="liq_aero"
+  bdyvar(15)="u"
+  bdyvar(16)="v"
+  bdyvar(17)="delp"
+  bdyvar(18)="delz"
   
 !
 ! NCEP LSF has to use all cores allocated to run this application 
@@ -95,6 +100,8 @@ PROGRAM check_process_imssnow
 
      call fv3bdy%init('gfs_bndy.tile7.000.nc')
      call fv3bdy%read_bdy_ij()
+
+     call fv3bdy%create_new_bdy('gfs_bndy.tile7.000_gsi.nc')
 
      do nn=1,numbdy
 
@@ -123,8 +130,8 @@ PROGRAM check_process_imssnow
             call fv3bdy%update_bdy("v_s")
 
          else
-            write(6,*) 'update bdy ',trim(bdyvar(nn)),' from ',trim(bkvar(nn))
-            call fv3bk%read_field(trim(bkvar(nn)))
+            write(6,*) 'update bdy ',trim(bdyvar(nn))
+            call fv3bk%read_field(trim(bdyvar(nn)))
             call fv3bdy%read_bdy(trim(bdyvar(nn)))
             call update_bc_4side(fv3bdy,fv3bk,trim(bdyvar(nn)))
             call fv3bdy%update_bdy(trim(bdyvar(nn)))

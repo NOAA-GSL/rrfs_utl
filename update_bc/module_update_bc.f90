@@ -49,6 +49,7 @@ subroutine update_bc_4side(fv3bdy,fv3bk,varname)
   real,allocatable :: r2d4b(:,:)
   real,allocatable :: r2dwind(:,:)
   real :: delta
+  integer :: fill_halo
 !
   nlon=fv3bk%nlon
   nlat=fv3bk%nlat
@@ -68,6 +69,11 @@ subroutine update_bc_4side(fv3bdy,fv3bk,varname)
      nz=1
   endif
 
+  fill_halo=0       ! add delta of the outside restart grid
+  if(trim(varname)=='w') then
+    fill_halo=1     ! use the outside restart grid as value
+  endif
+  
   if(trim(varname) == 'u_w' .or. trim(varname) == 'v_w') then
 !
 ! bottom
@@ -597,26 +603,43 @@ subroutine update_bc_4side(fv3bdy,fv3bk,varname)
               endif
            enddo
         enddo
+! halo update
+        if(fill_halo==1) then
+           do i=is,ie
+              do j=1,js-1
+                 r2d4b(i,j)=r2d4b(i,js)
+              enddo
+           enddo
+           do j=1,nyj
+              do i=1,is-1
+                 r2d4b(i,j)=r2d4b(is,j)
+              enddo
+              do i=ie+1,nxi
+                 r2d4b(i,j)=r2d4b(ie,j)
+              enddo
+           enddo
+        else
 ! get bottom halo update
-        do i=is,ie
-           delta=r2d4b(i,js)-fv3bdy%bdy_bottom(i,js,kk)
-           do j=1,js-1
-              r2d4b(i,j)=r2d4b(i,j)+delta
+           do i=is,ie
+              delta=r2d4b(i,js)-fv3bdy%bdy_bottom(i,js,kk)
+              do j=1,js-1
+                 r2d4b(i,j)=r2d4b(i,j)+delta
+              enddo
            enddo
-        enddo
-!
-        do j=1,nyj
+
+           do j=1,nyj
 ! get left halo update
-           delta=r2d4b(is,j)-fv3bdy%bdy_bottom(is,j,kk)
-           do i=1,is-1
-              r2d4b(i,j)=r2d4b(i,j)+delta
-           enddo
+              delta=r2d4b(is,j)-fv3bdy%bdy_bottom(is,j,kk)
+              do i=1,is-1
+                 r2d4b(i,j)=r2d4b(i,j)+delta
+              enddo
 ! get right halo update
-           delta=r2d4b(ie,j)-fv3bdy%bdy_bottom(ie,j,kk)
-           do i=ie+1,nxi
-              r2d4b(i,j)=r2d4b(i,j)+delta
+              delta=r2d4b(ie,j)-fv3bdy%bdy_bottom(ie,j,kk)
+              do i=ie+1,nxi
+                 r2d4b(i,j)=r2d4b(i,j)+delta
+              enddo
            enddo
-        enddo
+        endif
 !
         fv3bdy%bdy_bottom(:,:,kk)=r2d4b(:,:)
      enddo ! k
@@ -662,26 +685,43 @@ subroutine update_bc_4side(fv3bdy,fv3bk,varname)
               endif
            enddo
         enddo
+! halo update
+        if(fill_halo==1) then
+           do i=is,ie
+              do j=js+1,je
+                 r2d4b(i,j)=r2d4b(i,js)
+              enddo
+           enddo
+           do j=1,nyj
+              do i=1,is-1
+                 r2d4b(i,j)=r2d4b(is,j)
+              enddo
+              do i=ie+1,nxi
+                 r2d4b(i,j)=r2d4b(ie,j)
+              enddo
+           enddo
+        else
 ! get top halo update
-        do i=is,ie
-           delta=r2d4b(i,js)-fv3bdy%bdy_top(i,js,kk)
-           do j=js+1,je
-              r2d4b(i,j)=r2d4b(i,j)+delta
+           do i=is,ie
+              delta=r2d4b(i,js)-fv3bdy%bdy_top(i,js,kk)
+              do j=js+1,je
+                 r2d4b(i,j)=r2d4b(i,j)+delta
+              enddo
            enddo
-        enddo
 !
-        do j=1,nyj
+           do j=1,nyj
 ! get left halo update
-           delta=r2d4b(is,j)-fv3bdy%bdy_top(is,j,kk)
-           do i=1,is-1
-              r2d4b(i,j)=r2d4b(i,j)+delta
-           enddo
+              delta=r2d4b(is,j)-fv3bdy%bdy_top(is,j,kk)
+              do i=1,is-1
+                 r2d4b(i,j)=r2d4b(i,j)+delta
+              enddo
 ! get right halo update
-           delta=r2d4b(ie,j)-fv3bdy%bdy_top(ie,j,kk)
-           do i=ie+1,nxi
-              r2d4b(i,j)=r2d4b(i,j)+delta
+              delta=r2d4b(ie,j)-fv3bdy%bdy_top(ie,j,kk)
+              do i=ie+1,nxi
+                 r2d4b(i,j)=r2d4b(i,j)+delta
+              enddo
            enddo
-        enddo
+        endif
 !
         fv3bdy%bdy_top(:,:,kk)=r2d4b(:,:)
      enddo ! k
@@ -721,13 +761,21 @@ subroutine update_bc_4side(fv3bdy,fv3bk,varname)
            enddo
         enddo
 !
-        do j=1,nyj
-! get left halo update
-           delta=r2d4b(is,j)-fv3bdy%bdy_left(is,j,kk)
-           do i=1,is-1
-              r2d4b(i,j)=r2d4b(i,j)+delta
+        if(fill_halo==1) then
+           do j=1,nyj
+              do i=1,is-1
+                 r2d4b(i,j)=r2d4b(is,j)
+              enddo
            enddo
-        enddo
+        else
+           do j=1,nyj
+! get left halo update
+              delta=r2d4b(is,j)-fv3bdy%bdy_left(is,j,kk)
+              do i=1,is-1
+                 r2d4b(i,j)=r2d4b(i,j)+delta
+              enddo
+           enddo
+        endif
 !
         fv3bdy%bdy_left(:,:,kk)=r2d4b(:,:)
      enddo ! k
@@ -767,13 +815,21 @@ subroutine update_bc_4side(fv3bdy,fv3bk,varname)
            enddo
         enddo
 !
-        do j=1,nyj
-! get right halo update
-           delta=r2d4b(is,j)-fv3bdy%bdy_right(is,j,kk)
-           do i=is+1,ie
-              r2d4b(i,j)=r2d4b(i,j)+delta
+        if(fill_halo==1) then
+           do j=1,nyj
+              do i=is+1,ie
+                 r2d4b(i,j)=r2d4b(is,j)
+              enddo
            enddo
-        enddo
+        else
+           do j=1,nyj
+! get right halo update
+              delta=r2d4b(is,j)-fv3bdy%bdy_right(is,j,kk)
+              do i=is+1,ie
+                 r2d4b(i,j)=r2d4b(i,j)+delta
+              enddo
+           enddo
+        endif
 !
         fv3bdy%bdy_right(:,:,kk)=r2d4b(:,:)
      enddo ! k

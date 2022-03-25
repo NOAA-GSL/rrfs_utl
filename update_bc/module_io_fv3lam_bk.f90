@@ -158,11 +158,11 @@ contains
 
   end subroutine setup_grid
 
-  subroutine read_field(this,varname)
+  subroutine read_field(this,varname_bdy)
 !
     use module_ncio, only: ncio
     implicit none
-    character(len=*),intent(in) :: varname
+    character(len=*),intent(in) :: varname_bdy
     class(io_fv3lam_bk) :: this
     type(ncio) :: fv3io
 !
@@ -176,12 +176,26 @@ contains
 !
     real,parameter :: grav=9.81
     real,parameter :: rgrav=1./grav
+    character(len=20) :: varname
 !
-!
-    if(trim(varname)=='sphum') then
-       thisfv3filebase=trim(this%tracerfile)
+    if(trim(varname_bdy)=='ps') then
+       varname="delp"
+    elseif(trim(varname_bdy)=='w') then
+       varname='W'
+    elseif(trim(varname_bdy)=='t') then
+       varname='T'
+    elseif(trim(varname_bdy)=='delz') then
+       varname='DZ'
     else
+       varname=trim(varname_bdy)
+    endif
+!
+    if(trim(varname)=='u' .or. trim(varname)=='v' .or.   &
+       trim(varname)=='W' .or. trim(varname)=='DZ' .or.  &
+       trim(varname)=='T' .or. trim(varname)=='delp') then
        thisfv3filebase=trim(this%dynfile)
+    else
+       thisfv3filebase=trim(this%tracerfile)
     endif
 !
     fv3_io_layout_y=this%fv3_io_layout_y   
@@ -221,12 +235,12 @@ contains
        endif
        deallocate(r3d4b)
 
-       if(trim(varname)=='DZ') then
-          allocate(r2d4b(nlon,nlat_local))
-          call fv3io%get_var('phis',nlon,nlat_local,r2d4b)
-          this%field2d(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b
-          deallocate(r2d4b)
-       endif
+!       if(trim(varname)=='DZ') then
+!          allocate(r2d4b(nlon,nlat_local))
+!          call fv3io%get_var('phis',nlon,nlat_local,r2d4b)
+!          this%field2d(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b
+!          deallocate(r2d4b)
+!       endif
 
        call fv3io%close
     enddo
@@ -236,25 +250,25 @@ contains
     enddo
 !
 ! get zh if DZ is read in
-    if(trim(varname)=='DZ') then
-       this%field2d=this%field2d*rgrav  ! terrain in meter
-
-       allocate(r3d4b(nlon,nlat,nz))
-       r3d4b=this%field3d
-       if(associated(this%field3d)) deallocate(this%field3d)
-       allocate(this%field3d(nlon,nlat,nz+1))
-       this%field3d(:,:,nz+1)=this%field2d
-       do k=nz,1,-1   
-          this%field3d(:,:,k)=this%field3d(:,:,k+1)-r3d4b(:,:,k)
-       enddo
-       deallocate(r3d4b)
-       do k=1,nz+1   
-          write(6,*) 'zh=',k,maxval(this%field3d(:,:,k)),minval(this%field3d(:,:,k))
-       enddo
-    endif
+!    if(trim(varname)=='DZ') then
+!       this%field2d=this%field2d*rgrav  ! terrain in meter
+!
+!       allocate(r3d4b(nlon,nlat,nz))
+!       r3d4b=this%field3d
+!       if(associated(this%field3d)) deallocate(this%field3d)
+!       allocate(this%field3d(nlon,nlat,nz+1))
+!       this%field3d(:,:,nz+1)=this%field2d
+!       do k=nz,1,-1   
+!          this%field3d(:,:,k)=this%field3d(:,:,k+1)-r3d4b(:,:,k)
+!       enddo
+!       deallocate(r3d4b)
+!       do k=1,nz+1   
+!          write(6,*) 'zh=',k,maxval(this%field3d(:,:,k)),minval(this%field3d(:,:,k))
+!       enddo
+!    endif
 !
 ! get surface pressure if delp is read in
-    if(trim(varname)=='delp') then
+    if(trim(varname)=='ps') then
        if(associated(this%field2d)) deallocate(this%field2d)
        allocate(this%field2d(nlon,nlat))
        this%field2d=this%p_top

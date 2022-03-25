@@ -36,6 +36,7 @@ module module_io_fv3lam_bdy
   type :: io_fv3lam_bdy
 
       character(len=80)   :: bdyfile
+      character(len=80)   :: bdyfile_new
       real(r_single)      :: p_top
 
       integer             :: ndims_bc         !<-- # of dimensions in the BC files
@@ -95,6 +96,7 @@ module module_io_fv3lam_bdy
       procedure :: read_bdy_ij
       procedure :: read_bdy
       procedure :: update_bdy
+      procedure :: create_new_bdy
       procedure :: close
   end type io_fv3lam_bdy
 !
@@ -349,16 +351,22 @@ contains
     allocate(this%bdy_bottom(nxi,nyj,nzk))
     if(allocated(this%bdy_top)) deallocate(this%bdy_top)
     allocate(this%bdy_top(nxi,nyj,nzk))
-    if(nzk==1) then
-       allocate(r2d4b(nxi,nyj))
-       call fv3io%get_var(trim(varname)//"_bottom",nxi,nyj,r2d4b)
-       this%bdy_bottom(:,:,1)=r2d4b
-       call fv3io%get_var(trim(varname)//"_top",nxi,nyj,r2d4b)
-       this%bdy_top(:,:,1)=r2d4b
-       deallocate(r2d4b)
+    
+    if(trim(varname)=='delp' .or. trim(varname)=='delz') then
+       this%bdy_bottom=0.0
+       this%bdy_top=0.0
     else
-       call fv3io%get_var(trim(varname)//"_bottom",nxi,nyj,nzk,this%bdy_bottom)
-       call fv3io%get_var(trim(varname)//"_top",nxi,nyj,nzk,this%bdy_top)
+       if(nzk==1) then
+          allocate(r2d4b(nxi,nyj))
+          call fv3io%get_var(trim(varname)//"_bottom",nxi,nyj,r2d4b)
+          this%bdy_bottom(:,:,1)=r2d4b
+          call fv3io%get_var(trim(varname)//"_top",nxi,nyj,r2d4b)
+          this%bdy_top(:,:,1)=r2d4b
+          deallocate(r2d4b)
+       else
+          call fv3io%get_var(trim(varname)//"_bottom",nxi,nyj,nzk,this%bdy_bottom)
+          call fv3io%get_var(trim(varname)//"_top",nxi,nyj,nzk,this%bdy_top)
+       endif
     endif
 ! right and left
     if(trim(varname(1:1))=='u' .or. trim(varname(1:1))=='v') then
@@ -377,22 +385,28 @@ contains
     allocate(this%bdy_right(nxi,nyj,nzk)) 
     if(allocated(this%bdy_left)) deallocate(this%bdy_left)
     allocate(this%bdy_left(nxi,nyj,nzk))
-    if(nzk==1) then
-       allocate(r2d4b(nxi,nyj))
-       call fv3io%get_var(trim(varname)//"_right",nxi,nyj,r2d4b)
-       this%bdy_right(:,:,1)=r2d4b
-       call fv3io%get_var(trim(varname)//"_left",nxi,nyj,r2d4b)
-       this%bdy_left(:,:,1)=r2d4b
-       deallocate(r2d4b)
+
+    if(trim(varname)=='delp' .or. trim(varname)=='delz') then
+       this%bdy_right=0.0
+       this%bdy_left=0.0
     else
-       call fv3io%get_var(trim(varname)//"_right",nxi,nyj,nzk,this%bdy_right)
-       call fv3io%get_var(trim(varname)//"_left",nxi,nyj,nzk,this%bdy_left)
+       if(nzk==1) then
+          allocate(r2d4b(nxi,nyj))
+          call fv3io%get_var(trim(varname)//"_right",nxi,nyj,r2d4b)
+          this%bdy_right(:,:,1)=r2d4b
+          call fv3io%get_var(trim(varname)//"_left",nxi,nyj,r2d4b)
+          this%bdy_left(:,:,1)=r2d4b
+          deallocate(r2d4b)
+       else
+          call fv3io%get_var(trim(varname)//"_right",nxi,nyj,nzk,this%bdy_right)
+          call fv3io%get_var(trim(varname)//"_left",nxi,nyj,nzk,this%bdy_left)
+       endif
     endif
 !
     call fv3io%close
     write(6,*) 'read boundary =',trim(varname), " bottom, top, right, left "
     do k=1,nzk
-       write(6,'(I10,10f15.6)') k,maxval(this%bdy_bottom(:,:,k)),minval(this%bdy_bottom(:,:,k)), &
+       write(6,'(I10,10e13.5)') k,maxval(this%bdy_bottom(:,:,k)),minval(this%bdy_bottom(:,:,k)), &
               maxval(this%bdy_top(:,:,k)),minval(this%bdy_top(:,:,k)), &
               maxval(this%bdy_right(:,:,k)),minval(this%bdy_right(:,:,k)), &
               maxval(this%bdy_left(:,:,k)),minval(this%bdy_left(:,:,k))
@@ -412,6 +426,7 @@ contains
     integer :: nxi,nyj,nzk
     integer :: i,j,k
     real, allocatable :: r2d4b(:,:)
+    real, allocatable :: r3d4b(:,:,:)
     character(len=80) :: bdyname
 !
 ! figure out vertical dimension
@@ -424,7 +439,7 @@ contains
        nzk=this%dimsize_bc(7)
     endif
 !
-    call fv3io%open(trim(this%bdyfile),'w',0)
+    call fv3io%open(trim(this%bdyfile_new),'w',0)
 !
 ! bottom and top
     if(trim(varname(1:1))=='u' .or. trim(varname(1:1))=='v') then
@@ -439,9 +454,9 @@ contains
        nxi=this%i_top_bottom_size
        nyj=this%j_top_bottom_size
     endif
-    write(6,*) "update boundary =",trim(varname),nxi,nyj
-    write(6,*) "bottom",maxval(this%bdy_bottom),minval(this%bdy_bottom)
-    write(6,*) "top",maxval(this%bdy_top),minval(this%bdy_top)
+    write(6,*) "update boundary =",trim(varname),nxi,nyj,nzk
+    write(6,*) "         bottom =",maxval(this%bdy_bottom),minval(this%bdy_bottom)
+    write(6,*) "         top    =",maxval(this%bdy_top),minval(this%bdy_top)
     if(nzk==1) then
        allocate(r2d4b(nxi,nyj))
        r2d4b=this%bdy_bottom(:,:,1)
@@ -450,8 +465,12 @@ contains
        call fv3io%replace_var(trim(varname)//"_top",nxi,nyj,r2d4b)
        deallocate(r2d4b)
     else
-       call fv3io%replace_var(trim(varname)//"_bottom",nxi,nyj,nzk,this%bdy_bottom)
-       call fv3io%replace_var(trim(varname)//"_top",nxi,nyj,nzk,this%bdy_top)
+       allocate(r3d4b(nxi,nyj,nzk-1))
+       r3d4b(:,:,1:nzk-1)=this%bdy_bottom(:,:,2:nzk)
+       call fv3io%replace_var(trim(varname)//"_bottom",nxi,nyj,nzk-1,r3d4b)
+       r3d4b(:,:,1:nzk-1)=this%bdy_top(:,:,2:nzk)
+       call fv3io%replace_var(trim(varname)//"_top",nxi,nyj,nzk-1,r3d4b)
+       deallocate(r3d4b)
     endif
 ! right and left
     if(trim(varname(1:1))=='u' .or. trim(varname(1:1))=='v') then
@@ -467,8 +486,8 @@ contains
        nyj=this%j_right_left_size
     endif
     write(6,*) "update boundary =",trim(varname),nxi,nyj
-    write(6,*) "right",maxval(this%bdy_right),minval(this%bdy_right)
-    write(6,*) "left",maxval(this%bdy_left),minval(this%bdy_left)
+    write(6,*) "          right =",maxval(this%bdy_right),minval(this%bdy_right)
+    write(6,*) "          left  =",maxval(this%bdy_left),minval(this%bdy_left)
     if(nzk==1) then
        allocate(r2d4b(nxi,nyj))
        r2d4b=this%bdy_right(:,:,1)
@@ -477,12 +496,294 @@ contains
        call fv3io%replace_var(trim(varname)//"_left",nxi,nyj,r2d4b)
        deallocate(r2d4b)
     else
-       call fv3io%replace_var(trim(varname)//"_right",nxi,nyj,nzk,this%bdy_right)
-       call fv3io%replace_var(trim(varname)//"_left",nxi,nyj,nzk,this%bdy_left)
+       allocate(r3d4b(nxi,nyj,nzk-1))
+       r3d4b(:,:,1:nzk-1)=this%bdy_right(:,:,2:nzk)
+       call fv3io%replace_var(trim(varname)//"_right",nxi,nyj,nzk-1,r3d4b)
+       r3d4b(:,:,1:nzk-1)=this%bdy_left(:,:,2:nzk)
+       call fv3io%replace_var(trim(varname)//"_left",nxi,nyj,nzk-1,r3d4b)
+       deallocate(r3d4b)
     endif
 !
     call fv3io%close
 
   end subroutine update_bdy
+
+  subroutine create_new_bdy(this,bdyfile_new)
+!
+!-----------------------------------------------------------------------
+!***  Create a new BC file and prepare its dimensions and variables.
+!***  The number of layers is one less than in the original BC file
+!***  since the top dummy layer is removed.  All fields will be on
+!***  the forecast model layers and not input model layers.
+!-----------------------------------------------------------------------
+!
+    use module_ncio, only: ncio
+    use netcdf
+    implicit none
+
+    character(len=*),intent(in) :: bdyfile_new
+    class(io_fv3lam_bdy) :: this
+!
+    type(ncio) :: fv3io
+!
+!---------------------
+!***  Local variables
+!---------------------
+!
+      integer :: ncid_bc,ncid_bc_new
+
+      integer,allocatable :: dimsize_bc(:)
+      integer,allocatable :: dimid_bc(:)
+
+      integer :: var_id,var_id_new
+      character(len=50) :: name_att,name_var
+      integer :: ndims,nctype,num_vars_bc,natts
+      integer,dimension(1:3) :: dimids=(/0,0,0/)                        &
+                               ,dimids_north=(/0,0,0/)                  &
+                               ,dimids_south=(/0,0,0/)                  &
+                               ,dimids_east =(/0,0,0/)                  &
+                               ,dimids_west =(/0,0,0/)
+      integer :: n,na,var_id_t
+!
+!-----------------------------------------------------------------------
+!***********************************************************************
+!-----------------------------------------------------------------------
+!
+
+      this%bdyfile_new=trim(bdyfile_new)
+
+!-----------------------------------------------------------------------
+!***  Create the new BC file.
+!-----------------------------------------------------------------------
+!
+      call check(nf90_create(bdyfile_new,nf90_clobber,ncid_bc_new))
+!
+!-----------------------------------------------------------------------
+!***  The variables' dimensions.
+!-----------------------------------------------------------------------
+!
+      allocate(dimsize_bc(this%ndims_bc))
+      allocate(dimid_bc(this%ndims_bc))
+      dimsize_bc=this%dimsize_bc
+      dimid_bc=0
+      dimsize_bc(7)=this%dimsize_bc(7)-1
+      dimsize_bc(8)=this%dimsize_bc(8)-1
+!
+!-----------------------------------------------------------------------
+!***  Define the dimensions in the new BC file.
+!-----------------------------------------------------------------------
+!
+      do n=1,this%ndims_bc
+        call check(nf90_def_dim(ncid_bc_new                             &
+                               ,this%dimname_bc(n)                           &
+                               ,dimsize_bc(n)                           &
+                               ,dimid_bc(n)))
+      enddo
+
+      deallocate(dimsize_bc)
+      deallocate(dimid_bc)
+!
+!-----------------------------------------------------------------------
+!***  How many variables are in a normal BC file?  Get that number
+!***  then loop through the variables in a normal BC file and define
+!***  those in the new post-GSI BC file.  The exception is that zh
+!***  will be skipped since it will be replaced by delz.
+!-----------------------------------------------------------------------
+!
+      call check(nf90_open(this%bdyfile,nf90_nowrite,ncid_bc))
+      call check(nf90_inquire(ncid_bc                                   &
+                             ,nvariables=num_vars_bc))                     !<--Total # of vbls in a normal BC file.
+!
+!-----------------------------------------------------------------------
+!***  The new file's variables must be defined while that file is
+!***  in define mode.  Define each variable in the new file using
+!***  those in the original file but exclude zh since instead we
+!***  we will want delz.
+!-----------------------------------------------------------------------
+!
+      var_id_new=0
+
+      do n=1,num_vars_bc
+        var_id=n
+        call check(nf90_inquire_variable(ncid_bc,var_id,name_var,nctype &  !<--Name and type of this variable
+                  ,ndims,dimids,natts))                                    !<--# of dimensions and attributes in this variable
+!
+        if(name_var(1:2)/='zh')then                                        !<--We do not need zh in the new BC file
+          var_id_new=var_id_new+1
+          call check(nf90_def_var(ncid_bc_new                           &
+                                 ,name_var                              &  !<--The variable's name
+                                 ,nctype                                &  !<--The variable's type
+                                 ,dimids(1:ndims)                       &  !<--The IDs of the variable's dimensions
+                                 ,var_id_new))                             !<--The variable's ID
+!
+!-----------------------------------------------------------------------
+!***  Copy each variable's attributes to the new file's variable.
+!-----------------------------------------------------------------------
+!
+          if(natts>0)then
+            do na=1,natts
+              call check(nf90_inq_attname(ncid_bc,var_id,na,name_att))     !<--Get the attribute's name and ID from restart.
+              call check(nf90_copy_att(ncid_bc                          &
+                                      ,var_id                           &
+                                      ,name_att                         &
+                                      ,ncid_bc_new                      &
+                                      ,var_id_new))
+            enddo
+          endif
+        endif
+!
+      enddo
+
+!
+!-----------------------------------------------------------------------
+!***  We want to add delp and delz as variables in the new BC file. 
+!***  In the original regional FV3 the boundary values for delp are 
+!***  computed during the vertical remapping of the input data.  In 
+!***  the DA process the remapping and wind rotation are bypassed so 
+!***  the delp and delz values must be present in the BC file to fill
+!***  the BC arrays in the model.  Use the same dimensions as t.
+!-----------------------------------------------------------------------
+!
+!-----------------------
+!***  Delp on all sides
+!-----------------------
+!
+      call check(nf90_inq_varid(ncid_bc,'t_bottom',var_id_t))
+      call check(nf90_inquire_variable(ncid_bc,var_id_t,dimids=dimids_north))
+!<-- Use T's dimension IDs
+!
+      call check(nf90_def_var(ncid_bc_new                               &
+                             ,'delp_bottom'                             &  !<--Define delp on the domain bottom (north)
+                             ,NF90_FLOAT                                &  !<--The variable's type
+                             ,dimids_north(1:ndims)                     &  !<--The IDs of the variable's dimensions
+                             ,var_id))                                     !<--The variable's ID
+      call check(nf90_put_att(ncid_bc_new,var_id,"long_name","delp bottombndy"))
+      call check(nf90_put_att(ncid_bc_new,var_id,"units","pascals"))
+!
+      call check(nf90_inq_varid(ncid_bc,'t_top',var_id_t))
+      call check(nf90_inquire_variable(ncid_bc,var_id_t,dimids=dimids_south))
+!
+      call check(nf90_def_var(ncid_bc_new                               &
+                             ,'delp_top'                                &  !<--Define delp on the domain top (south)
+                             ,NF90_FLOAT                                &  !<--The variable's type
+                             ,dimids_south(1:ndims)                     &  !<--The IDs of the variable's dimensions
+                             ,var_id))                                     !<--The variable's ID
+      call check(nf90_put_att(ncid_bc_new,var_id,"long_name","delp top bndy"))
+      call check(nf90_put_att(ncid_bc_new,var_id,"units","pascals"))
+!
+      call check(nf90_inq_varid(ncid_bc,'t_left',var_id_t))
+      call check(nf90_inquire_variable(ncid_bc,var_id_t,dimids=dimids_east))
+!
+      call check(nf90_def_var(ncid_bc_new                               &
+                             ,'delp_left'                               &  !<--Define delp on the domain's left (east)
+                             ,NF90_FLOAT                                &  !<--The variable's type
+                             ,dimids_east(1:ndims)                      &  !<--The IDs of the variable's dimensions
+                             ,var_id))                                     !<--The variable's ID
+      call check(nf90_put_att(ncid_bc_new,var_id,"long_name","delp left bndy"))
+      call check(nf90_put_att(ncid_bc_new,var_id,"units","pascals"))
+!
+      call check(nf90_inq_varid(ncid_bc,'t_right',var_id_t))
+      call check(nf90_inquire_variable(ncid_bc,var_id_t,dimids=dimids_west))
+!
+      call check(nf90_def_var(ncid_bc_new                               &
+                             ,'delp_right'                              &  !<--Define delp on the domain's right (west)
+                             ,NF90_FLOAT                                &  !<--The variable's type
+                             ,dimids_west(1:ndims)                      &  !<--The IDs of the variable's dimensions
+                             ,var_id))                                     !<--The variable's ID
+      call check(nf90_put_att(ncid_bc_new,var_id,"long_name","delp right bndy"))
+      call check(nf90_put_att(ncid_bc_new,var_id,"units","pascals"))
+
+!
+!-----------------------
+!***  Delz on all sides
+!-----------------------
+!
+      call check(nf90_def_var(ncid_bc_new                               &
+                             ,'delz_bottom'                             &  !<--Define delz on the domain bottom (north)
+                             ,NF90_FLOAT                                &  !<--The variable's type
+                             ,dimids_north(1:ndims)                     &  !<--The IDs of the variable's dimensions
+                             ,var_id))                                     !<--The variable's ID
+      call check(nf90_put_att(ncid_bc_new,var_id,"long_name","delz bottombndy"))
+      call check(nf90_put_att(ncid_bc_new,var_id,"units","m"))
+!
+      call check(nf90_def_var(ncid_bc_new                               &
+                             ,'delz_top'                                &  !<--Define delz on the domain top (south)
+                             ,NF90_FLOAT                                &  !<--The variable's type
+                             ,dimids_south(1:ndims)                     &  !<--The IDs of the variable's dimensions
+                             ,var_id))                                     !<--The variable's ID
+      call check(nf90_put_att(ncid_bc_new,var_id,"long_name","delz top bndy"))
+      call check(nf90_put_att(ncid_bc_new,var_id,"units","m"))
+!
+      call check(nf90_def_var(ncid_bc_new                               &
+                             ,'delz_left'                               &  !<--Define delz on the domain's left (east)
+                             ,NF90_FLOAT                                &  !<--The variable's type
+                             ,dimids_east(1:ndims)                      &  !<--The IDs of the variable's dimensions
+                             ,var_id))                                     !<--The variable's ID
+      call check(nf90_put_att(ncid_bc_new,var_id,"long_name","delz left bndy"))
+      call check(nf90_put_att(ncid_bc_new,var_id,"units","m"))
+!
+      call check(nf90_def_var(ncid_bc_new                               &
+                             ,'delz_right'                              &  !<--Define delz on the domain's right (west)
+                             ,NF90_FLOAT                                &  !<--The variable's type
+                             ,dimids_west(1:ndims)                      &  !<--The IDs of the variable's dimensions
+                             ,var_id))                                     !<--The variable's ID
+      call check(nf90_put_att(ncid_bc_new,var_id,"long_name","delz right bndy"))
+      call check(nf90_put_att(ncid_bc_new,var_id,"units","m"))
+!
+!-----------------------------------------------------------------------
+!***  We are finished with definitions so put the new BC file
+!***  into data mode.
+!-----------------------------------------------------------------------
+!
+      call check(nf90_enddef(ncid_bc_new))
+      call check(nf90_close(ncid_bc))
+!
+!-----------------------------------------------------------------------
+!
+! fill i and j list
+!
+      
+!
+      call fv3io%open(trim(this%bdyfile_new),'w',0)
+!
+      call fv3io%replace_var("i_bottom",this%i_top_bottom_size,this%i_bottom)
+      call fv3io%replace_var("j_bottom",this%j_top_bottom_size,this%j_bottom)
+      call fv3io%replace_var("i_top",this%i_top_bottom_size,this%i_top)
+      call fv3io%replace_var("j_top",this%j_top_bottom_size,this%j_top)
+      call fv3io%replace_var("i_right",this%i_right_left_size,this%i_right)
+      call fv3io%replace_var("j_right",this%j_right_left_size,this%j_right)
+      call fv3io%replace_var("i_left",this%i_right_left_size,this%i_left)
+      call fv3io%replace_var("j_left",this%j_right_left_size,this%j_left)
+! u/v w
+      call fv3io%replace_var("i_w_bottom",this%iw_top_bottom_size,this%i_w_bottom)
+      call fv3io%replace_var("j_w_bottom",this%jw_top_bottom_size,this%j_w_bottom)
+      call fv3io%replace_var("i_w_top",this%iw_top_bottom_size,this%i_w_top)
+      call fv3io%replace_var("j_w_top",this%jw_top_bottom_size,this%j_w_top)
+      call fv3io%replace_var("i_w_right",this%iw_right_left_size,this%i_w_right)
+      call fv3io%replace_var("j_w_right",this%jw_right_left_size,this%j_w_right)
+      call fv3io%replace_var("i_w_left",this%iw_right_left_size,this%i_w_left)
+      call fv3io%replace_var("j_w_left",this%jw_right_left_size,this%j_w_left)
+! u/v s
+      call fv3io%replace_var("i_s_bottom",this%is_top_bottom_size,this%i_s_bottom)
+      call fv3io%replace_var("j_s_bottom",this%js_top_bottom_size,this%j_s_bottom)
+      call fv3io%replace_var("i_s_top",this%is_top_bottom_size,this%i_s_top)
+      call fv3io%replace_var("j_s_top",this%js_top_bottom_size,this%j_s_top)
+      call fv3io%replace_var("i_s_right",this%is_right_left_size,this%i_s_right)
+      call fv3io%replace_var("j_s_right",this%js_right_left_size,this%j_s_right)
+      call fv3io%replace_var("i_s_left",this%is_right_left_size,this%i_s_left)
+      call fv3io%replace_var("j_s_left",this%js_right_left_size,this%j_s_left)
+      call fv3io%close
+
+  end subroutine create_new_bdy
+
+  subroutine check(status)
+     use netcdf, only: nf90_noerr,nf90_strerror
+     integer, intent ( in) :: status
+
+     if(status /= nf90_noerr) then
+        print *,'ncdf error ', trim(nf90_strerror(status))
+        stop
+     end if
+  end subroutine check
 
 end module module_io_fv3lam_bdy
