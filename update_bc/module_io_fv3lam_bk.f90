@@ -48,12 +48,16 @@ module module_io_fv3lam_bk
       integer,allocatable :: fv3_layout_begin(:)
       integer,allocatable :: fv3_layout_end(:)
 
-      real(r_kind),dimension(:,:),pointer  :: field2d
-      real(r_kind),dimension(:,:,:),pointer  :: field3d
+      real(r_kind),allocatable,dimension(:,:)    :: field2d
+      real(r_kind),allocatable,dimension(:,:,:)  :: field3d
+
+      real(r_kind),allocatable,dimension(:,:) :: grid_lon   ! fv3 cell corner longitude
+      real(r_kind),allocatable,dimension(:,:) :: grid_lat   ! fv3 cell corner latitudes
 
     contains
       procedure :: init
       procedure :: setup_grid
+      procedure :: setup_grid_latlon
       procedure :: read_field
       procedure :: close
   end type io_fv3lam_bk
@@ -98,8 +102,11 @@ contains
     if(allocated(this%fv3_layout_begin)) deallocate(this%fv3_layout_begin)
     if(allocated(this%fv3_layout_end)) deallocate(this%fv3_layout_end)
 
-    if(associated(this%field2d)) deallocate(this%field2d)
-    if(associated(this%field3d)) deallocate(this%field3d)
+    if(allocated(this%field2d)) deallocate(this%field2d)
+    if(allocated(this%field3d)) deallocate(this%field3d)
+
+    if(allocated(this%grid_lon)) deallocate(this%grid_lon)
+    if(allocated(this%grid_lat)) deallocate(this%grid_lat)
 
   end subroutine close
 
@@ -158,6 +165,49 @@ contains
 
   end subroutine setup_grid
 
+  subroutine setup_grid_latlon(this)
+    use module_ncio, only: ncio
+    implicit none
+    class(io_fv3lam_bk) :: this
+    type(ncio) :: fv3grid
+!
+    character(len=80) :: thisfv3file
+    integer :: id
+    integer :: nlon,nlat,nx,ny
+    real,allocatable :: r2d4b(:,:)
+!
+!
+    nx=this%nlon
+    ny=this%nlat
+    if(allocated(this%grid_lon)) deallocate(this%grid_lon)
+    allocate(this%grid_lon(nx+1,ny+1))   ! fv3 cell corner longitude
+    if(allocated(this%grid_lat)) deallocate(this%grid_lat)
+    allocate(this%grid_lat(nx+1,ny+1))   ! fv3 cell corner latitudes
+!
+    do id=1, this%fv3_io_layout_y
+      if(this%fv3_io_layout_y > 1) then
+         write(thisfv3file,'(a,a1,I4.4)') trim(this%gridfile),".",id-1
+      else
+         thisfv3file=trim(this%gridfile)
+      endif
+      write(*,*) trim(thisfv3file)
+      call fv3grid%open(trim(thisfv3file),'r',200)
+      call fv3grid%get_dim("grid_x",nlon)
+      call fv3grid%get_dim("grid_y",nlat)
+      write(6,*) 'grid dimension =',nlon,nlat
+      allocate(r2d4b(nlon,nlat))
+      call fv3grid%get_var("grid_lon",nlon,nlat,r2d4b)
+      this%grid_lon(:,this%fv3_layout_begin(id):this%fv3_layout_end(id)+1)=r2d4b
+      call fv3grid%get_var("grid_lat",nlon,nlat,r2d4b)
+      this%grid_lat(:,this%fv3_layout_begin(id):this%fv3_layout_end(id)+1)=r2d4b
+      deallocate(r2d4b)
+      call fv3grid%close
+   enddo
+   write(6,*) 'read in lon at corner=',maxval(this%grid_lon),minval(this%grid_lon)
+   write(6,*) 'read in lat at corner=',maxval(this%grid_lat),minval(this%grid_lat)
+
+  end subroutine setup_grid_latlon
+
   subroutine read_field(this,varname_bdy)
 !
     use module_ncio, only: ncio
@@ -184,7 +234,7 @@ contains
        varname='W'
     elseif(trim(varname_bdy)=='t') then
        varname='T'
-    elseif(trim(varname_bdy)=='delz') then
+    elseif(trim(varname_bdy)=='delz' .or. trim(varname_bdy)=='zh') then
        varname='DZ'
     else
        varname=trim(varname_bdy)
@@ -209,9 +259,9 @@ contains
        nlon=nlon+1
     endif
 !
-    if(associated(this%field3d)) deallocate(this%field3d)
+    if(allocated(this%field3d)) deallocate(this%field3d)
     allocate(this%field3d(nlon,nlat,nz))
-    if(associated(this%field2d)) deallocate(this%field2d)
+    if(allocated(this%field2d)) deallocate(this%field2d)
     allocate(this%field2d(nlon,nlat))
 
 ! read    
@@ -235,12 +285,12 @@ contains
        endif
        deallocate(r3d4b)
 
-!       if(trim(varname)=='DZ') then
-!          allocate(r2d4b(nlon,nlat_local))
-!          call fv3io%get_var('phis',nlon,nlat_local,r2d4b)
-!          this%field2d(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b
-!          deallocate(r2d4b)
-!       endif
+       if(trim(varname_bdy)=='zh') then
+          allocate(r2d4b(nlon,nlat_local))
+          call fv3io%get_var('phis',nlon,nlat_local,r2d4b)
+          this%field2d(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b
+          deallocate(r2d4b)
+       endif
 
        call fv3io%close
     enddo
@@ -250,26 +300,26 @@ contains
     enddo
 !
 ! get zh if DZ is read in
-!    if(trim(varname)=='DZ') then
-!       this%field2d=this%field2d*rgrav  ! terrain in meter
-!
-!       allocate(r3d4b(nlon,nlat,nz))
-!       r3d4b=this%field3d
-!       if(associated(this%field3d)) deallocate(this%field3d)
-!       allocate(this%field3d(nlon,nlat,nz+1))
-!       this%field3d(:,:,nz+1)=this%field2d
-!       do k=nz,1,-1   
-!          this%field3d(:,:,k)=this%field3d(:,:,k+1)-r3d4b(:,:,k)
-!       enddo
-!       deallocate(r3d4b)
-!       do k=1,nz+1   
-!          write(6,*) 'zh=',k,maxval(this%field3d(:,:,k)),minval(this%field3d(:,:,k))
-!       enddo
-!    endif
-!
+    if(trim(varname_bdy)=='zh') then
+       this%field2d=this%field2d*rgrav  ! terrain in meter
+
+       allocate(r3d4b(nlon,nlat,nz))
+       r3d4b=this%field3d
+       if(allocated(this%field3d)) deallocate(this%field3d)
+       allocate(this%field3d(nlon,nlat,nz+1))
+       this%field3d(:,:,nz+1)=this%field2d
+       do k=nz,1,-1   
+          this%field3d(:,:,k)=this%field3d(:,:,k+1)-r3d4b(:,:,k)
+       enddo
+       deallocate(r3d4b)
+       do k=1,nz+1   
+          write(6,*) 'zh=',k,maxval(this%field3d(:,:,k)),minval(this%field3d(:,:,k))
+       enddo
+    endif
+
 ! get surface pressure if delp is read in
-    if(trim(varname)=='ps') then
-       if(associated(this%field2d)) deallocate(this%field2d)
+    if(trim(varname_bdy)=='ps') then
+       if(allocated(this%field2d)) deallocate(this%field2d)
        allocate(this%field2d(nlon,nlat))
        this%field2d=this%p_top
        do k=1,nz
@@ -277,7 +327,7 @@ contains
        enddo
        write(6,*) 'surface pressure=',maxval(this%field2d),minval(this%field2d)
 
-       if(associated(this%field3d)) deallocate(this%field3d)
+       if(allocated(this%field3d)) deallocate(this%field3d)
        allocate(this%field3d(nlon,nlat,1))
        this%field3d(:,:,1)=this%field2d(:,:)
     endif

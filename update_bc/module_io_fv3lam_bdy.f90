@@ -96,6 +96,7 @@ module module_io_fv3lam_bdy
       procedure :: read_bdy_ij
       procedure :: read_bdy
       procedure :: update_bdy
+      procedure :: update_bdy_gsi
       procedure :: create_new_bdy
       procedure :: close
   end type io_fv3lam_bdy
@@ -439,7 +440,7 @@ contains
        nzk=this%dimsize_bc(7)
     endif
 !
-    call fv3io%open(trim(this%bdyfile_new),'w',0)
+    call fv3io%open(trim(this%bdyfile),'w',0)
 !
 ! bottom and top
     if(trim(varname(1:1))=='u' .or. trim(varname(1:1))=='v') then
@@ -465,11 +466,11 @@ contains
        call fv3io%replace_var(trim(varname)//"_top",nxi,nyj,r2d4b)
        deallocate(r2d4b)
     else
-       allocate(r3d4b(nxi,nyj,nzk-1))
-       r3d4b(:,:,1:nzk-1)=this%bdy_bottom(:,:,2:nzk)
-       call fv3io%replace_var(trim(varname)//"_bottom",nxi,nyj,nzk-1,r3d4b)
-       r3d4b(:,:,1:nzk-1)=this%bdy_top(:,:,2:nzk)
-       call fv3io%replace_var(trim(varname)//"_top",nxi,nyj,nzk-1,r3d4b)
+       allocate(r3d4b(nxi,nyj,nzk))
+       r3d4b(:,:,:)=this%bdy_bottom(:,:,:)
+       call fv3io%replace_var(trim(varname)//"_bottom",nxi,nyj,nzk,r3d4b)
+       r3d4b(:,:,:)=this%bdy_top(:,:,:)
+       call fv3io%replace_var(trim(varname)//"_top",nxi,nyj,nzk,r3d4b)
        deallocate(r3d4b)
     endif
 ! right and left
@@ -496,11 +497,11 @@ contains
        call fv3io%replace_var(trim(varname)//"_left",nxi,nyj,r2d4b)
        deallocate(r2d4b)
     else
-       allocate(r3d4b(nxi,nyj,nzk-1))
-       r3d4b(:,:,1:nzk-1)=this%bdy_right(:,:,2:nzk)
-       call fv3io%replace_var(trim(varname)//"_right",nxi,nyj,nzk-1,r3d4b)
-       r3d4b(:,:,1:nzk-1)=this%bdy_left(:,:,2:nzk)
-       call fv3io%replace_var(trim(varname)//"_left",nxi,nyj,nzk-1,r3d4b)
+       allocate(r3d4b(nxi,nyj,nzk))
+       r3d4b(:,:,:)=this%bdy_right(:,:,:)
+       call fv3io%replace_var(trim(varname)//"_right",nxi,nyj,nzk,r3d4b)
+       r3d4b(:,:,:)=this%bdy_left(:,:,:)
+       call fv3io%replace_var(trim(varname)//"_left",nxi,nyj,nzk,r3d4b)
        deallocate(r3d4b)
     endif
 !
@@ -785,5 +786,99 @@ contains
         stop
      end if
   end subroutine check
+
+  subroutine update_bdy_gsi(this,varname)
+!
+    use module_ncio, only: ncio
+    implicit none
+    character(len=*), intent(in) :: varname
+    class(io_fv3lam_bdy) :: this
+!
+    type(ncio) :: fv3io
+!
+    integer :: nxi,nyj,nzk
+    integer :: i,j,k
+    real, allocatable :: r2d4b(:,:)
+    real, allocatable :: r3d4b(:,:,:)
+    character(len=80) :: bdyname
+!
+! figure out vertical dimension
+!
+    if(trim(varname)=="zh") then
+       nzk=this%dimsize_bc(8)
+    elseif(trim(varname)=="ps") then
+       nzk=1
+    else
+       nzk=this%dimsize_bc(7)
+    endif
+!
+    call fv3io%open(trim(this%bdyfile_new),'w',0)
+!
+! bottom and top
+    if(trim(varname(1:1))=='u' .or. trim(varname(1:1))=='v') then
+       if(trim(varname(3:3)) == "w") then
+          nxi=this%iw_top_bottom_size
+          nyj=this%jw_top_bottom_size
+       else
+          nxi=this%is_top_bottom_size
+          nyj=this%js_top_bottom_size
+       endif
+    else
+       nxi=this%i_top_bottom_size
+       nyj=this%j_top_bottom_size
+    endif
+    write(6,*) "update boundary =",trim(varname),nxi,nyj,nzk
+    write(6,*) "         bottom =",maxval(this%bdy_bottom),minval(this%bdy_bottom)
+    write(6,*) "         top    =",maxval(this%bdy_top),minval(this%bdy_top)
+    if(nzk==1) then
+       allocate(r2d4b(nxi,nyj))
+       r2d4b=this%bdy_bottom(:,:,1)
+       call fv3io%replace_var(trim(varname)//"_bottom",nxi,nyj,r2d4b)
+       r2d4b=this%bdy_top(:,:,1)
+       call fv3io%replace_var(trim(varname)//"_top",nxi,nyj,r2d4b)
+       deallocate(r2d4b)
+    else
+       allocate(r3d4b(nxi,nyj,nzk-1))
+       r3d4b(:,:,1:nzk-1)=this%bdy_bottom(:,:,2:nzk)
+       call fv3io%replace_var(trim(varname)//"_bottom",nxi,nyj,nzk-1,r3d4b)
+       r3d4b(:,:,1:nzk-1)=this%bdy_top(:,:,2:nzk)
+       call fv3io%replace_var(trim(varname)//"_top",nxi,nyj,nzk-1,r3d4b)
+       deallocate(r3d4b)
+    endif
+! right and left
+    if(trim(varname(1:1))=='u' .or. trim(varname(1:1))=='v') then
+       if(trim(varname(3:3)) == "w") then
+          nxi=this%iw_right_left_size
+          nyj=this%jw_right_left_size
+       else
+          nxi=this%is_right_left_size
+          nyj=this%js_right_left_size
+       endif
+    else
+       nxi=this%i_right_left_size
+       nyj=this%j_right_left_size
+    endif
+    write(6,*) "update boundary =",trim(varname),nxi,nyj
+    write(6,*) "          right =",maxval(this%bdy_right),minval(this%bdy_right)
+    write(6,*) "          left  =",maxval(this%bdy_left),minval(this%bdy_left)
+    if(nzk==1) then
+       allocate(r2d4b(nxi,nyj))
+       r2d4b=this%bdy_right(:,:,1)
+       call fv3io%replace_var(trim(varname)//"_right",nxi,nyj,r2d4b)
+       r2d4b=this%bdy_left(:,:,1)
+       call fv3io%replace_var(trim(varname)//"_left",nxi,nyj,r2d4b)
+       deallocate(r2d4b)
+    else
+       allocate(r3d4b(nxi,nyj,nzk-1))
+       r3d4b(:,:,1:nzk-1)=this%bdy_right(:,:,2:nzk)
+       call fv3io%replace_var(trim(varname)//"_right",nxi,nyj,nzk-1,r3d4b)
+       r3d4b(:,:,1:nzk-1)=this%bdy_left(:,:,2:nzk)
+       call fv3io%replace_var(trim(varname)//"_left",nxi,nyj,nzk-1,r3d4b)
+       deallocate(r3d4b)
+    endif
+!
+    call fv3io%close
+
+  end subroutine update_bdy_gsi
 
 end module module_io_fv3lam_bdy
