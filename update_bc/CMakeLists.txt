@@ -1,13 +1,22 @@
-cmake_minimum_required(VERSION 2.8)
+list(APPEND src_update_bc
+  update_bc.f90
+  module_update_bc.f90
+  module_io_fv3lam_bdy.f90
+  module_io_fv3lam_bk.f90
+  mod_fv3lam_wind.f90)
 
-file(GLOB src_all module_update_bc.f90 module_io_fv3lam_bdy.f90 module_io_fv3lam_bk.f90 mod_fv3lam_wind.f90)
-set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
+add_executable(update_bc.exe ${src_update_bc})
+target_link_libraries(update_bc.exe PRIVATE ${PROJECT_NAME}::ncio
+                                    PRIVATE gsi::gsi
+                                    PRIVATE MPI::MPI_Fortran)
 
-#include_directories( ${GSIINC} ${NETCDFINC} )
-include_directories( ${NETCDFINC} )
+if(OpenMP_Fortran_FOUND)
+  target_link_libraries(update_bc.exe PRIVATE OpenMP::OpenMP_Fortran)
+endif()
 
-set(EXE "update_bc.exe")
-add_executable(${EXE} update_bc.f90 ${src_all})
-set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-target_link_libraries( ${EXE} ${LIBBASE} ${NETCDFLIB} ${LIBW3NCO} ${LIBPNG} ${LIBJASPER} ${LIBZ} ${MPILIB} ${LIBBACIO} ${LIBIOMP5})
+install(
+  TARGETS update_bc.exe
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
