@@ -86,6 +86,7 @@ subroutine gsl_update_soil_tq(fv3bk)
   real(r_kind),dimension(:,:,:),pointer :: ges_smois =>NULL()
   real(r_kind),dimension(:,:  ),pointer :: ges_q     =>NULL()
   real(r_kind),dimension(:,:  ),pointer :: ges_tsen  =>NULL()
+  real(r_kind),dimension(:,:  ),pointer :: tsk_comp  =>NULL()
 
   
 !*******************************************************************************
@@ -143,6 +144,7 @@ subroutine gsl_update_soil_tq(fv3bk)
         ges_tslb=>fv3bk%ges_tslb
         ges_q=>fv3bk%ges_q1
         ges_tsen=>fv3bk%ges_t1
+        tsk_comp=>fv3bk%tsk_comp
 
         do j=1,nlat
            do i=1,nlon
@@ -165,47 +167,49 @@ subroutine gsl_update_soil_tq(fv3bk)
               if(nsig_soil == 9) then
 ! - top level soil temp
                  ges_tslb(i,j,1) = ges_tslb(i,j,1) +   &
-                                 min(1._r_kind,max(dts_min,tincf*0.6_r_kind)) 
+                                 min(3._r_kind,max(dts_min,tincf*0.6_r_kind)) 
 ! - 0-1 cm level -  soil temp
                  ges_tslb(i,j,2) = ges_tslb(i,j,2) +   &
-                                 min(1._r_kind,max(dts_min,tincf*0.55_r_kind))
+                                 min(3._r_kind,max(dts_min,tincf*0.55_r_kind))
 ! - 1-4 cm level -  soil temp
                  ges_tslb(i,j,3) = ges_tslb(i,j,3) +   &
-                                 min(1._r_kind,max(dts_min,tincf*0.4_r_kind))
+                                 min(3._r_kind,max(dts_min,tincf*0.4_r_kind))
 ! - 4-10 cm level -  soil temp
                  ges_tslb(i,j,4) = ges_tslb(i,j,4) +   &
-                                 min(1._r_kind,max(dts_min,tincf*0.3_r_kind))
+                                 min(3._r_kind,max(dts_min,tincf*0.3_r_kind))
 ! - 10-30 cm level -  soil temp
                  ges_tslb(i,j,5) = ges_tslb(i,j,5) +   &
-                                 min(1._r_kind,max(dts_min,tincf*0.2_r_kind))
+                                 min(3._r_kind,max(dts_min,tincf*0.2_r_kind))
               else
 ! - top level soil temp
                  ges_tslb(i,j,1) = ges_tslb(i,j,1) +   &
-                                 min(1._r_kind,max(dts_min,tincf*0.6_r_kind))
+                                 min(3._r_kind,max(dts_min,tincf*0.6_r_kind))
 ! - 0-5 cm level -  soil temp
                  ges_tslb(i,j,2) = ges_tslb(i,j,2) +   &
-                                 min(1._r_kind,max(dts_min,tincf*0.4_r_kind))
+                                 min(3._r_kind,max(dts_min,tincf*0.4_r_kind))
 ! - 5-20 cm level -  soil temp
                  ges_tslb(i,j,3) = ges_tslb(i,j,3) +   &
-                                 min(1._r_kind,max(dts_min,tincf*0.2_r_kind))
+                                 min(3._r_kind,max(dts_min,tincf*0.2_r_kind))
               endif
-              if (fv3bk%sno(i,j) < partialSnowThreshold) THEN
-! partialSnowThreshold (32 mm) is the threshold for partial snow.
+              if (fv3bk%sncovr(i,j) < partialSnowThreshold) THEN
 ! When grid cell is partially covered with snow or snow-free - always update TSK and SOILT1
-                 ges_tsk(i,j)    = ges_tsk(i,j)    + min(1._r_kind,max(dts_min,tincf*0.6_r_kind))
-                 ges_soilt1(i,j) = ges_soilt1(i,j) + min(1._r_kind,max(dts_min,tincf*0.6_r_kind))
+                 ges_tsk(i,j)    = ges_tsk(i,j)    + min(3._r_kind,max(dts_min,tincf*0.6_r_kind))
+                 ges_soilt1(i,j) = ges_soilt1(i,j) + min(3._r_kind,max(dts_min,tincf*0.6_r_kind))
+                 tsk_comp(i,j)   = tsk_comp(i,j)   + min(3._r_kind,max(dts_min,tincf*0.6_r_kind))
               else  
 ! grid cell is fully covered with snow
                  if(tincf < zero) then
 ! always adjust TSK and SOILT1 when tincf < 0 - cooling
-                    ges_tsk(i,j)    = ges_tsk(i,j)    + min(1._r_kind,max(-2._r_kind,tincf*0.6_r_kind))
-                    ges_soilt1(i,j) = ges_soilt1(i,j) + min(1._r_kind,max(-2._r_kind,tincf*0.6_r_kind))
+                    ges_tsk(i,j)    = ges_tsk(i,j)    + min(3._r_kind,max(-2._r_kind,tincf*0.6_r_kind))
+                    ges_soilt1(i,j) = ges_soilt1(i,j) + min(3._r_kind,max(-2._r_kind,tincf*0.6_r_kind))
+                    tsk_comp(i,j)   = tsk_comp(i,j)   + min(3._r_kind,max(-2._r_kind,tincf*0.6_r_kind))
                  else
 ! if ticnf > 0 - warming, then adjust snow TSK and SOILT1 only if TSK < t0c (273 K).
 ! If TSK > t0c(273 K) most likely due to melting process, then leave TSK and SOILT1 unchanged.
                     if(ges_tsk(i,j) < t0c ) then
-                       ges_tsk(i,j)    = min(t0c,ges_tsk(i,j)    + min(1._r_kind,max(-2._r_kind,tincf*0.6_r_kind)))
-                       ges_soilt1(i,j) = min(t0c,ges_soilt1(i,j) + min(1._r_kind,max(-2._r_kind,tincf*0.6_r_kind)))
+                       ges_tsk(i,j)    = min(t0c,ges_tsk(i,j)    + min(3._r_kind,max(-2._r_kind,tincf*0.6_r_kind)))
+                       ges_soilt1(i,j) = min(t0c,ges_soilt1(i,j) + min(3._r_kind,max(-2._r_kind,tincf*0.6_r_kind)))
+                       tsk_comp(i,j)   = min(t0c,tsk_comp(i,j)   + min(3._r_kind,max(-2._r_kind,tincf*0.6_r_kind)))
                     endif ! tsk < 273 K
                  endif ! tincf < 0.
 
@@ -259,8 +263,7 @@ subroutine gsl_update_soil_tq(fv3bk)
               if (csza(i,j) > 0.3_r_kind) then
                  sumqc=0 !fv3bk%sumqc(i,j)
                  if( sumqc < 1.0e-6_r_kind) then
-                 if( fv3bk%sno(i,j) < snowthreshold ) then  ! don't do the 
-                                                         ! moisture adjustment if there is snow     
+                 if( fv3bk%sno(i,j) < snowthreshold ) then  ! don't do the moisture adjustment if there is snow     
 
                     if (tinct < -0.15_r_kind) then
 

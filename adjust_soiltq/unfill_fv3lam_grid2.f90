@@ -1,5 +1,5 @@
-subroutine unfill_fv3_grid2t_ldmk(b,nx,ny,landmask, &
-                                  snow,deltaT,i_snowt_check)
+subroutine unfill_fv3_grid2t_ldmk(b,nx,ny,landmask,           &
+                                  sncovr,deltaT,i_snowt_check)
 !$$$  subprogram documentation block
 !                .      .    .                                       .
 ! subprogram:    unfill_mass_grid2t        opposite of fill_mass_grid2
@@ -19,7 +19,7 @@ subroutine unfill_fv3_grid2t_ldmk(b,nx,ny,landmask, &
 !     deltaT   - delta T between atmosphere and tsk/tslb(1)
 !     i_snowT_check - input option for snow Temperature adjustment
 !                     =0: input gin is not temperature
-!                     =1: tsk make sure surface temperature onver snow is below 0C
+!                     =1: tsk make sure surface temperature over snow is below 0C
 !                     =2: input gin is soil mositure, don't adjust over seaice
 !                     =3: soil temperature
 !                     =4: soilt1
@@ -41,7 +41,7 @@ subroutine unfill_fv3_grid2t_ldmk(b,nx,ny,landmask, &
   integer(i_kind), intent(in   ) :: i_snowt_check
   real(r_kind) , intent(inout) :: b(nx,ny)
   real(r_kind) , intent(in)    :: landmask(nx,ny)
-  real(r_kind) , intent(in)    :: snow(nx,ny)
+  real(r_kind) , intent(in)    :: sncovr(nx,ny)
   real(r_kind) , intent(in)    :: deltaT(nx,ny)
   
   integer(i_kind) i,j
@@ -50,17 +50,13 @@ subroutine unfill_fv3_grid2t_ldmk(b,nx,ny,landmask, &
   DTsTmax = 20.0_r_kind                             ! maximum allowed difference between Ts and T 1st level
 
 ! only add analysis increment over land
-!  if(maxval(landmask) > 1.01_r_single .or. minval(landmask) < -0.01_r_single .or. &
-!     maxval(seaice)   > 1.01_r_single .or. minval(seaice)   < -0.01_r_single) then
-  if(maxval(landmask) > 2.01_r_kind .or. minval(landmask) < -0.01_r_kind) then
-     write(*,*) 'bad landmask or seaice, do not use landmask filter soil nudging field'
-  else
+!tgs--- Landmask in UFS: 0 - water, 1 - land, 2 - ice
      do j=1,ny
         do i=1,nx
-           if(landmask(i,j) < 0.1_r_kind)  b(i,j)=0.0_r_kind 
-           if(i_snowT_check==2 .and. landmask(i,j) > 1.5_r_kind)  b(i,j)=0.0_r_kind 
-!  don't change soil T (TSBL) under thick snow (> partialSnowThreshold=32 mm)
-           if(i_snowT_check==3 .and. (snow(i,j) > partialSnowThreshold)) b(i,j)=0.0_r_kind
+           if(abs(landmask(i,j)) < 1.0e-10_r_kind)  b(i,j)=0.0_r_kind ! water
+           if(i_snowT_check==2 .and. abs(landmask(i,j)-2.0_r_kind)< 1.0e-10_r_kind)  b(i,j)=0.0_r_kind ! ice
+!  don't change soil T (TSBL) under thick snow on land: snow cover > 0.99
+           if(i_snowT_check==3 .and. ( abs(landmask(i,j)-1.0_r_kind)<1.0e-10_r_kind .and. sncovr(i,j) > partialSnowThreshold)) b(i,j)=0.0_r_kind
 ! Limit application of soil temp nudging in fine grid as follows:
 !  - If cooling is indicated, apply locally only
 !        if deltaT = Tskin - T(k=1) > -20K. for TSK and SOILT1  
@@ -81,6 +77,5 @@ subroutine unfill_fv3_grid2t_ldmk(b,nx,ny,landmask, &
            endif
         end do
      end do
-  endif
   
 end subroutine unfill_fv3_grid2t_ldmk
