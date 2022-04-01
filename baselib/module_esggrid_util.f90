@@ -128,6 +128,10 @@ contains
 !
 ! abstract:
 !
+!  got those number for RRFS_CONUS_3km_LAMDA from:
+!       fix_lam/C3359_grid.tile7.halo3.nc
+!       npx = 1821 - 1
+!       npy = 1093 -1
 ! program history log:
 !
 !   input argument list:
@@ -152,6 +156,17 @@ contains
        this%ly=233
        this%if_initial=.true.
     elseif(trim(grid_type)=="RRFS_CONUS_3km") then
+       this%pdlat = 38.5_dp
+       this%pdlon = -97.5_dp
+       this%pdazi = 0.0_dp
+       this%delx = 0.0133825613577039_dp*dtor
+       this%dely = 0.0134509050622285_dp*dtor
+       this%a = 0.115900534961547_dp
+       this%k = -0.347018880991516_dp
+       this%lx=1820
+       this%ly=1092
+       this%if_initial=.true.
+    elseif(trim(grid_type)=="RRFS_CONUS_3km_HRRRIC") then
        this%pdlat = 38.5_dp
        this%pdlon = -97.5_dp
        this%pdazi = 0.0_dp
