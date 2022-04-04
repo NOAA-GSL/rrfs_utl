@@ -139,9 +139,9 @@ contains
           read(10,'(a)',err=200,end=400) filenameall(n)
        enddo
 300    write(6,*) 'read_grib2 open filelist_mrms failed ',mypelocal
-       stop(555)
+       stop 555
 200    write(6,*) 'read_grib2 read msmr file failed ',n,mypelocal
-       stop(555)
+       stop 555
 400    nlevel=n-1
        close(10)
 
