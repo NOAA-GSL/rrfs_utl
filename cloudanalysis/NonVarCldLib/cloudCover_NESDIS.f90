@@ -457,8 +457,8 @@ SUBROUTINE cloudCover_NESDIS(mype,regional_time,nlat,nlon,nsig,&
      do i=1,nlon
         if (sat_ctp(i,j)< 1010._r_kind .and. sat_ctp(i,j)>50._r_kind) then
           ibuddy = 0
-          do j1=j-1,j+1
-            do i1=i-1,i+1
+          do j1=max(j-1,1),min(j+1,nlat)
+            do i1=max(i-1,1),min(i+1,nlon)
               if (sat_ctp(i1,j1)<1010._r_kind .and. sat_ctp(i1,j1)>50._r_kind)  ibuddy = 1
             end do
           end do
@@ -472,8 +472,8 @@ SUBROUTINE cloudCover_NESDIS(mype,regional_time,nlat,nlon,nsig,&
         end if
         if (sat_ctp(i,j)>1010._r_kind .and. sat_ctp(i,j) <1100._r_kind) then
             ibuddy = 0
-            do j1=j-1,j+1
-              do i1=i-1,i+1
+            do j1=max(j-1,1),min(j+1,nlat)
+              do i1=max(i-1,1),min(i+1,nlon)
                 if (sat_ctp(i1,j1) > 1010._r_kind .and. sat_ctp(i1,j1) <1100._r_kind) ibuddy = 1
               end do
             end do
