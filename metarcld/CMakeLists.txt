@@ -1,12 +1,23 @@
-cmake_minimum_required(VERSION 2.8)
+list(APPEND src_metarcld
+  cld_parm_array_module.f90
+  process_metar_cloud.f90
+  read_prepbufr_metarcld.f90
+  reorg_metar_cloud_regular.f90)
 
-file(GLOB src_all ${CMAKE_CURRENT_SOURCE_DIR}/*90)
-set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
+add_executable(process_metarcld.exe ${src_metarcld})
+target_link_libraries(process_metarcld.exe PRIVATE ${PROJECT_NAME}::ncio
+                                           PRIVATE ${PROJECT_NAME}::esggrid_util
+                                           PRIVATE ${PROJECT_NAME}::pesglib
+                                           PRIVATE NetCDF::NetCDF_Fortran
+                                           PRIVATE gsi::gsi
+                                           PRIVATE w3emc::w3emc_4
+                                           PRIVATE w3nco::w3nco_4
+                                           PRIVATE bufr::bufr_4
+                                           PRIVATE MPI::MPI_Fortran)
 
-include_directories( ${GSIINC} ${NETCDFINC} )
-
-set(EXE "process_metarcld.exe")
-add_executable(${EXE} ${src_all} )
-target_link_libraries( ${EXE} ${LIBBASE} ${wrflib} ${wrfframe} ${NETCDFLIB} ${LIBZ} ${GSILIB} ${LIBW3EMC} ${LIBW3NCO} ${LIBBACIO} ${LIBBUFR} ${MPILIB} )
-install(TARGETS ${EXE}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(
+  TARGETS process_metarcld.exe
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

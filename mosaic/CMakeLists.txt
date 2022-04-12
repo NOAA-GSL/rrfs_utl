@@ -1,23 +1,56 @@
-cmake_minimum_required(VERSION 2.8)
+list(APPEND src_nssl_mosaic
+  module_read_NSSL_mosaic.f90
+  netCDFsub.f90
+  netCDFsub_geo.f90
+  process_NSSL_mosaic.f90
+  read_ncep_binary.f90
+  read_nssl_binary.f90
+  write_bufr_ref.f90
+  read_grib2_mod.f90)
 
-file(GLOB src_all  module_read_NSSL_mosaic.f90 netCDFsub.f90 netCDFsub_geo.f90 process_NSSL_mosaic.f90 read_ncep_binary.f90 read_nssl_binary.f90 write_bufr_ref.f90 read_grib2_mod.f90)
-file(GLOB src_all_enkf  DART.f90 netCDFsub.f90 netCDFsub_geo.f90 read_ncep_binary.f90 read_nssl_binary.f90 write_bufr_ref.f90 read_grib2_mod.f90 write_netcdf_ref.f90)
-set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
+#list(APPEND src_nssl_mosaic_enkf
+#  DART.f90
+#  netCDFsub.f90
+#  netCDFsub_geo.f90
+#  process_NSSL_mosaic_to_dart_and_netcdf.f90
+#  read_grib2_mod.f90
+#  read_ncep_binary.f90
+#  read_nssl_binary.f90
+#  write_bufr_ref.f90
+#  write_netcdf_ref.f90)
 
-include_directories( ${GSIINC} ${NETCDFINC} ${G2INC} )
+add_executable(process_NSSL_mosaic.exe ${src_nssl_mosaic})
+target_link_libraries(process_NSSL_mosaic.exe PRIVATE ${PROJECT_NAME}::ncio
+                                              PRIVATE NetCDF::NetCDF_Fortran
+                                              PRIVATE gsi::gsi
+                                              PRIVATE g2::g2_4
+                                              PRIVATE g2tmpl::g2tmpl
+                                              PRIVATE bufr::bufr_4
+                                              PRIVATE bacio::bacio_4
+                                              PRIVATE MPI::MPI_Fortran)
 
-set(EXE "process_NSSL_mosaic.exe")
-add_executable(${EXE} ${src_all})
-set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-target_link_libraries( ${EXE} ${LIBBASE} ${NETCDFLIB} ${wrflib} ${GSILIB} ${LIBCRTM} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${MPILIB} ${LIBBUFR} ${LIBBACIO} ${LIBSP} ${LIBIOMP5} )
-install(TARGETS ${EXE}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+if(OpenMP_Fortran_FOUND)
+  target_link_libraries(process_NSSL_mosaic.exe PRIVATE OpenMP::OpenMP_Fortran)
+endif()
 
-#set(EXE "process_NSSL_mosaic_enkf.exe")
-#add_executable(${EXE} ${src_all_enkf} process_NSSL_mosaic_to_dart_and_netcdf.f90)
-#set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-#set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-#target_link_libraries( ${EXE} ${NETCDFLIB} ${wrflib} ${GSILIB} ${LIBCRTM} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${MPILIB} ${LIBBUFR} ${LIBBACIO} ${LIBSP} ${LIBIOMP5} )
-#install(TARGETS ${EXE}
+install(
+  TARGETS process_NSSL_mosaic.exe
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+#add_executable(process_NSSL_mosaic_enkf.exe ${src_nssl_mosaic_enkf})
+#target_link_libraries(process_NSSL_mosaic_enkf.exe PRIVATE NetCDF::NetCDF_Fortran
+#                                                   PRIVATE g2::g2_4
+#                                                   PRIVATE g2tmpl::g2tmpl
+#                                                   PRIVATE bufr::bufr_4
+#                                                   PRIVATE bacio::bacio_4
+#                                                   PRIVATE MPI::MPI_Fortran)
+#
+#if(OpenMP_Fortran_FOUND)
+#  target_link_libraries(process_NSSL_mosaic_enkf.exe PRIVATE OpenMP::OpenMP_Fortran)
+#endif()
+#
+#install(TARGETS process_NSSL_mosaic_enkf.exe
 #        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

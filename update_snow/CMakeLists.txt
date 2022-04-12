@@ -1,18 +1,42 @@
-cmake_minimum_required(VERSION 2.8)
+list(APPEND src_update_snow
+  grib2_read_snow_mod.f90
+  module_imssnow.f90
+  update_snow_fv3lam.f90
+  process_imssnow_fv3lam.f90)
 
-file(GLOB src_all  grib2_read_snow_mod.f90 module_imssnow.f90 update_snow_fv3lam.f90 process_imssnow_fv3lam.f90)
-set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
+add_executable(process_imssnow_fv3lam.exe ${src_update_snow})
+target_link_libraries(process_imssnow_fv3lam.exe PRIVATE ${PROJECT_NAME}::ncio
+                                                 PRIVATE gsi::gsi
+                                                 PRIVATE NetCDF::NetCDF_Fortran
+                                                 PRIVATE g2::g2_4
+                                                 PRIVATE g2tmpl::g2tmpl
+                                                 PRIVATE bacio::bacio_4
+                                                 PRIVATE ip::ip_4
+                                                 PRIVATE sp::sp_4
+                                                 PRIVATE MPI::MPI_Fortran)
 
-include_directories( ${GSIINC} ${IPINC} ${G2INC} ${NETCDFINC} )
+if(OpenMP_Fortran_FOUND)
+  target_link_libraries(process_imssnow_fv3lam.exe PRIVATE OpenMP::OpenMP_Fortran)
+endif()
 
-set(EXE "process_imssnow_fv3lam.exe")
-add_executable(${EXE} ${src_all})
-set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-target_link_libraries( ${EXE} ${LIBBASE} ${LIBIP} ${NETCDFLIB} ${GSILIB} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBPNG} ${LIBJASPER} ${LIBZ} ${MPILIB} ${LIBBACIO} ${LIBSP} ${LIBIOMP5})
+add_executable(check_imssnow_fv3lam.exe check_imssnow_fv3lam.f90)
+target_link_libraries(check_imssnow_fv3lam.exe PRIVATE ${PROJECT_NAME}::ncio
+                                               PRIVATE gsi::gsi
+                                               PRIVATE NetCDF::NetCDF_Fortran
+                                               PRIVATE g2::g2_4
+                                               PRIVATE g2tmpl::g2tmpl
+                                               PRIVATE bacio::bacio_4
+                                               PRIVATE ip::ip_4
+                                               PRIVATE sp::sp_4
+                                               PRIVATE MPI::MPI_Fortran)
 
-set(EXE "check_imssnow_fv3lam.exe")
-add_executable(${EXE} check_imssnow_fv3lam.f90)
-set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-target_link_libraries( ${EXE} ${LIBBASE} ${LIBIP} ${NETCDFLIB} ${GSILIB} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBPNG} ${LIBJASPER} ${LIBZ} ${MPILIB} ${LIBBACIO} ${LIBSP} ${LIBIOMP5})
+if(OpenMP_Fortran_FOUND)
+  target_link_libraries(check_imssnow_fv3lam.exe PRIVATE OpenMP::OpenMP_Fortran)
+endif()
+
+install(
+  TARGETS process_imssnow_fv3lam.exe check_imssnow_fv3lam.exe
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

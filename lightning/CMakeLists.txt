@@ -1,12 +1,26 @@
-cmake_minimum_required(VERSION 2.8)
-file(GLOB src_all ${CMAKE_CURRENT_SOURCE_DIR}/*90)
-set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-file(GLOB src_c ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
-set_source_files_properties(${src_c} PROPERTIES COMPILE_FLAGS ${C_FLAGS})
+list(APPEND src_lightning
+  Check_Lightning_QC.f90
+  Check_NLDN.f90
+  netCDFsub_lightning.f90
+  process_Lightning.f90
+  read_lightning_bufr.f90
+  write_bufr_lght.f90)
 
-include_directories( ${GSIINC} ${NETCDFINC} )
+add_executable(process_Lightning.exe ${src_lightning})
+target_link_libraries(process_Lightning.exe PRIVATE ${PROJECT_NAME}::ncio
+                                            PRIVATE ${PROJECT_NAME}::esggrid_util
+                                            PRIVATE ${PROJECT_NAME}::pesglib
+                                            PRIVATE NetCDF::NetCDF_Fortran
+                                            PRIVATE bufr::bufr_4
+                                            PRIVATE w3emc::w3emc_4
+                                            PRIVATE w3nco::w3nco_4
+                                            PRIVATE gsi::gsi
+                                            PRIVATE MPI::MPI_Fortran
+                                            PRIVATE MPI::MPI_C)
 
-ADD_EXECUTABLE(process_Lightning.exe process_Lightning.f90 ${src_c} ${src_all} )
-TARGET_LINK_LIBRARIES(process_Lightning.exe  ${LIBBASE} ${NETCDFLIB} ${LIBZ} ${LIBBUFR} ${LIBW3EMC} ${LIBW3NCO} ${LIBBACIO} ${MPILIB} ${CONSTANTS})
-install(TARGETS process_Lightning.exe
-        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(
+  TARGETS process_Lightning.exe
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

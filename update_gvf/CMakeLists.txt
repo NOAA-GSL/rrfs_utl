@@ -1,15 +1,27 @@
-cmake_minimum_required(VERSION 2.8)
+list(APPEND src_update_gvf
+  nc_readwrt_mod.f90
+  grib2_read_mod.f90)
 
-file(GLOB src_all nc_readwrt_mod.f90 grib2_read_mod.f90)
-#set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
+add_executable(update_GVF.exe ${src_update_gvf} update_GVF.f90)
+target_link_libraries(update_GVF.exe PRIVATE ${PROJECT_NAME}::ncio
+                                     PRIVATE NetCDF::NetCDF_Fortran
+                                     PRIVATE g2::g2_4
+                                     PRIVATE g2tmpl::g2tmpl
+                                     PRIVATE w3nco::w3nco_4
+                                     PRIVATE bacio::bacio_4
+                                     PRIVATE MPI::MPI_Fortran)
 
-include_directories( ${GSIINC} ${NETCDFINC} ${G2INC} )
+add_executable(gen_annual_maxmin_GVF.exe ${src_update_gvf} gen_annual_maxmin_GVF.f90)
+target_link_libraries(gen_annual_maxmin_GVF.exe PRIVATE NetCDF::NetCDF_Fortran
+                                                PRIVATE g2::g2_4
+                                                PRIVATE g2tmpl::g2tmpl
+                                                PRIVATE w3nco::w3nco_4
+                                                PRIVATE bacio::bacio_4
+                                                PRIVATE MPI::MPI_Fortran)
 
-set(EXE "update_GVF.exe")
-add_executable(${EXE} ${src_all} update_GVF.f90  )
-target_link_libraries( ${EXE} ${LIBBASE} ${wrflibio} ${NETCDFLIB} ${GSILIB} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${MPILIB} ${LIBBACIO} ${LIBIOMP5})
-
-
-set(EXE "gen_annual_maxmin_GVF.exe")
-add_executable(${EXE} ${src_all} gen_annual_maxmin_GVF.f90)
-target_link_libraries( ${EXE} ${LIBBASE} ${wrflibio} ${NETCDFLIB} ${GSILIB} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${MPILIB} ${LIBBACIO} ${LIBIOMP5})
+install(
+  TARGETS update_GVF.exe gen_annual_maxmin_GVF.exe
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

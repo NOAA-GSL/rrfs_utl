@@ -5,7 +5,7 @@
 !
 module module_surface
 
-  use kinds, only: r_kind,r_single,i_kind,i_byte,i_byte2
+  use kinds, only: r_kind,r_single,i_kind,i_byte,i_short
   implicit none
 
   public :: use_surface
@@ -21,10 +21,10 @@ module module_surface
       integer :: halo
       integer :: nlat,nlon,nlev
       integer :: nlat_target,nlon_target
-      integer(i_byte2), allocatable :: index_x(:,:)
-      integer(i_byte2), allocatable :: index_y(:,:)
-      integer(i_byte2), allocatable :: index_x_nomatch(:,:)
-      integer(i_byte2), allocatable :: index_y_nomatch(:,:)
+      integer(i_short), allocatable :: index_x(:,:)
+      integer(i_short), allocatable :: index_y(:,:)
+      integer(i_short), allocatable :: index_x_nomatch(:,:)
+      integer(i_short), allocatable :: index_y_nomatch(:,:)
     contains
       procedure :: init
       procedure :: build_mapindex

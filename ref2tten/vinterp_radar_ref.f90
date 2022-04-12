@@ -100,7 +100,7 @@ SUBROUTINE vinterp_radar_ref(nlon,nlat,nsig,Nmsclvl,ref_mos_3d,ref_mosaic31,h_bk
   else
       write(6,*) 'interp_radar_ref: Wrong vertical radar mosaic levels'
       write(6,*) ' the level read in is:', msclvlAll
-      stop(114)
+      stop 114
   endif
   
   DO k2=1,nsig

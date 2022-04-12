@@ -1,10 +1,14 @@
-cmake_minimum_required(VERSION 2.8)
+list(APPEND src_update_ice
+  update_ice.f90)
 
-file(GLOB src_all)
-#set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS_bigEndian} )
+add_executable(update_ice.exe ${src_update_ice})
+target_link_libraries(update_ice.exe PRIVATE ${PROJECT_NAME}::ncio
+                                     PRIVATE NetCDF::NetCDF_Fortran
+                                     PRIVATE MPI::MPI_Fortran)
 
-include_directories( ${GSIINC} ${NETCDFINC} ${G2INC} )
-
-set(EXE "update_ice.exe")
-add_executable(${EXE} ${src_all} update_ice.f90  )
-target_link_libraries( ${EXE} ${LIBBASE} ${wrflibio} ${NETCDFLIB} ${GSILIB} ${LIBW3NCO} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${MPILIB} ${LIBBACIO} ${LIBIOMP5})
+install(
+  TARGETS update_ice.exe
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

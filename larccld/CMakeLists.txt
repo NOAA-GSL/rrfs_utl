@@ -1,15 +1,22 @@
-cmake_minimum_required(VERSION 2.8)
+list(APPEND src_larccld
+  netCDFsub.f90
+  process_NASALaRC_cloud.f90
+  read_NASALaRC_cloud.f90
+  write_bufr_NASALaRC.f90)
 
-file(GLOB src_all ${CMAKE_CURRENT_SOURCE_DIR}/*90)
-set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-file(GLOB src_c ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
-set_source_files_properties(${src_c} PROPERTIES COMPILE_FLAGS ${C_FLAGS})
+add_executable(process_larccld.exe ${src_larccld})
+target_link_libraries(process_larccld.exe PRIVATE ${PROJECT_NAME}::ncio
+                                          PRIVATE ${PROJECT_NAME}::esggrid_util
+                                          PRIVATE ${PROJECT_NAME}::pesglib
+                                          PRIVATE NetCDF::NetCDF_Fortran
+                                          PRIVATE gsi::gsi
+                                          PRIVATE bufr::bufr_4
+                                          PRIVATE MPI::MPI_Fortran
+                                          PRIVATE MPI::MPI_C)
 
-include_directories( ${GSIINC} ${NETCDFINC} )
-
-set(EXE "process_larccld.exe")
-add_executable(${EXE} ${src_c} ${src_all} )
-#set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-target_link_libraries( ${EXE} ${LIBBASE} ${wrflib} ${wrfframe} ${NETCDFLIB} ${LIBZ} ${GSILIB} ${LIBW3EMC_UPP} ${LIBW3NCO_UPP} ${LIBBACIO} ${LIBBUFR} ${MPILIB} )
-install(TARGETS ${EXE}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(
+  TARGETS process_larccld.exe
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

@@ -1,14 +1,29 @@
-cmake_minimum_required(VERSION 2.8)
+list(APPEND src_update_sst
+  grib2_read_mod.f90
+  module_gsi_rfv3io_sst.f90
+  netCDFsub_geo.f90
+  process_SST.f90
+  sstGlobal2RR.f90
+  update_SST_netcdf_fv3.f90
+  update_SST_netcdf_mass.f90)
 
-### file(GLOB src_all grib2_read_mod.f90 netCDFsub_geo.f90  process_SST.f90  sstGlobal2RR.f90  update_SST_netcdf_mass.f90 update_SST_netcdf_fv3.f90)
-file(GLOB src_all ${CMAKE_CURRENT_SOURCE_DIR}/*.f90)
-set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
+add_executable(process_updatesst.exe ${src_update_sst})
+target_link_libraries(process_updatesst.exe PRIVATE wrf_io::wrf_io
+                                            PRIVATE NetCDF::NetCDF_Fortran
+                                            PRIVATE gsi::gsi
+                                            PRIVATE g2::g2_4
+                                            PRIVATE g2tmpl::g2tmpl
+                                            PRIVATE w3nco::w3nco_4
+                                            PRIVATE bacio::bacio_4
+                                            PRIVATE MPI::MPI_Fortran)
 
-include_directories( ${GSIINC} ${G2INC} ${NETCDFINC} )
+if(OpenMP_Fortran_FOUND)
+  target_link_libraries(process_updatesst.exe PRIVATE OpenMP::OpenMP_Fortran)
+endif()
 
-set(EXE "process_updatesst")
-add_executable(${EXE} ${src_all})
-set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-target_link_libraries( ${EXE} ${wrflibio} ${NETCDFLIB} ${GSILIB} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${MPILIB} ${LIBBACIO} ${LIBIOMP5})
-
+install(
+  TARGETS process_updatesst.exe
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

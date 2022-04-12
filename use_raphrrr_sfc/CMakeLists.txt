@@ -1,13 +1,22 @@
-cmake_minimum_required(VERSION 2.8)
+list(APPEND src_use_raphrrr_sfc
+  netCDFsub_geo.f90
+  module_surface.f90
+  use_raphrrr_sfc.f90)
 
-file(GLOB src_all netCDFsub_geo.f90 module_surface.f90 use_raphrrr_sfc.f90)
-set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
+add_executable(use_raphrrr_sfc.exe ${src_use_raphrrr_sfc})
+target_link_libraries(use_raphrrr_sfc.exe PRIVATE ${PROJECT_NAME}::map_util
+                                          PRIVATE gsi::gsi
+                                          PRIVATE ${PROJECT_NAME}::ncio
+                                          PRIVATE NetCDF::NetCDF_Fortran
+                                          PRIVATE MPI::MPI_Fortran)
 
-include_directories( ${GSIINC} ${NETCDFINC} )
+if(OpenMP_Fortran_FOUND)
+  target_link_libraries(use_raphrrr_sfc.exe PRIVATE OpenMP::OpenMP_Fortran)
+endif()
 
-set(EXE "use_raphrrr_sfc.exe")
-add_executable(${EXE} ${src_all})
-set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-target_link_libraries( ${EXE} ${LIBBASE} ${wrflibio} ${NETCDFLIB} ${GSILIB} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBZ} ${LIBPNG} ${LIBJASPER} ${MPILIB} ${LIBBACIO} ${LIBIOMP5})
-
+install(
+  TARGETS use_raphrrr_sfc.exe
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

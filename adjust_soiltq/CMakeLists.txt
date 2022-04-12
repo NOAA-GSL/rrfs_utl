@@ -1,12 +1,26 @@
-cmake_minimum_required(VERSION 2.8)
-
-file(GLOB src_all unfill_fv3lam_grid2.f90 gsl_adjust_soiltq_mod.f90 module_bkio_fv3lam.f90 genqsat.f90 constants.f90)
-set_source_files_properties( ${src_all} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-
-include_directories( ${GSIINC} ${NETCDFINC} )
+list(APPEND src_adjust_soiltq
+  adjust_soiltq.f90
+  unfill_fv3lam_grid2.f90
+  gsl_adjust_soiltq_mod.f90
+  module_bkio_fv3lam.f90
+  genqsat.f90
+  constants.f90)
 
 set(EXE "adjust_soiltq.exe")
-add_executable(${EXE} adjust_soiltq.f90 ${src_all})
-set_target_properties( ${EXE} PROPERTIES COMPILE_FLAGS ${Fortran_FLAGS} )
-set_target_properties( ${EXE} PROPERTIES LINK_FLAGS ${Fortran_LINK_FLAGS} )
-target_link_libraries( ${EXE} ${LIBBASE} ${LIBIP} ${NETCDFLIB} ${GSILIB} ${LIBG2} ${LIBG2TMPL} ${LIBW3NCO} ${LIBPNG} ${LIBJASPER} ${LIBZ} ${MPILIB} ${LIBBACIO} ${LIBSP} ${LIBIOMP5})
+add_executable(adjust_soiltq.exe ${src_adjust_soiltq})
+target_link_libraries(adjust_soiltq.exe PRIVATE ${PROJECT_NAME}::ncio
+                                        PRIVATE w3emc::w3emc_4
+                                        PRIVATE gsi::gsi
+                                        PRIVATE PRIVATE NetCDF::NetCDF_Fortran
+                                        PRIVATE MPI::MPI_Fortran)
+
+if(OpenMP_Fortran_FOUND)
+  target_link_libraries(adjust_soiltq.exe PRIVATE OpenMP::OpenMP_Fortran)
+endif()
+
+install(
+  TARGETS adjust_soiltq.exe
+  EXPORT ${PROJECT_NAME}Exports
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
