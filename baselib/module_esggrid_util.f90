@@ -155,7 +155,7 @@ contains
        this%lx=397
        this%ly=233
        this%if_initial=.true.
-    elseif(trim(grid_type)=="RRFS_CONUS_3km") then
+    elseif(trim(grid_type)=="RRFS_CONUS_3km") then  ! C3359
        this%pdlat = 38.5_dp
        this%pdlon = -97.5_dp
        this%pdazi = 0.0_dp
@@ -166,7 +166,7 @@ contains
        this%lx=1820
        this%ly=1092
        this%if_initial=.true.
-    elseif(trim(grid_type)=="RRFS_CONUS_3km_HRRRIC") then
+    elseif(trim(grid_type)=="RRFS_CONUS_3km_HRRRIC") then  ! C3357
        this%pdlat = 38.5_dp
        this%pdlon = -97.5_dp
        this%pdazi = 0.0_dp
@@ -176,6 +176,39 @@ contains
        this%k = -0.351476690016963_dp
        this%lx=1748
        this%ly=1038
+       this%if_initial=.true.
+    elseif(trim(grid_type)=="RRFS_NA_3km") then   ! C3445
+       this%pdlat = 51.5_dp
+       this%pdlon = -107.5_dp
+       this%pdazi = -13.0_dp
+       this%delx = 0.0130413394458445_dp*dtor
+       this%dely = 0.0132752131905342_dp*dtor
+       this%a = 0.180916572389619_dp
+       this%k = -0.270255226950727_dp
+       this%lx=3652
+       this%ly=2532
+       this%if_initial=.true.
+    elseif(trim(grid_type)=="RRFS_NA_3km_C3463") then   ! C3463
+       this%pdlat = 55._dp
+       this%pdlon = -112.5_dp
+       this%pdazi = 0.0_dp
+       this%delx = 0.0129656309291837_dp*dtor
+       this%dely = 0.0132456552576884_dp*dtor
+       this%a = 0.183131392268429_dp
+       this%k = -0.265835885178773_dp
+       this%lx=3962
+       this%ly=2712
+       this%if_initial=.true.
+    elseif(trim(grid_type)=="GSD_RAP13km") then   ! C819
+       this%pdlat = 54._dp
+       this%pdlon = -106._dp
+       this%pdazi = 0.0_dp
+       this%delx = 0.0557591837118385_dp*dtor
+       this%dely = 0.0557591837118385_dp*dtor
+       this%a = 0.246960654824879_dp
+       this%k = -0.198757475637993_dp
+       this%lx=972
+       this%ly=972
        this%if_initial=.true.
     else
        write(*,*) 'ERROR: esggrid_util, unknow grid type ', trim(grid_type)
