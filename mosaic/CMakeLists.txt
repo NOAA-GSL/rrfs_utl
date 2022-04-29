@@ -6,7 +6,8 @@ list(APPEND src_nssl_mosaic
   read_ncep_binary.f90
   read_nssl_binary.f90
   write_bufr_ref.f90
-  read_grib2_mod.f90)
+  read_grib2_mod.f90
+  write_netcdf_ref.f90)
 
 #list(APPEND src_nssl_mosaic_enkf
 #  DART.f90

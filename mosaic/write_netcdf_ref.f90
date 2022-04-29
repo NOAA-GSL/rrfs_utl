@@ -1,8 +1,8 @@
-Subroutine write_netcdf_nsslref( nlvls,nlons,nlats,ref0,idate,xlon,ylat,msclev )
+Subroutine write_netcdf_nsslref( FILE_NAME,nlvls,nlons,nlats,ref0,idate,xlon,ylat,msclev )
   use netcdf
   implicit none
 
-  character (len = *), parameter :: FILE_NAME = "Gridded_ref.nc"
+  character*256 FILE_NAME
   integer :: ncid
 
   integer, parameter             :: NDIMS=3
