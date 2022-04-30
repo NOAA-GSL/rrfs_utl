@@ -66,10 +66,51 @@ program process_NSSL_mosaic
   namelist/setup/ tversion,analysis_time,dataPath,fv3_io_layout_y
   integer(i_kind)  ::  idate
 !
+!  namelist and other variables for netcdf output
+!
+!  output_netcdf             logical controlling whether netcdf output file should be created
+!  max_height                maximum height (m MSL) for data to be retained
+!  use_clear_air_type        logical controlling whether to output clear-air (non-precipitation) reflectivity obs
+!  precip_dbz_thresh         threshold (dBZ) for minimum reflectivity that is considered precipitation
+!  clear_air_dbz_thresh      threshold (dBZ) for maximum reflectivity that is considered clear air
+!  clear_air_dbz_value       value (dBZ) assigned to clear-air reflectivity obs
+!  precip_dbz_horiz_skip     horizontal thinning factor for reflectivity data in precipitation
+!  precip_dbz_vert_skip      vertical thinning factor for reflectivity data in precipitation
+!  clear_air_dbz_horiz_skip  horizontal thinning factor for clear air reflectivity data
+!  clear_air_dbz_vert_skip   vertical thinning factor for clear air reflectivity data
+!
+  logical :: output_netcdf = .false.
+  real :: max_height = 20000.0
+  logical :: use_clear_air_type = .false.
+  real :: precip_dbz_thresh = 15.0
+  real :: clear_air_dbz_thresh = 0.0
+  real :: clear_air_dbz_value = 0.0
+  integer :: precip_dbz_horiz_skip = 0
+  integer :: precip_dbz_vert_skip = 0
+  integer :: clear_air_dbz_horiz_skip = 0
+  integer :: clear_air_dbz_vert_skip = 0
+  namelist/setup_netcdf/ output_netcdf, max_height,                       &
+                         use_clear_air_type, precip_dbz_thresh,           &
+                         clear_air_dbz_thresh, clear_air_dbz_value,       &
+                         precip_dbz_horiz_skip, precip_dbz_vert_skip,     &
+                         clear_air_dbz_horiz_skip, clear_air_dbz_vert_skip
+  logical, allocatable :: precip_ob(:,:,:)
+  logical, allocatable :: clear_air_ob(:,:,:)
+  integer, parameter :: maxMosaiclvl=33
+  real :: height_real(maxMosaiclvl)
+  integer :: levelheight(maxMosaiclvl)
+  data levelheight /500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500,         &
+                    2750, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, &
+                    7500, 8000, 8500, 9000, 10000, 11000, 12000, 13000, 14000,  &
+                    15000, 16000, 17000, 18000, 19000/
+  integer num_precip_obs, num_clear_air_obs, num_obs
+  logical :: fileexist
+!
 !  ** misc
 !      
   character*80 outfile
-  integer i,j,k,kk
+  character*256 outfile_netcdf
+  integer i,ii,j,jj,k,kk
   integer :: id
   INTEGER(i_kind)  ::  maxlvl
   INTEGER(i_kind)  ::  numlvl,numref
@@ -90,6 +131,34 @@ program process_NSSL_mosaic
   open(15, file='namelist.mosaic')
     read(15,setup)
   close(15)
+
+  inquire(file='namelist.mosaic_netcdf', exist=fileexist)
+  if(fileexist) then
+    if(mype==0) write(*,*) 'reading namelist.mosaic_netcdf'
+    open(15, file='namelist.mosaic_netcdf')
+    read(15, setup_netcdf)
+    close(15)
+  endif
+
+  if(mype==0) then
+    write(6,*)
+    write(6,*) 'tversion = ', tversion
+    write(6,*) 'analysis_time = ', analysis_time
+    write(6,*) 'dataPath = ', dataPath
+    write(6,*) 'fv3_io_layout_y = ', fv3_io_layout_y
+    write(6,*) 'output_netcdf = ', output_netcdf
+    write(6,*) 'max_height = ', max_height
+    write(6,*) 'use_clear_air_type = ', use_clear_air_type
+    write(6,*) 'precip_dbz_thresh = ', precip_dbz_thresh
+    write(6,*) 'clear_air_dbz_thresh = ', clear_air_dbz_thresh
+    write(6,*) 'clear_air_dbz_value = ', clear_air_dbz_value
+    write(6,*) 'precip_dbz_horiz_skip = ', precip_dbz_horiz_skip
+    write(6,*) 'precip_dbz_vert_skip = ', precip_dbz_vert_skip
+    write(6,*) 'clear_air_dbz_horiz_skip = ', clear_air_dbz_horiz_skip
+    write(6,*) 'clear_air_dbz_vert_skip = ', clear_air_dbz_vert_skip
+    write(6,*)
+  endif
+
 !
 !  safty check for cores used in this run
 !
@@ -156,8 +225,6 @@ program process_NSSL_mosaic
      allocate(ref3d(nlon,nlat,maxlvl))
      ref3d=-999.0
      call mosaic2grid(readref,nlon,nlat,maxlvl,xlon,ylat,ref3d)
-     deallocate(xlon)
-     deallocate(ylat)
      call mpi_barrier(MPI_COMM_WORLD,ierror)
 !
 !  collect data from all processes to root (0)
@@ -172,8 +239,10 @@ program process_NSSL_mosaic
      if(mype==0) then
         if(fv3_io_layout_y==1) then
            write(outfile,'(a,a)') './', 'RefInGSI3D.dat'
+           write(outfile_netcdf,'(a,a)') './', 'Gridded_ref.nc'
         else
            write(outfile,'(a,a,I4.4)') './', 'RefInGSI3D.dat.',id
+           write(outfile_netcdf,'(a,a,I4.4,a)') './', 'Gridded_ref.',id,'.nc'
         endif
         OPEN(10,file=trim(outfile),form='unformatted')
            write(10) maxlvl,nlon,nlat
@@ -216,8 +285,147 @@ program process_NSSL_mosaic
         call write_bufr_nsslref(maxlvl,nlon,nlat,numref,ref3d_column,idate)
         deallocate(ref3d_column)
        endif
+
+       if ( output_netcdf .and. (maxlvl.eq.maxMosaiclvl) ) then
+
+         allocate( precip_ob(nlon,nlat,maxlvl) )
+         allocate( clear_air_ob(nlon,nlat,maxlvl) )
+
+         ! Don't produce any netcdf radar observations along the lateral boundaries
+         ref0(1,:,:) = -999.0
+         ref0(nlon,:,:) = -999.0
+         ref0(:,1,:) = -999.0
+         ref0(:,nlat,:) = -999.0
+
+         ! Identify precip and clear-air reflectivity observations
+         precip_ob(:,:,:) = .false.
+         clear_air_ob(:,:,:) = .false.
+         num_precip_obs = 0
+         num_clear_air_obs = 0
+         do j=2,nlat-1
+           do i=2,nlon-1
+             do k=1,maxlvl
+               if ( (levelheight(k) .le. max_height) .and. (ref0(i,j,k) .ge. precip_dbz_thresh) ) then
+                 precip_ob(i,j,k) = .true.
+                 num_precip_obs = num_precip_obs + 1
+               else if ( use_clear_air_type .and. (levelheight(k) .le. max_height) .and. &
+                         (ref0(i,j,k) .gt. -900.0) .and. (ref0(i,j,k) .le. clear_air_dbz_thresh) ) then
+                 clear_air_ob(i,j,k) = .true.
+                 ref0(i,j,k) = clear_air_dbz_value
+                 num_clear_air_obs = num_clear_air_obs + 1
+               endif
+             enddo
+           enddo
+         enddo
+         write(*,*) 'number of precip obs found, before thinning, = ', num_precip_obs
+         write(*,*) 'number of clear air obs found, before thinning, = ', num_clear_air_obs
+
+         ! Thin precip reflectivity observations
+         if (precip_dbz_vert_skip .gt. 0) then
+           do k=1,maxlvl
+             if (mod(k-1, precip_dbz_vert_skip+1) .ne. 0) then
+               write(*,*) 'Thinning:  removing precip obs at level ', k
+               precip_ob(:,:,k) = .false.
+             endif
+           enddo
+         endif
+         if (precip_dbz_horiz_skip .gt. 0) then
+           write(*,*) 'Horizontal thinning of precip obs'
+           do j=2,nlat-1
+             do i=2,nlon-1
+               do k=1,maxlvl
+                 if (precip_ob(i,j,k)) then
+                   do jj=max(2, j-precip_dbz_horiz_skip), min(nlat-1, j+precip_dbz_horiz_skip)
+                     do ii=max(2, i-precip_dbz_horiz_skip), min(nlon-1, i+precip_dbz_horiz_skip)
+                       precip_ob(ii,jj,k) = .false.
+                     enddo
+                   enddo
+                   precip_ob(i,j,k) = .true.
+                 endif
+               enddo
+             enddo
+           enddo
+         endif
+
+         ! Thin clear-air reflectivity observations
+         if (use_clear_air_type .and. (clear_air_dbz_vert_skip .gt. 0) ) then
+           do k=1,maxlvl
+             if (mod(k-1, clear_air_dbz_vert_skip+1) .ne. 0) then
+               write(*,*) 'Thinning:  removing clear air obs at level ', k
+               clear_air_ob(:,:,k) = .false.
+             endif
+           enddo
+         endif
+         if (use_clear_air_type .and. (clear_air_dbz_vert_skip .lt. 0) ) then
+           write(*,*) 'Thinning:  removing clear air obs at all but two levels'
+           clear_air_ob(:, :, 1:12) = .false.
+           clear_air_ob(:, :, 14:21) = .false.
+           clear_air_ob(:, :, 23:maxlvl) = .false.
+         endif
+         if (use_clear_air_type .and. (clear_air_dbz_horiz_skip .gt. 0) ) then
+           do j=2,nlat-1
+             do i=2,nlon-1
+               do k=1,maxlvl
+                 if (clear_air_ob(i,j,k)) then
+                   do jj=max(2, j-clear_air_dbz_horiz_skip), min(nlat-1, j+clear_air_dbz_horiz_skip)
+                     do ii=max(2, i-clear_air_dbz_horiz_skip), min(nlon-1, i+clear_air_dbz_horiz_skip)
+                       clear_air_ob(ii,jj,k) = .false.
+                     enddo
+                   enddo
+                   clear_air_ob(i,j,k) = .true.
+                 endif
+               enddo
+             enddo
+           enddo
+         endif
+
+         ! Count number of valid obs
+         num_obs = 0
+         do j=2,nlat-1
+           do i=2,nlon-1
+             do k=1,maxlvl
+               if ( precip_ob(i,j,k) .or. clear_air_ob(i,j,k) ) then
+                 num_obs = num_obs + 1
+               endif
+             enddo
+           enddo
+         enddo
+         write(*,*) 'num_obs = ', num_obs
+
+         ! Write obs to netcdf file
+         do k=1,maxlvl
+           height_real(k) = levelheight(k)
+           do j=2,nlat-1
+             do i=2,nlon-1
+               if ( .not. precip_ob(i,j,k) .and. .not. clear_air_ob(i,j,k) ) then
+                 ref0(i,j,k) = -999.0
+               endif
+             enddo
+           enddo
+         enddo
+         call write_netcdf_nsslref( outfile_netcdf,maxlvl,nlon,nlat,ref0,idate,xlon,ylat,height_real )
+
+         write(*,*) 'Finish netcdf output'
+
+         deallocate(precip_ob)
+         deallocate(clear_air_ob)
+
+       else if (output_netcdf) then
+
+         write(*,*) 'unknown vertical levels'
+         write(*,*) 'maxlvl = ', maxlvl
+         write(*,*) 'maxMosaiclvl = ', maxMosaiclvl
+         write(*,*) 'no netcdf output'
+
+       endif ! output_netcdf
+
        deallocate(ref0)
-     endif
+
+     endif ! mype==0
+
+     deallocate(xlon)
+     deallocate(ylat)
+
   enddo ! id
 
   call readref%close()
