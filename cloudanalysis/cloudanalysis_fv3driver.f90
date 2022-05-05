@@ -907,7 +907,7 @@ program cloudanalysis
         end if
 
         qnr_limit=200000_r_kind
-        dbz_clean_graupel=35.0
+        dbz_clean_graupel=35.0_r_kind
 
         do j=1,lat2
            do i=1,lon2
@@ -935,7 +935,8 @@ program cloudanalysis
                        max_retrieved_qrqs=snow_3d(i,j,imaxlvl_ref)+rain_3d(i,j,imaxlvl_ref)
                        do k=1,nsig
                           qrqs_retrieved=snow_3d(i,j,k)+rain_3d(i,j,k)
-                          if(qrqs_retrieved > max_retrieved_qrqs .and. qrqs_retrieved > 0.0001_r_kind) then
+                          if(qrqs_retrieved > max_retrieved_qrqs .and. qrqs_retrieved > 0.0001_r_kind &
+                             .and. max_retrieved_qrqs > 0.0000001_r_kind) then
                              ratio_hyd_bk2obs=max(min(max_retrieved_qrqs/qrqs_retrieved,1.0_r_kind),0.0_r_kind)
                              if(rain_3d(i,j,k) > zero) then
                                 rain_3d(i,j,k) = rain_3d(i,j,k)*ratio_hyd_bk2obs
@@ -954,7 +955,8 @@ program cloudanalysis
                        do k=k_cap,1,-1
                           if( ref_mos_3d(i,j,k) <= -100.0_r_kind ) then   !  dbz-obs-missing level
                              qrqs_retrieved=snow_3d(i,j,k)+rain_3d(i,j,k)
-                             if(qrqs_retrieved > max_retrieved_qrqs .and. qrqs_retrieved > 0.0001_r_kind) then
+                             if(qrqs_retrieved > max_retrieved_qrqs .and. qrqs_retrieved > 0.0001_r_kind &
+                                .and. max_retrieved_qrqs > 0.0000001_r_kind) then
                                 ratio_hyd_bk2obs=max(min(max_retrieved_qrqs/qrqs_retrieved,1.0_r_kind),0.0_r_kind)
                                 if(rain_3d(i,j,k) > zero) then
                                    rain_3d(i,j,k) = rain_3d(i,j,k)*ratio_hyd_bk2obs
