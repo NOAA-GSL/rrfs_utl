@@ -21,7 +21,6 @@ module module_ncfile_stat
 !
 !_____________________________________________________________________
 
-  use kinds, only: r_kind,r_single
   implicit none
 
   integer,parameter :: max_varname_length=20
