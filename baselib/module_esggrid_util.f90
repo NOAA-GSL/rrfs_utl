@@ -177,7 +177,7 @@ contains
        this%lx=1748
        this%ly=1038
        this%if_initial=.true.
-    elseif(trim(grid_type)=="RRFS_NA_3km") then   ! C3445
+    elseif(trim(grid_type)=="RRFS_NA_3km_C3345") then   ! C3445
        this%pdlat = 51.5_dp
        this%pdlon = -107.5_dp
        this%pdazi = -13.0_dp
@@ -188,7 +188,7 @@ contains
        this%lx=3652
        this%ly=2532
        this%if_initial=.true.
-    elseif(trim(grid_type)=="RRFS_NA_3km_C3463") then   ! C3463
+    elseif(trim(grid_type)=="RRFS_NA_3km") then   ! C3463
        this%pdlat = 55._dp
        this%pdlon = -112.5_dp
        this%pdazi = 0.0_dp
