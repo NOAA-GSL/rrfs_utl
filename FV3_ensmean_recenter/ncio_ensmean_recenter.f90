@@ -98,8 +98,7 @@ subroutine ncio_ensmean_recenter(ensize,mype,new_comm,l_write_mean,l_recenter,va
    do i = 1, ndims-1
       iend(i) = dims(i)
    end do
-
-   rcode = nf90_inquire_variable(cdfid, id_var, xtype = ivtype)
+!
 !  Allocate and initialize data:
    if ( ivtype == 5 ) then
       allocate( data_r(iend(1),iend(2),iend(3)))
@@ -108,9 +107,9 @@ subroutine ncio_ensmean_recenter(ensize,mype,new_comm,l_write_mean,l_recenter,va
       data_r_diff = 0.0
    elseif ( ivtype == 6 ) then
       allocate( data_d(iend(1),iend(2),iend(3)))
-      allocate( data_r_diff(iend(1),iend(2),iend(3)))
+      allocate( data_d_diff(iend(1),iend(2),iend(3)))
       data_d = 0.0
-      data_r_diff = 0.0
+      data_d_diff = 0.0
    else
       write(6,'(A,A)') varname, ' variable is not real/double type'
    end if
@@ -154,7 +153,7 @@ subroutine ncio_ensmean_recenter(ensize,mype,new_comm,l_write_mean,l_recenter,va
      do k=1,iend(3)
         call mpi_reduce(data_d(:,:,k),data_d_mean,nsize2d,mpi_double,mpi_sum,0,new_comm,iret)
         if(mype==0) then
-           data_r(:,:,k)=data_r_mean
+           data_d(:,:,k)=data_d_mean
         endif
      enddo
      if(mype==0) then
@@ -202,27 +201,24 @@ subroutine ncio_ensmean_recenter(ensize,mype,new_comm,l_write_mean,l_recenter,va
          if ( ivtype == 5 ) then
             if(l_positive) data_r=max(data_r, 0.0)
             data_r_diff=data_r_diff-data_r
-            write(6,*) 'difference =',maxval(data_r_diff),minval(data_r_diff)
+            write(6,*) trim(varname),' difference =',maxval(data_r_diff),minval(data_r_diff)
          else
             if(l_positive) data_d=max(data_d, 0.0)
             data_d_diff=data_d_diff-data_d
-            write(6,*) 'difference =',maxval(data_d_diff),minval(data_d_diff)
+            write(6,*) trim(varname),' difference =',maxval(data_d_diff),minval(data_d_diff)
          endif
       endif
 
-!      write(*,*) mype,nsize,maxval(data_r_diff),minval(data_r_diff)
       if(ivtype == 5) then
          call mpi_bcast(data_r_diff,nsize,mpi_real,0,new_comm,iret)
       elseif(ivtype == 6) then
-         call mpi_reduce(data_d_diff,nsize,mpi_double,0,new_comm,iret)
+         call mpi_bcast(data_d_diff,nsize,mpi_double,0,new_comm,iret)
       endif
-!      write(*,*) 'after=',mype,nsize,maxval(data_r_diff),minval(data_r_diff)
 !
       if(mype > 0) then
 !
 !  get the values after recenter
          if ( ivtype == 5 ) then
-!            write(*,*) mype,maxval(data_r),minval(data_r),maxval(data_r_diff),minval(data_r_diff)
             data_r = data_r + data_r_diff
             if(l_positive) data_r=max(data_r, 0.0)
          elseif ( ivtype == 6 ) then
