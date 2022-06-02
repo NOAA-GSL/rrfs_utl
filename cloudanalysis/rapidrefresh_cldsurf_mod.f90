@@ -179,6 +179,9 @@ module rapidrefresh_cldsurf_mod
 !                          = 2(clean Qg as in 1, and adjustment to the retrieved Qr/Qs/Qnr throughout the whole profile)
 !                          = 3(similar to 2, but adjustment to Qr/Qs/Qnr only below maximum reflectivity level
 !                           and where the dbz_obs is missing);
+!      l_qnr_from_qr   - if .true. compute rain number concentration from rain mixing ratio,
+!                        assuming an exponential distribution
+!      n0_rain         - intercept parameter (m**-4) for raindrop size distribution
 !
 ! attributes:
 !   language: f90
@@ -250,6 +253,8 @@ module rapidrefresh_cldsurf_mod
   public :: l_saturate_bkCloud
   public :: l_rtma3d
   public :: i_precip_vertical_check
+  public :: l_qnr_from_qr
+  public :: n0_rain
 
   logical l_hydrometeor_bkio
   real(r_kind)  dfi_radar_latent_heat_time_period
@@ -308,6 +313,8 @@ module rapidrefresh_cldsurf_mod
   logical              l_saturate_bkCloud
   logical              l_rtma3d
   integer(i_kind)      i_precip_vertical_check
+  logical              l_qnr_from_qr
+  real(r_kind)         n0_rain
 
 contains
 
@@ -416,6 +423,8 @@ contains
     l_saturate_bkCloud= .true.
     l_rtma3d            = .false.                     ! turn configuration for rtma3d off          
     i_precip_vertical_check = 0                       ! No check and adjustment to retrieved Qr/Qs/Qg (default)
+    l_qnr_from_qr = .false.
+    n0_rain = 100000000.0_r_kind          ! in m**-4; default value assumes smaller drops than in M-P distribution
 
     return
   end subroutine init_rapidrefresh_cldsurf
