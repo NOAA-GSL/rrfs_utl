@@ -5,9 +5,9 @@
 *       @christinaholtNOAA
 *       @christopherwharrop-noaa
 *       @chunhuazhou
-*       @hu5970
-*       @guoqing-NOAA
 *       @daviddowellNOAA
+*       @guoqing-NOAA
+*       @hu5970
 
 # Order is important. The last matching pattern has the most precedence.
 # So if a pull request only touches javascript files, only these owners
