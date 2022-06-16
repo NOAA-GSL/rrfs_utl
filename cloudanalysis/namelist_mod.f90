@@ -43,7 +43,8 @@ module namelist_mod
                             i_coastline,i_gsdqc,qv_max_inc,ioption,l_precip_clear_only,l_fog_off,&
                             cld_bld_coverage,cld_clr_coverage,&
                             i_cloud_q_innovation,i_ens_mean,DTsTmax,&
-                            i_T_Q_adjust,l_saturate_bkCloud,l_rtma3d,i_precip_vertical_check
+                            i_T_Q_adjust,l_saturate_bkCloud,l_rtma3d,i_precip_vertical_check,&
+                            l_qnr_from_qr,n0_rain
 
 
   implicit none
@@ -69,7 +70,8 @@ module namelist_mod
                                 i_coastline,i_gsdqc,qv_max_inc,ioption,l_precip_clear_only,l_fog_off,&
                                 cld_bld_coverage,cld_clr_coverage,&
                                 i_cloud_q_innovation,i_ens_mean,DTsTmax, &
-                                i_T_Q_adjust,l_saturate_bkCloud,l_rtma3d,i_precip_vertical_check
+                                i_T_Q_adjust,l_saturate_bkCloud,l_rtma3d,i_precip_vertical_check,&
+                                l_qnr_from_qr,n0_rain
 
     integer :: ios
     integer :: iyear,imonth,iday,ihour,iminute,isecond
