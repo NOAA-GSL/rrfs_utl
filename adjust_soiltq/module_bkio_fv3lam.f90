@@ -72,7 +72,8 @@ module module_bkio_fv3lam
       real(r_kind),allocatable,dimension(:,:)  :: coast_prox
       real(r_kind),allocatable,dimension(:,:)  :: sno
       real(r_kind),allocatable,dimension(:,:)  :: sncovr
-      real(r_kind),allocatable,dimension(:,:)  :: landmask
+      !real(r_kind),allocatable,dimension(:,:)  :: landmask
+      real(r_kind),dimension(:,:),pointer  :: landmask
 
       real(r_kind),dimension(:,:),pointer  :: ges_p1
       real(r_kind),dimension(:,:),pointer  :: ges_t1
@@ -158,7 +159,7 @@ contains
     if(allocated(this%coast_prox)) deallocate(this%coast_prox)
     if(allocated(this%sno)) deallocate(this%sno)
     if(allocated(this%sncovr)) deallocate(this%sncovr)
-    if(allocated(this%landmask)) deallocate(this%landmask)
+    if(associated(this%landmask)) deallocate(this%landmask)
 
     if(associated(this%ges_p1)) deallocate(this%ges_p1)
     if(associated(this%ges_t1)) deallocate(this%ges_t1)
