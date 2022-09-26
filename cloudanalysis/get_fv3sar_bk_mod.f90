@@ -46,7 +46,7 @@ module get_fv3sar_bk_mod
   private
 
   public :: t_bk,h_bk,p_bk,ps_bk,zh,q_bk,pblh
-  public :: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg,ges_qnr,ges_qni,ges_qnc
+  public :: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg,ges_qnr,ges_qni,ges_qnc,ges_qcf
   public :: aeta1_ll,pt_ll
   public :: pt_regional
   public :: xlon,xlat,xland,soiltbk
@@ -97,6 +97,7 @@ module get_fv3sar_bk_mod
   real(r_single),allocatable :: ges_qnr(:,:,:) ! rain number concentration
   real(r_single),allocatable :: ges_qni(:,:,:) ! cloud ice number concentration
   real(r_single),allocatable :: ges_qnc(:,:,:) ! cloud water number concentration
+  real(r_single),allocatable :: ges_qcf(:,:,:) ! cloud fraction
 
 ! fix files
   real(r_single),allocatable :: xlon(:,:)
@@ -108,6 +109,7 @@ module get_fv3sar_bk_mod
   character(len=80) :: dynvars   !='fv3_dynvars'
   character(len=80) :: tracers   !='fv3_tracer'
   character(len=80) :: sfcvars   !='fv3_sfcdata'
+  character(len=80) :: phyvars   !='fv3_phydata'
   character(len=80) :: gridspec  !='fv3_grid_spec'
 !
 
@@ -170,9 +172,10 @@ contains
         write(dynvars,'(a,I4.4)') 'fv3_dynvars.',mype
         write(tracers,'(a,I4.4)') 'fv3_tracer.',mype
         write(sfcvars,'(a,I4.4)') 'fv3_sfcdata.',mype
+        write(phyvars,'(a,I4.4)') 'fv3_phydata.',mype
         call bg_fv3regfilenameg%init(grid_spec_input=trim(gridspec), &
                  dynvars_input=trim(dynvars),tracers_input=trim(tracers),&
-                 sfcdata_input=trim(sfcvars))
+                 sfcdata_input=trim(sfcvars),phydata_input=trim(phyvars))
      endif
      mype_t=mype
      mype_q=mype
@@ -183,10 +186,12 @@ contains
      dynvars= bg_fv3regfilenameg%dynvars
      tracers= bg_fv3regfilenameg%tracers
      sfcvars= bg_fv3regfilenameg%sfcdata
+     phyvars= bg_fv3regfilenameg%phydata
      
      write(6,*) 'dynvars=',mype,trim(dynvars)
      write(6,*) 'tracers=',mype,trim(tracers)
      write(6,*) 'sfcvars=',mype,trim(sfcvars)
+     write(6,*) 'phyvars=',mype,trim(phyvars)
 
 ! 2.1 read in background fields
 !
@@ -401,6 +406,13 @@ subroutine read_fv3sar_hydr
      call gsi_fv3ncdf_read(tracers,'WATER_NC','water_nc',ges_qnc,rfv3io_mype)
      do k=1,nsig_regional
         write(6,*) 'qnc==',k,maxval(ges_qnc(:,:,k)),minval(ges_qnc(:,:,k))
+     enddo 
+!
+!    get cloud fraction (from phydata file)
+     allocate(ges_qcf(nlon_regional,nlat_regional,nsig_regional))
+     call gsi_fv3ncdf_read(phyvars,'MYNN_3D_CLDFRA_BL','mynn_3d_cldfra_bl',ges_qcf,rfv3io_mype)
+     do k=1,nsig_regional
+        write(6,*) 'qcf==',k,maxval(ges_qcf(:,:,k)),minval(ges_qcf(:,:,k))
      enddo 
 
 end subroutine read_fv3sar_hydr

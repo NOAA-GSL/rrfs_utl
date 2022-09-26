@@ -179,6 +179,8 @@ module rapidrefresh_cldsurf_mod
 !                          = 2(clean Qg as in 1, and adjustment to the retrieved Qr/Qs/Qnr throughout the whole profile)
 !                          = 3(similar to 2, but adjustment to Qr/Qs/Qnr only below maximum reflectivity level
 !                           and where the dbz_obs is missing);
+!      r_cloudfrac_threshold  - real, threshold of 1st guess cloud to do cloud building
+!                           = 0.45 default
 !
 ! attributes:
 !   language: f90
@@ -250,6 +252,7 @@ module rapidrefresh_cldsurf_mod
   public :: l_saturate_bkCloud
   public :: l_rtma3d
   public :: i_precip_vertical_check
+  public :: r_cloudfrac_threshold
 
   logical l_hydrometeor_bkio
   real(r_kind)  dfi_radar_latent_heat_time_period
@@ -308,6 +311,7 @@ module rapidrefresh_cldsurf_mod
   logical              l_saturate_bkCloud
   logical              l_rtma3d
   integer(i_kind)      i_precip_vertical_check
+  real(r_kind)         r_cloudfrac_threshold
 
 contains
 
@@ -416,6 +420,7 @@ contains
     l_saturate_bkCloud= .true.
     l_rtma3d            = .false.                     ! turn configuration for rtma3d off          
     i_precip_vertical_check = 0                       ! No check and adjustment to retrieved Qr/Qs/Qg (default)
+    r_cloudfrac_threshold = 0.45_r_kind               ! threshold for 1st guess cloud fraction to use cloud building
 
     return
   end subroutine init_rapidrefresh_cldsurf
