@@ -797,6 +797,9 @@ program cloudanalysis
 !
 !  call MPI_Barrier(mpi_comm_world, ierror)
   do k=1,nsig
+     ! The phy_data file uses vertical levels from bottom to top, opposite of
+     ! the other intermediate netcdf files and the expected direction in the
+     ! Fortran code. I use the kk index to reverse the direction. CSH
      kk=nsig+1-k
      do j=1,lat2
         do i=1,lon2
