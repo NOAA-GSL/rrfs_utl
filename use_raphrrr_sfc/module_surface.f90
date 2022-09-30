@@ -319,7 +319,7 @@ contains
           elseif(trim(thisvar_rrfs) == "tsfc") then
             call rrfs%replace_var("tsfcl",nx_rrfs,ny_rrfs,tmp2d8b)
             call rrfs%replace_var("tsea",nx_rrfs,ny_rrfs,tmp2d8b)
-            call rrfs%replace_var("tref",nx_rrfs,ny_rrfs,tmp2d8b)
+!            call rrfs%replace_var("tref",nx_rrfs,ny_rrfs,tmp2d8b)
             call rrfs%replace_var("tisfc",nx_rrfs,ny_rrfs,tmp2d8b)
           endif
           deallocate(tmp2d8b)
