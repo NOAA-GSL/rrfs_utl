@@ -54,7 +54,8 @@ program cloudanalysis
                                       i_lightpcp, l_numconc, qv_max_inc,ioption, &
                                       l_precip_clear_only,l_fog_off,cld_bld_coverage,cld_clr_coverage,&
                                       i_T_Q_adjust,l_saturate_bkCloud,i_precip_vertical_check,l_rtma3d, &
-                                      l_qnr_from_qr, n0_rain
+                                      l_qnr_from_qr, n0_rain,
+                                      r_cloudfrac_threshold
 
   use namelist_mod, only: load_namelist
   use namelist_mod, only: iyear,imonth,iday,ihour,iminute,isecond
@@ -65,7 +66,7 @@ program cloudanalysis
   use get_fv3sar_bk_mod, only: t_bk,h_bk,p_bk,ps_bk,zh,q_bk,pblh
   use get_fv3sar_bk_mod, only: read_fv3sar_bk,release_mem_fv3sar_bk
   use get_fv3sar_bk_mod, only: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg, &
-                               ges_qnr,ges_qni,ges_qnc
+                               ges_qnr,ges_qni,ges_qnc,ges_qcf
   use get_fv3sar_bk_mod, only: xlon,xlat,xland,soiltbk
   use get_fv3sar_bk_mod, only: read_fv3sar_hydr,release_mem_fv3sar_hydr
   use get_fv3sar_bk_mod, only: read_fv3sar_fix,release_mem_fv3sar_fix
@@ -207,7 +208,7 @@ program cloudanalysis
 !  misc.
 !
   integer(i_kind) :: ytotal,ybegin,yend
-  integer(i_kind) :: i,j,k
+  integer(i_kind) :: i,j,k,kk
   integer(i_kind) :: iglobal,jglobal,ilocal,jlocal
   logical :: ifindomain
   integer(i_kind) :: imaxlvl_ref
@@ -801,6 +802,10 @@ program cloudanalysis
 !
 !  call MPI_Barrier(mpi_comm_world, ierror)
   do k=1,nsig
+     ! The phy_data file uses vertical levels from bottom to top, opposite of
+     ! the other intermediate netcdf files and the expected direction in the
+     ! Fortran code. I use the kk index to reverse the direction. CSH
+     kk=nsig+1-k
      do j=1,lat2
         do i=1,lon2
            ! clean  cloud
@@ -811,7 +816,7 @@ program cloudanalysis
               nwater_3d(i,j,k)   = zero
               clean_count        = clean_count+1
            ! build cloud
-           elseif( cld_cover_3d(i,j,k) > cld_bld_coverage .and. cld_cover_3d(i,j,k) < 2.0_r_kind   ) then      
+           elseif( cld_cover_3d(i,j,k) > cld_bld_coverage .and. cld_cover_3d(i,j,k) < 2.0_r_kind .and. ges_qcf(i,j,kk) < r_cloudfrac_threshold ) then
               cloudwater         =0.001_r_kind*cldwater_3d(i,j,k)
               cloudice           =0.001_r_kind*cldice_3d(i,j,k)
               cldwater_3d(i,j,k) = max(cloudwater,ges_ql(i,j,k))
@@ -1373,7 +1378,7 @@ program cloudanalysis
   call release_mem_fv3sar_bk
   call release_mem_fv3sar_hydr
 !
-  write(*,*) "CLDcount", clean_count,build_count,part_count,miss_count
+  write(*,*) "CLDcount", r_cloudfrac_threshold,clean_count,build_count,part_count,miss_count
   if(mype==0) then
      write(6,*) '========================================'
      write(6,*) 'gsdcloudanalysis: generalized cloud analysis finished:',mype
