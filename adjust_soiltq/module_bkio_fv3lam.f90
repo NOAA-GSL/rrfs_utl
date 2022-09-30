@@ -61,6 +61,8 @@ module module_bkio_fv3lam
 ! qsatg   : lowest model level Q saturation (kg/kg, specific humidity: calculated)
 ! ges_tsk    :  surface temperature (K: from tsfcl)
 ! ges_soilt1 :  top level soil temperature (K: from tsnow_land)
+! ges_qvg :  surface water vapor mixing ratio (kg/kg: from qwv_surf_land)
+! ges_qcg :  surface cloud water mixing ratio (kg/kg: from clw_surf_land)
 ! ges_tslb   :  soil temperature (K: from tslb)
 ! ges_smois  :  soil moisture (mixing ratio: from smois)
 
@@ -70,7 +72,8 @@ module module_bkio_fv3lam
       real(r_kind),allocatable,dimension(:,:)  :: coast_prox
       real(r_kind),allocatable,dimension(:,:)  :: sno
       real(r_kind),allocatable,dimension(:,:)  :: sncovr
-      real(r_kind),allocatable,dimension(:,:)  :: landmask
+      !real(r_kind),allocatable,dimension(:,:)  :: landmask
+      real(r_kind),dimension(:,:),pointer  :: landmask
 
       real(r_kind),dimension(:,:),pointer  :: ges_p1
       real(r_kind),dimension(:,:),pointer  :: ges_t1
@@ -81,6 +84,8 @@ module module_bkio_fv3lam
       real(r_kind),dimension(:,:),pointer  :: ges_tsk   
       real(r_kind),dimension(:,:),pointer  :: tsk_comp   
       real(r_kind),dimension(:,:),pointer  :: ges_soilt1
+      real(r_kind),dimension(:,:),pointer  :: ges_qvg
+      real(r_kind),dimension(:,:),pointer  :: ges_qcg
       real(r_kind),dimension(:,:,:),pointer:: ges_tslb
       real(r_kind),dimension(:,:,:),pointer:: ges_smois
 
@@ -154,7 +159,7 @@ contains
     if(allocated(this%coast_prox)) deallocate(this%coast_prox)
     if(allocated(this%sno)) deallocate(this%sno)
     if(allocated(this%sncovr)) deallocate(this%sncovr)
-    if(allocated(this%landmask)) deallocate(this%landmask)
+    if(associated(this%landmask)) deallocate(this%landmask)
 
     if(associated(this%ges_p1)) deallocate(this%ges_p1)
     if(associated(this%ges_t1)) deallocate(this%ges_t1)
@@ -165,6 +170,8 @@ contains
     if(associated(this%ges_tsk)) deallocate(this%ges_tsk)
     if(associated(this%tsk_comp)) deallocate(this%tsk_comp)
     if(associated(this%ges_soilt1)) deallocate(this%ges_soilt1)
+    if(associated(this%ges_qvg)) deallocate(this%ges_qvg)
+    if(associated(this%ges_qcg)) deallocate(this%ges_qcg)
     if(associated(this%ges_tslb)) deallocate(this%ges_tslb)
     if(associated(this%ges_smois)) deallocate(this%ges_smois)
 
@@ -194,6 +201,7 @@ contains
     write(6,*) 'update soil fields========>'
     write(6,*) 'this%tsk=',maxval(this%ges_tsk),minval(this%ges_tsk)
     write(6,*) 'this%soilt1=',maxval(this%ges_soilt1),minval(this%ges_soilt1)
+    write(6,*) 'this%qvg=',maxval(this%ges_qvg),minval(this%ges_qvg)
     do k=1,nz
        write(6,*) 'this%ges_tslb=',maxval(this%ges_tslb(:,:,k)),minval(this%ges_tslb(:,:,k))
     enddo
@@ -221,6 +229,12 @@ contains
 
        r2d8b(:,:)=this%ges_soilt1(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
        call fv3io%replace_var("tsnow_land",nlon,nlat_local,r2d8b)
+
+       r2d8b(:,:)=this%ges_qvg(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
+       call fv3io%replace_var("qwv_surf_land",nlon,nlat_local,r2d8b)
+
+       r2d8b(:,:)=this%ges_qcg(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
+       call fv3io%replace_var("clw_surf_land",nlon,nlat_local,r2d8b)
 
        deallocate(r2d8b)
 
@@ -509,6 +523,9 @@ contains
     allocate(this%ges_tsk(nlon,nlat))
     allocate(this%tsk_comp(nlon,nlat))
     allocate(this%ges_soilt1(nlon,nlat))
+    allocate(this%ges_qvg(nlon,nlat))
+    allocate(this%ges_qcg(nlon,nlat))
+
     allocate(this%ges_tslb(nlon,nlat,nz))
     allocate(this%ges_smois(nlon,nlat,nz))
 
@@ -535,6 +552,14 @@ contains
        !-- snow temperautre on land
        this%ges_soilt1(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
 
+       call fv3io%get_var("qwv_surf_land",nlon,nlat_local,r2d8b)
+       !-- snow temperautre on land
+       this%ges_qvg(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
+
+       call fv3io%get_var("clw_surf_land",nlon,nlat_local,r2d8b)
+       !-- snow temperautre on land
+       this%ges_qcg(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
+
        call fv3io%get_var("snodl",nlon,nlat_local,r2d8b) 
        !--  snodl is snow depth on land, units [mm], convert to [m]
        this%sno(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)*1.e-3
@@ -556,6 +581,7 @@ contains
     enddo
     write(6,*) 'this%tsk=',maxval(this%ges_tsk),minval(this%ges_tsk)
     write(6,*) 'this%soilt1=',maxval(this%ges_soilt1),minval(this%ges_soilt1)
+    write(6,*) 'this%qvg=',maxval(this%ges_qvg),minval(this%ges_qvg)
     do k=1,nz
        write(6,*) 'this%ges_tslb=',maxval(this%ges_tslb(:,:,k)),minval(this%ges_tslb(:,:,k))
     enddo

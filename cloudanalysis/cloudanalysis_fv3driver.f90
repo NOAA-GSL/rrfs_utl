@@ -54,7 +54,9 @@ program cloudanalysis
                                       i_lightpcp, l_numconc, qv_max_inc,ioption, &
                                       l_precip_clear_only,l_fog_off,cld_bld_coverage,cld_clr_coverage,&
                                       i_T_Q_adjust,l_saturate_bkCloud,i_precip_vertical_check,l_rtma3d, &
+                                      l_qnr_from_qr, n0_rain,
                                       r_cloudfrac_threshold
+
   use namelist_mod, only: load_namelist
   use namelist_mod, only: iyear,imonth,iday,ihour,iminute,isecond
   use namelist_mod, only: fv3_io_layout_y
@@ -228,6 +230,9 @@ program cloudanalysis
   real(r_kind),parameter    :: pi = 4._r_kind*atan(1._r_kind)
   real(r_kind),parameter    :: rho_w = 999.97_r_kind, rho_a = 1.2_r_kind
   real(r_kind),parameter    :: cldDiameter = 10.0E3_r_kind
+
+  real(r_kind),parameter :: am_r = pi * 1000.0_r_kind / 6.0_r_kind
+  real(r_kind)           :: lambda
 
 ! local variables used for adjustment of qr/qs for RTMA_3D to alleviate ghost reflectivity
   logical         :: print_verbose
@@ -1131,6 +1136,33 @@ program cloudanalysis
         end do
      end do
   endif
+
+!
+! If requested, compute rain number concentration from rain mixing
+! ratio by assuming an exponential distribution.  The method is a
+! simplified version of the make_RainNumber function in the UFS
+! module_mp_thompson_make_number_concentrations.F90.
+!
+  if (l_qnr_from_qr) then
+    write(6,*) 'compute rain number concentration from rain mixing ratio'
+    write(6,*) 'n0_rain = ', n0_rain
+    do k=1,nsig
+       do j=1,lat2
+          do i=1,lon2
+             if (rain_3d(i,j,k) < 0.000000000001_r_kind) then
+                rain_3d(i,j,k)  = zero
+                nrain_3d(i,j,k) = zero
+             else
+                lambda = sqrt(sqrt(n0_rain*am_r*6.0_r_kind/rain_3d(i,j,k)))
+                nrain_3d(i,j,k) = rain_3d(i,j,k) / 6.0_r_kind &
+                                  * lambda*lambda*lambda / am_r
+             endif
+          end do
+       end do
+    end do
+  endif
+
+
 !
 !  remove any negative hydrometeor mixing ratio or number concentration values
 !

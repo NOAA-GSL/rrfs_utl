@@ -53,7 +53,7 @@ subroutine gsl_update_soil_tq(fv3bk)
 !$$$
   use kinds, only: r_kind,i_kind
   use constants, only: zero,one,fv,one_tenth,deg2rad,pi
-  use constants, only: partialSnowThreshold,t0c
+  use constants, only: partialSnowThreshold,t0c,qmin
   use module_bkio_fv3lam, only : bkio_fv3lam
 
   implicit none
@@ -75,18 +75,24 @@ subroutine gsl_update_soil_tq(fv3bk)
   real(r_kind) :: coast_fac,temp,temp_fac,dts_min,tincf
   real(r_kind) :: snowthreshold
   real(r_kind) :: rhgues,sumqc
+  real(r_kind) :: qs_surf
 ! 
   real(r_kind),allocatable,dimension(:,:) :: csza
+  real(r_kind),allocatable,dimension(:,:) :: qsat_surf
   real(r_kind),dimension(:,:  ),pointer :: tinc      =>NULL()
   real(r_kind),dimension(:,:  ),pointer :: qinc      =>NULL()
   real(r_kind),dimension(:,:  ),pointer :: qsatg     =>NULL()
   real(r_kind),dimension(:,:  ),pointer :: ges_tsk   =>NULL()
   real(r_kind),dimension(:,:  ),pointer :: ges_soilt1=>NULL()
+  real(r_kind),dimension(:,:  ),pointer :: ges_qvg   =>NULL()
+  real(r_kind),dimension(:,:  ),pointer :: ges_qcg   =>NULL()
   real(r_kind),dimension(:,:,:),pointer :: ges_tslb  =>NULL()
   real(r_kind),dimension(:,:,:),pointer :: ges_smois =>NULL()
   real(r_kind),dimension(:,:  ),pointer :: ges_q     =>NULL()
   real(r_kind),dimension(:,:  ),pointer :: ges_tsen  =>NULL()
+  real(r_kind),dimension(:,:  ),pointer :: ges_psurf =>NULL()
   real(r_kind),dimension(:,:  ),pointer :: tsk_comp  =>NULL()
+  real(r_kind),dimension(:,:  ),pointer :: landmask  =>NULL()
 
   
 !*******************************************************************************
@@ -140,11 +146,16 @@ subroutine gsl_update_soil_tq(fv3bk)
 !     do it=1,nfldsig
         ges_tsk=>fv3bk%ges_tsk
         ges_soilt1=>fv3bk%ges_soilt1
+        ges_qvg=>fv3bk%ges_qvg
+        ges_qcg=>fv3bk%ges_qcg
         ges_smois=>fv3bk%ges_smois
         ges_tslb=>fv3bk%ges_tslb
         ges_q=>fv3bk%ges_q1
         ges_tsen=>fv3bk%ges_t1
         tsk_comp=>fv3bk%tsk_comp
+        ges_psurf=>fv3bk%ges_p1
+
+        landmask=>fv3bk%landmask
 
         do j=1,nlat
            do i=1,nlon
@@ -218,6 +229,12 @@ subroutine gsl_update_soil_tq(fv3bk)
         end do
 !     end do ! it
 
+! Compute surface saturated specific humidity qsat_surf for updated skin
+! temperature
+       allocate(qsat_surf(nlon,nlat))
+       call genqsat_2m(qsat_surf,ges_tsk,ges_psurf,nlon,nlat,1,.true.)
+       write(6,*) 'qsat_surf=',maxval(qsat_surf),minval(qsat_surf)
+
 !---------------------------------------------------------
 !  Nudge soil moisture
 !     Tanya S. and Stan B. - 21 July 2004 - first version
@@ -234,10 +251,25 @@ subroutine gsl_update_soil_tq(fv3bk)
               tinct=tinc(i,j)
               ainc=qinc(i,j)/fv3bk%qsatg(i,j)  ! analysis increment in RH
 
+! -- update surface qvg and qcg
+              qs_surf = qsat_surf(i,j)/(1. - qsat_surf(i,j)) ! mix.ratio
+              if(landmask(i,j)== 1)then
+              !-- land
+                ges_qvg(i,j) = min(qs_surf,max(qmin,ges_qvg(i,j)+(qinc(i,j)/(1-qinc(i,j)))))
+              else
+              !-- water or ice
+                ges_qvg(i,j) = qs_surf
+              endif
+
+              if(ges_qvg(i,j) < qs_surf) then
+              !-- undersaturated
+                ges_qcg(i,j) = 0.
+              endif
+
 ! -- use overall limits based on k level
               ainc = max(-0.3_r_kind,min(0.3_r_kind,ainc))
 
-! -- When background is already dry and pRH increment
+! -- When background is already dry and RH increment
 !      is negative (toward drier still), limit ainc further.
               rhgues=ges_q(i,j)/fv3bk%qsatg(i,j)
               if (rhgues < 0.2_r_kind .and. ainc < 0.0_r_kind ) then
@@ -271,14 +303,16 @@ subroutine gsl_update_soil_tq(fv3bk)
 ! -- mod - 3/15/13
 !      increase moistening from factor of 0.2 to 0.3
                        ges_smois(i,j,1) = min (max(ges_smois(i,j,1),ges_smois(i,j,2)), &
-                                   ges_smois(i,j,1) + min(0.03_r_kind,max(0._r_kind,(ainc*0.2_r_kind))))
+                                   ges_smois(i,j,1) + min(0.03_r_kind,max(0._r_kind,(ainc*0.3_r_kind))))
                        ges_smois(i,j,2) = min (max(ges_smois(i,j,2),ges_smois(i,j,3)), &
-                                   ges_smois(i,j,2) + min(0.03_r_kind,max(0._r_kind,(ainc*0.2_r_kind))))
+                                   ges_smois(i,j,2) + min(0.03_r_kind,max(0._r_kind,(ainc*0.3_r_kind))))
                        if(nsig_soil == 9) then
                           ges_smois(i,j,3) = min (max(ges_smois(i,j,3),ges_smois(i,j,4)), &
-                                   ges_smois(i,j,3) + min(0.03_r_kind,max(0._r_kind,(ainc*0.2_r_kind))))
+                                   ges_smois(i,j,3) + min(0.03_r_kind,max(0._r_kind,(ainc*0.3_r_kind))))
                           ges_smois(i,j,4) = min (max(ges_smois(i,j,4),ges_smois(i,j,5)), &  
-                                   ges_smois(i,j,4) + min(0.03_r_kind,max(0._r_kind,(ainc*0.1_r_kind))))
+                                   ges_smois(i,j,4) + min(0.03_r_kind,max(0._r_kind,(ainc*0.2_r_kind))))
+                          ges_smois(i,j,5) = min (max(ges_smois(i,j,5),ges_smois(i,j,6)), &
+                                   ges_smois(i,j,5) + min(0.03_r_kind,max(0._r_kind,(ainc*0.1_r_kind))))
                        endif
 ! -- above logic
 !     7/26/04 - 
@@ -298,14 +332,17 @@ subroutine gsl_update_soil_tq(fv3bk)
 !     Now also dry soil if tinc is positive (warming)
 !      and the RH_inc is negative.
                         ges_smois(i,j,1) = max(0.0_r_kind,ges_smois(i,j,1) + & 
-                                                  max(-0.03_r_kind,min(0._r_kind,(ainc*0.2_r_kind))))
+                                                  max(-0.03_r_kind,min(0._r_kind,(ainc*0.3_r_kind))))
                         ges_smois(i,j,2) = max(0.0_r_kind,ges_smois(i,j,2) + & 
-                                                  max(-0.03_r_kind,min(0._r_kind,(ainc*0.2_r_kind))))
+                                                  max(-0.03_r_kind,min(0._r_kind,(ainc*0.3_r_kind))))
                         if(nsig_soil == 9) then
                            ges_smois(i,j,3) = max(0.0_r_kind,ges_smois(i,j,3) + & 
-                                                  max(-0.03_r_kind,min(0._r_kind,(ainc*0.2_r_kind))))
+                                                  max(-0.03_r_kind,min(0._r_kind,(ainc*0.3_r_kind))))
                            ges_smois(i,j,4) = max(0.0_r_kind,ges_smois(i,j,4) + & 
+                                                  max(-0.03_r_kind,min(0._r_kind,(ainc*0.2_r_kind))))
+                           ges_smois(i,j,5) = max(0.0_r_kind,ges_smois(i,j,5) + &
                                                   max(-0.03_r_kind,min(0._r_kind,(ainc*0.1_r_kind))))
+
 
                         endif
                     END IF
