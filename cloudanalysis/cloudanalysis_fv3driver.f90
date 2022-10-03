@@ -54,7 +54,7 @@ program cloudanalysis
                                       i_lightpcp, l_numconc, qv_max_inc,ioption, &
                                       l_precip_clear_only,l_fog_off,cld_bld_coverage,cld_clr_coverage,&
                                       i_T_Q_adjust,l_saturate_bkCloud,i_precip_vertical_check,l_rtma3d, &
-                                      l_qnr_from_qr, n0_rain,
+                                      l_qnr_from_qr, n0_rain, &
                                       r_cloudfrac_threshold
 
   use namelist_mod, only: load_namelist
