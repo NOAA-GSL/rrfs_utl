@@ -26,10 +26,11 @@ program gen_be_ensmean
   integer :: ens_size
   logical    :: l_write_mean             ! if write ensmeble mean
   logical    :: l_recenter               ! if recenter
+  real :: beta
 
   namelist/setup/ ens_size,fv3_io_layout_y,l_write_mean,l_recenter, &
                   filebase,filetail,&
-                  numvar,varlist
+                  numvar,varlist,beta
 
    character (len=filename_len)   :: directory                 ! General filename stub.
    character (len=filename_len)   :: filename                  ! General filename stub.
@@ -83,6 +84,7 @@ program gen_be_ensmean
   filebase='fv3sar_tile1'
   l_write_mean=.true.
   l_recenter=.false.
+  beta=1.0
 
 
   inquire(file='namelist.ens', EXIST=ifexist )
@@ -212,7 +214,7 @@ program gen_be_ensmean
         j=dis_group(color,k)
         if(j>=1 .and. j<=totalnumvar) then
            call ncio_ensmean_recenter(ens_size,new_rank,new_comm,l_write_mean,l_recenter,&
-                                      varlist_all(j),filename,tailist_all(j))
+                                      varlist_all(j),filename,tailist_all(j),beta)
            call mpi_barrier(new_comm,iret)
         endif
      enddo
