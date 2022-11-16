@@ -1,4 +1,4 @@
-subroutine ncio_ensmean_recenter(ensize,mype,new_comm,l_write_mean,l_recenter,varname,filename,filetail)
+subroutine ncio_ensmean_recenter(ensize,mype,new_comm,l_write_mean,l_recenter,varname,filename,filetail,beta)
 !
 !---------------------------------------------------------------------- 
 !  Purpose: Calculate ensemble mean file from input FV3LAM NETCDF input
@@ -25,6 +25,8 @@ subroutine ncio_ensmean_recenter(ensize,mype,new_comm,l_write_mean,l_recenter,va
    character (len=*),intent(inout):: varname         ! Variable to search for.
    logical,intent(in)    :: l_write_mean             ! if write ensmeble mean
    logical,intent(in)    :: l_recenter               ! if recenter
+   real                  :: beta                     ! weighting of the control in the new mean, 0<=beta<=1
+                                                     ! new mean = beta * control + ( 1 - beta ) * mean
 !
 !
 !
@@ -219,10 +221,10 @@ subroutine ncio_ensmean_recenter(ensize,mype,new_comm,l_write_mean,l_recenter,va
 !
 !  get the values after recenter
          if ( ivtype == 5 ) then
-            data_r = data_r + data_r_diff
+            data_r = data_r + beta * data_r_diff
             if(l_positive) data_r=max(data_r, 0.0)
          elseif ( ivtype == 6 ) then
-            data_d = data_d + data_d_diff
+            data_d = data_d + beta * data_d_diff
             if(l_positive) data_d=max(data_d, 0.0)
          endif
 !
