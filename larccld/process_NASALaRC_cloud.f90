@@ -42,7 +42,8 @@ program  process_NASALaRC_cloud
   integer :: npe, mype,ierror
 !SATID
 !  integer, parameter :: satidgoeswest=259  ! GOES 15  Stopped after March 2nd, 2020
-  integer, parameter :: satidgoeswest=271  ! GOES 17
+!  integer, parameter :: satidgoeswest=271  ! GOES 17 stopped after January 4th,2022
+  integer, parameter :: satidgoeswest=272  ! GOES 17 stopped after January 4th,2022
   integer, parameter :: satidgoeseast=270  ! GOES 16
   integer,parameter  :: boxMAX=10
 !
@@ -484,7 +485,7 @@ subroutine read_NASALaRC_cloud_bufr(satfile,atime,satidgoeseast,satidgoeswest,ea
        obs_time=(hdr(1)-2000.0_8)*100000000.0_8+hdr(2)*1000000.0_8+hdr(3)*10000.0_8+hdr(4)*100.0_8+hdr(5)
        satid=int(hdr(7))
        if( (obs_time == east_time .and. satid==satidgoeseast ) .or.  &
-           (obs_time == west_time .and. (satid==satidgoeswest .or. satid==259) ) ) then
+           (obs_time == west_time .and. (satid==satidgoeswest .or. satid==259 .or. satid==271) ) ) then
          call ufbint(unit_in,obs,7,1,iret,obstr)
          if(abs(obs(3,1) -4.0) < 1.e-4) then
            obs(7,1)=99999. ! clear
@@ -690,7 +691,7 @@ subroutine read_NASALaRC_cloud_bufr_survey(satfile,satidgoeseast,satidgoeswest,e
               numobs_east=num_subset_all(i)
          endif
       endif
-      if(num_satid(i) == satidgoeswest .or. num_satid(i)==259 ) then
+      if(num_satid(i) == satidgoeswest .or. num_satid(i)==259 .or. num_satid(i)==271 ) then
          if(west_time < num_obstime_all(i)) then
              west_time=num_obstime_all(i)
              numobs_west=num_subset_all(i)
