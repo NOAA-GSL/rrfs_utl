@@ -144,7 +144,7 @@ contains
  
 ! define esg grid
     this%grid_type=trim(grid_type)
-    if(trim(grid_type)=="CONUS_13km") then
+    if(trim(grid_type)=="RRFS_CONUS_13km") then
        this%pdlat = 38.5_dp
        this%pdlon = -97.5_dp
        this%pdazi = 0.0_dp
