@@ -34,7 +34,9 @@ module module_ncfile_stat
 
   type :: ncfile_stat
 
-      character(len=80) :: filename
+      integer :: numfiles
+      character(len=120),allocatable :: filename(:)
+      integer,allocatable :: numvarfile(:)
       integer :: numvar
       character(len=max_varname_length),allocatable :: list_varname(:)
       integer,allocatable :: num_dim(:)
@@ -54,7 +56,7 @@ module module_ncfile_stat
 !
 contains
 
-  subroutine init(this,filein,numvar,varlist)
+  subroutine init(this,numfiles,filein,numvar,varlist)
 !                .      .    .                                       .
 ! subprogram: 
 !   prgmmr:
@@ -69,16 +71,28 @@ contains
 !
     implicit none
 
-    character(len=*), intent(in) :: filein
-    integer, intent(in)          :: numvar
-    character(len=*), intent(in) :: varlist
+    integer, intent(in)          :: numfiles
+    character(len=*), intent(in) :: filein(numfiles)
+    integer, intent(in)          :: numvar(numfiles)
+    character(len=*), intent(in) :: varlist(numfiles)
     class(ncfile_stat) :: this
 !
-    integer :: n
+    integer :: i,n1,n2
+    character(len=200) :: varlistlocal
 !
-    this%filename=trim(filein)
-    this%numvar=numvar
-    if( numvar>0 ) then
+    this%numfiles=numfiles
+    this%numvar=0
+    if(this%numfiles>0) then
+      allocate(this%filename(this%numfiles))
+      allocate(this%numvarfile(this%numfiles))
+      do i=1,numfiles
+       this%filename(i)=trim(filein(i))
+       this%numvarfile(i)=numvar(i)
+       this%numvar=this%numvar+numvar(i)
+      enddo
+    endif
+!
+    if( this%numvar>0 ) then
        allocate(this%list_varname(this%numvar))
        allocate(this%dim_1(this%numvar))
        allocate(this%dim_2(this%numvar))
@@ -90,19 +104,33 @@ contains
        this%dim_3=1
        this%num_dim=1
        this%vartype=0
-       read(varlist,*) this%list_varname
+       n1=1
+       do i = 1, numfiles
+          n2=n1+this%numvarfile(i)-1
+          varlistlocal=trim(varlist(i))
+          read(varlistlocal,*) this%list_varname(n1:n2)
+          n1=n2+1
+       end do
     endif
     this%num_totalvl=0
 
-    write(6,*) 'process file: ',trim(this%filename)
-!    write(6,*) 'variable will be process in this file:'
-!    write(6,*) this% list_varname
+    do i=1,numfiles
+      write(6,*) 'process file: ',trim(this%filename(i))
+      write(6,*) 'variable numbers in this file: ',this%numvarfile(i)
+    enddo
+    write(6,*) 'variable will be process:',this%numvar
+    write(6,*) this%list_varname
 !
   end subroutine init
 
   subroutine close(this)
     implicit none
     class(ncfile_stat) :: this
+
+    if(this%numfiles>0) then
+      deallocate(this%filename)
+      deallocate(this%numvarfile)
+    endif
 
     if(this%numvar>0) then
        deallocate(this%list_varname)
@@ -112,8 +140,9 @@ contains
        deallocate(this%num_dim)
        deallocate(this%vartype)
     endif
+    this%numfiles=0
     this%numvar=0
-    this%num_totalvl=0
+      this%num_totalvl=0
 
   end subroutine close
 
@@ -134,82 +163,93 @@ contains
     character(len=max_varname_length) :: name
     integer :: varid,iret,xtype
     logical :: ifexist
+    integer :: n,lb,kk
 !
 !
-    if(this%numvar<=0) return
+    if(this%numfiles<=0) return
+
+    lb=1
+    do n=1,this%numfiles
+       if(this%numvarfile(n) <=0) cycle 
      
-    inquire(file=trim(this%filename),exist=ifexist )
-    if(.not.ifexist) then
-      write(6,*) 'file does not exist ',trim(this%filename)
-      this%num_totalvl=0
-      return 
-    endif
-!    
-    iret=nf90_open(this%filename,nf90_nowrite,ncid)
-
-    iret=nf90_inquire(ncid,ndimensions,nvariables,nattributes,unlimiteddimid)
-    if(allocated(dim_len)) deallocate(dim_len)
-    allocate(dim_len(ndimensions))
-
-    do k=1,ndimensions
-       iret=nf90_inquire_dimension(ncid,k,name,len)
-       dim_len(k)=len
-    enddo
-
-    do k=1,this%numvar
-       name=this%list_varname(k)
-       iret = nf90_inq_varid(ncid, trim(name), VarId)
-       iret=nf90_inquire_variable(ncid,VarId,ndims=ndim)
-
-       if(allocated(dim_id    )) deallocate(dim_id    )
-       allocate(dim_id(ndim))
-       iret = nf90_inquire_variable(ncid, VarId, dimids = dim_id(1:ndim))
-       if(ndim==4) then
-          if(dim_len(dim_id(4))==1) then
-              this%dim_1(k)=dim_len(dim_id(1))
-              this%dim_2(k)=dim_len(dim_id(2))
-              this%dim_3(k)=dim_len(dim_id(3))
-              this%num_dim(k)=3
-          else
-              write(6,*) '4th dimension must be 1',trim(name),dim_len(dim_id(4))
-              stop 123
-          endif
-       elseif(ndim==3) then
-          if(dim_len(dim_id(3))==1) then
-              this%dim_1(k)=dim_len(dim_id(1))
-              this%dim_2(k)=dim_len(dim_id(2))
-              this%dim_3(k)=1
-              this%num_dim(k)=2
-          else
-              this%dim_1(k)=dim_len(dim_id(1))
-              this%dim_2(k)=dim_len(dim_id(2))
-              this%dim_3(k)=dim_len(dim_id(3))
-              this%num_dim(k)=3
-          endif
-       elseif(ndim==2) then
-          this%dim_1(k)=dim_len(dim_id(1))
-          this%dim_2(k)=dim_len(dim_id(2))
-          this%dim_3(k)=1
-          this%num_dim(k)=2
+       inquire(file=trim(this%filename(n)),exist=ifexist )
+       if(.not.ifexist) then
+         write(6,*) 'file does not exist ',trim(this%filename(n))
+         cycle 
        else
-          write(6,*) 'something wrong with dimension size, ',trim(name),ndim
-          stop 123
+         write(6,*) ' find dimensions for file ',trim(this%filename(n))
        endif
-          
-       iret = nf90_inquire_variable(ncid, VarId, xtype = xtype)
-       this%vartype(k)=xtype
-    enddo
+!    
+       iret=nf90_open(this%filename(n),nf90_nowrite,ncid)
 
-    iret=nf90_close(ncid)
+       iret=nf90_inquire(ncid,ndimensions,nvariables,nattributes,unlimiteddimid)
+       if(allocated(dim_len)) deallocate(dim_len)
+       allocate(dim_len(ndimensions))
+
+       do k=1,ndimensions
+          iret=nf90_inquire_dimension(ncid,k,name,len)
+          dim_len(k)=len
+       enddo
+
+       do kk=1,this%numvarfile(n)
+          k=lb+kk-1
+          name=this%list_varname(k)
+          iret = nf90_inq_varid(ncid, trim(name), VarId)
+          iret=nf90_inquire_variable(ncid,VarId,ndims=ndim)
+
+          if(allocated(dim_id    )) deallocate(dim_id    )
+          allocate(dim_id(ndim))
+          iret = nf90_inquire_variable(ncid, VarId, dimids = dim_id(1:ndim))
+          if(ndim==4) then
+             if(dim_len(dim_id(4))==1) then
+                 this%dim_1(k)=dim_len(dim_id(1))
+                 this%dim_2(k)=dim_len(dim_id(2))
+                 this%dim_3(k)=dim_len(dim_id(3))
+                 this%num_dim(k)=3
+             else
+                 write(6,*) '4th dimension must be 1',trim(name),dim_len(dim_id(4))
+                 stop 123
+             endif
+          elseif(ndim==3) then
+             if(dim_len(dim_id(3))==1) then
+                 this%dim_1(k)=dim_len(dim_id(1))
+                 this%dim_2(k)=dim_len(dim_id(2))
+                 this%dim_3(k)=1
+                 this%num_dim(k)=2
+             else
+                 this%dim_1(k)=dim_len(dim_id(1))
+                 this%dim_2(k)=dim_len(dim_id(2))
+                 this%dim_3(k)=dim_len(dim_id(3))
+                 this%num_dim(k)=3
+             endif
+          elseif(ndim==2) then
+             this%dim_1(k)=dim_len(dim_id(1))
+             this%dim_2(k)=dim_len(dim_id(2))
+             this%dim_3(k)=1
+             this%num_dim(k)=2
+          else
+             write(6,*) 'something wrong with dimension size, ',trim(name),ndim
+             stop 123
+          endif
+          
+          iret = nf90_inquire_variable(ncid, VarId, xtype = xtype)
+          this%vartype(k)=xtype
+       enddo   ! end of loop for var list in a file
+
+       iret=nf90_close(ncid)
+       lb=lb+this%numvarfile(n)
+
+    enddo  ! end of file loop
 
     this%num_totalvl=0 
+    write(6,'(a20,10a10)') "variable_name","file_id","nx","ny","nz","data_type"
     do k=1,this%numvar
        this%num_totalvl=this%num_totalvl+this%dim_3(k)
-       write(6,'(a20,10I10)') this%list_varname(k),this%num_dim(k),this%dim_1(k), &
+       write(6,'(a20,10I10)') trim(this%list_varname(k)),this%num_dim(k),this%dim_1(k), &
                      this%dim_2(k),this%dim_3(k),this%vartype(k)
     enddo
     write(6,*) 'Total levels=',this%num_totalvl
-!  if(xtype==NF90_FLOAT) then
+    write(6,*) "===================================================================="
 
   end subroutine fill_dims
 
