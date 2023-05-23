@@ -28,7 +28,7 @@ C
 C
       INTEGER ptyp
 C
-      REAL rcp, flg, flag, xxx, pq(lm), tq(lm), twq(lm), rhq(lm), mye,
+      REAL flg, flag, xxx, pq(lm), tq(lm), twq(lm), rhq(lm), mye,
      *              qq(lm), icefrac, tqtmp(lm), pqtmp(lm), rhqtmp(lm),
      *              pint(lm+1), ttq(lm), ppq(lm), ppint(lm+1),
      *              pinttmp(lm+1)
