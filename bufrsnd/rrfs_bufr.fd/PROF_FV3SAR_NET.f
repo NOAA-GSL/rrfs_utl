@@ -764,18 +764,28 @@ C Getting start time
         LRECPR=4*(8+9+LCL1ML*LM+LCL1SL)
 ! former parameter statements
 
-        if (allocated(FPACK)) deallocate(FPACK); allocate(FPACK(NWORDM))
-        if (allocated(PRODAT)) deallocate(PRODAT); allocate(PRODAT(NWORDM))
-        if (ALLOCATED(DUM)) deallocate(DUM);allocate(DUM(IM,JM,4))
-        if (ALLOCATED(DUMMY)) deallocate(DUMMY); allocate(DUMMY(IM,JM))
-        if (ALLOCATED(DUMMY2)) deallocate(DUMMY2);allocate(DUMMY2(IM,JM))
+        if (allocated(FPACK)) deallocate(FPACK)
+        allocate(FPACK(NWORDM))
+        if (allocated(PRODAT)) deallocate(PRODAT)
+        allocate(PRODAT(NWORDM))
+        if (ALLOCATED(DUM)) deallocate(DUM)
+        allocate(DUM(IM,JM,4))
+        if (ALLOCATED(DUMMY)) deallocate(DUMMY) 
+        allocate(DUMMY(IM,JM))
+        if (ALLOCATED(DUMMY2)) deallocate(DUMMY2)
+        allocate(DUMMY2(IM,JM))
 
-        if (ALLOCATED(DUM3D)) deallocate(DUM3D); allocate(DUM3D(NUMSTA,LM))
-        if (ALLOCATED(DUM3D2)) deallocate(DUM3D2);allocate(DUM3D2(NUMSTA,LM))
-        if (ALLOCATED(DUM3D3)) deallocate(DUM3D3);allocate(DUM3D3(NUMSTA,LM))
-        if (ALLOCATED(DUM3D4)) deallocate(DUM3D4);allocate(DUM3D4(NUMSTA,LM))
+        if (ALLOCATED(DUM3D)) deallocate(DUM3D) 
+        allocate(DUM3D(NUMSTA,LM))
+        if (ALLOCATED(DUM3D2)) deallocate(DUM3D2)
+        allocate(DUM3D2(NUMSTA,LM))
+        if (ALLOCATED(DUM3D3)) deallocate(DUM3D3)
+        allocate(DUM3D3(NUMSTA,LM))
+        if (ALLOCATED(DUM3D4)) deallocate(DUM3D4)
+        allocate(DUM3D4(NUMSTA,LM))
 
-        if (ALLOCATED(LMH)) deallocate(LMH);allocate(LMH(IM,JM))
+        if (ALLOCATED(LMH)) deallocate(LMH)
+        allocate(LMH(IM,JM))
 
 
 !!!!!

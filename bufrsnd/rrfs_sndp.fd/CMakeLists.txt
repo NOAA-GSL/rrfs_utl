@@ -15,7 +15,6 @@ list(APPEND src_rrfs_sndp
   VAP.f
   WETBLB.f)
 
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffixed-line-length-120")
 add_executable(rrfs_sndp.exe ${src_rrfs_sndp})
 target_link_libraries(rrfs_sndp.exe PRIVATE bufr::bufr_4)
 
