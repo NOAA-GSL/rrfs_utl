@@ -26,7 +26,7 @@ PROGRAM check_process_imssnow
 
   use mpi
   use kinds, only: r_kind
-  use module_bkio_fv3lam, only : bkio_fv3lam
+  use module_bkio_fv3lam_parall, only : bkio_fv3lam
   use constants, only : init_constants,init_constants_derived
   use gsl_update_mod, only: gsl_update_soil_tq
 
@@ -54,6 +54,8 @@ PROGRAM check_process_imssnow
   real(r_kind),allocatable,dimension(:,:)  :: tsk_comp
   integer :: k
 !
+  integer,dimension(8) :: values
+!
 !**********************************************************************
 !
 !            END OF DECLARATIONS....start of program
@@ -63,10 +65,14 @@ PROGRAM check_process_imssnow
   call MPI_COMM_SIZE(mpi_comm_world,npe,ierror)
   call MPI_COMM_RANK(mpi_comm_world,mype,ierror)
 
+  if(npe < 5 ) then
+     call MPI_FINALIZE(ierror)
+     write(*,*) "Error: This application needs more than 5 cores to run"
+     stop 111
+  endif
 !
 ! NCEP LSF has to use all cores allocated to run this application 
 ! but this if check can make sure only one core run through the real code.
-  if(mype==0) then
 !
 !  get namelist
 !
@@ -84,8 +90,10 @@ PROGRAM check_process_imssnow
        open(10,file='namelist.soiltq',status='old')
           read(10,setup)
        close(10)
-       write(*,*) 'Namelist setup are:'
-       write(*,setup)
+       if(mype==0) then
+          write(*,*) 'Namelist setup are:'
+          write(*,setup)
+       endif
      else
        write(*,*) 'No namelist file exist, use default values'
        write(*,*) iyear,imonth,iday,ihour,iminute
@@ -94,10 +102,20 @@ PROGRAM check_process_imssnow
      call init_constants(.true.)
      call init_constants_derived
 !
-     call fv3bk%init(fv3_io_layout_y,iyear,imonth,iday,ihour,iminute)
-     call fv3bk%setup_grid()
-     call fv3bk%read_ges()
+  if(mype==0) then
+     call date_and_time(VALUES=values)
+     write(*,'(A20,8I5)') 'start read time=',values
+  endif
 !
+! parallel read:
+!
+     call fv3bk%init(fv3_io_layout_y,iyear,imonth,iday,ihour,iminute)
+     call fv3bk%setup_grid(mype)
+     call fv3bk%read_ges(mype)
+!
+  if(mype==0) then
+     call date_and_time(VALUES=values)
+     write(*,'(A20,8I5)') 'after read time=',values
      allocate(ges_smois(fv3bk%nlon,fv3bk%nlat,fv3bk%nsoil))
      allocate(ges_tslb(fv3bk%nlon,fv3bk%nlat,fv3bk%nsoil))
      allocate(ges_tsk(fv3bk%nlon,fv3bk%nlat))
@@ -148,7 +166,11 @@ PROGRAM check_process_imssnow
      deallocate(delta)
      deallocate(deltaT)
 
+     call date_and_time(VALUES=values)
+     write(*,'(A20,8I5)') 'start write=',values
      call fv3bk%update_soil()
+     call date_and_time(VALUES=values)
+     write(*,'(A20,8I5)') 'after write time=',values
      call fv3bk%close
 !
     write(6,*) "=== RRFS ADJUST SOIL T/Q SUCCESS ==="
