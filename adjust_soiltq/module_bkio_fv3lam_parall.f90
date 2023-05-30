@@ -1,4 +1,4 @@
-module module_bkio_fv3lam
+module module_bkio_fv3lam_parall
 !
 !   PRGMMR: Ming Hu          ORG: GSL        DATE: 2022-03-08
 !
@@ -136,7 +136,6 @@ contains
     this%sfcfile='sfc_data.nc'
     this%gridfile='fv3_grid_spec'
     this%tracerfile='fv_tracer.res.tile1.nc'
-!    this%dynfile='gfs_data.nc'
     this%dynfile='fv_core.res.tile1.nc'
 !
     this%is_t=1
@@ -154,8 +153,6 @@ contains
     if(allocated(this%fv3_layout_begin)) deallocate(this%fv3_layout_begin)
     if(allocated(this%fv3_layout_end)) deallocate(this%fv3_layout_end)
 
-    if(allocated(this%ges_xlon)) deallocate(this%ges_xlon)
-    if(allocated(this%ges_xlat)) deallocate(this%ges_xlat)
     if(allocated(this%coast_prox)) deallocate(this%coast_prox)
     if(allocated(this%sno)) deallocate(this%sno)
     if(allocated(this%sncovr)) deallocate(this%sncovr)
@@ -254,7 +251,7 @@ contains
     use module_ncio, only: ncio
     implicit none
     class(bkio_fv3lam) :: this
-    integer, intent(in):: mype
+    integer,intent(in) :: mype
     type(ncio) :: fv3io
 !
     character(len=80) :: thisfv3file
@@ -278,7 +275,7 @@ contains
        call fv3io%open(trim(thisfv3file),'r',0)
        call fv3io%get_dim("grid_xt",nlon)
        call fv3io%get_dim("grid_yt",nlat)
-       write(6,*) 'grid dimension =',id,nlon,nlat
+       if(mype==0) write(6,*) 'grid dimension =',id,nlon,nlat
        call fv3io%close
        this%fv3_layout_begin(id)=iy+1
        iy=iy+nlat
@@ -286,41 +283,59 @@ contains
     enddo
     this%nlon=nlon
     this%nlat=this%fv3_layout_end(this%fv3_io_layout_y)
-    write(6,'(a,2I10)') " nlon,nlat=",this%nlon,this%nlat
-    write(6,'(a20,20I6)') "fv3_layout_begin=",this%fv3_layout_begin
-    write(6,'(a20,20I6)') "fv3_layout_end=",this%fv3_layout_end
+    if(mype==0) then
+       write(6,'(a,2I10)') " nlon,nlat=",this%nlon,this%nlat
+       write(6,'(a20,20I6)') "fv3_layout_begin=",this%fv3_layout_begin
+       write(6,'(a20,20I6)') "fv3_layout_end=",this%fv3_layout_end
+    endif
 !
-    allocate(this%ges_xlon(this%nlon,this%nlat))
-    allocate(this%ges_xlat(this%nlon,this%nlat))
-    do id=1,this%fv3_io_layout_y
-       if(this%fv3_io_layout_y > 1) then
-          write(thisfv3file,'(a,a,I4.4)') trim(this%gridfile),".",id-1
-       else
-          thisfv3file=trim(this%gridfile)
-       endif
-       nlon=this%nlon
-       nlat=this%fv3_layout_end(id)-this%fv3_layout_begin(id)+1
-       allocate(r2d4b(nlon,nlat))
-       call fv3io%open(trim(thisfv3file),'r',0)
-       call fv3io%get_var("grid_lont",nlon,nlat,r2d4b)
-       this%ges_xlon(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b(:,:)
-       call fv3io%get_var("grid_latt",nlon,nlat,r2d4b)
-       this%ges_xlat(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b(:,:)
-       call fv3io%close
-       deallocate(r2d4b)
-    enddo
-    write(6,*) "lon=",maxval(this%ges_xlon),minval(this%ges_xlon)
-    write(6,*) "lat=",maxval(this%ges_xlat),minval(this%ges_xlat)
+    if (mype==0) then
+       allocate(this%ges_xlon(this%nlon,this%nlat))
+       allocate(this%ges_xlat(this%nlon,this%nlat))
+       do id=1,this%fv3_io_layout_y
+          if(this%fv3_io_layout_y > 1) then
+             write(thisfv3file,'(a,a,I4.4)') trim(this%gridfile),".",id-1
+          else
+             thisfv3file=trim(this%gridfile)
+          endif
+          nlon=this%nlon
+          nlat=this%fv3_layout_end(id)-this%fv3_layout_begin(id)+1
+          allocate(r2d4b(nlon,nlat))
+          call fv3io%open(trim(thisfv3file),'r',0)
+          call fv3io%get_var("grid_lont",nlon,nlat,r2d4b)
+          this%ges_xlon(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b(:,:)
+          call fv3io%get_var("grid_latt",nlon,nlat,r2d4b)
+          this%ges_xlat(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b(:,:)
+          call fv3io%close
+          deallocate(r2d4b)
+       enddo
+       write(6,*) "lon=",maxval(this%ges_xlon),minval(this%ges_xlon)
+       write(6,*) "lat=",maxval(this%ges_xlat),minval(this%ges_xlat)
+    endif
 
   end subroutine setup_grid
 
   subroutine read_ges(this,mype)
 !
     use module_ncio, only: ncio
+    use mpi
+
+    use netcdf, only: nf90_open,nf90_close,nf90_noerr
+    use netcdf, only: nf90_get_var,nf90_put_var
+    use netcdf, only: nf90_nowrite,nf90_write
+    use netcdf, only: nf90_Inquire_Dimension
+    use netcdf, only: nf90_inq_varid
+    use netcdf, only: nf90_strerror
+
     implicit none
     class(bkio_fv3lam) :: this
-    integer, intent(in):: mype
+    integer,intent(in) :: mype
     type(ncio) :: fv3io
+!
+    integer :: startloc(3)
+    integer :: countloc(3)
+    integer :: ncioid,var_id
+    integer :: iret
 !
     character(len=80) :: thisfv3file
     integer :: id,fv3_io_layout_y
@@ -329,6 +344,7 @@ contains
     real(r_kind),allocatable :: r2d8b(:,:)
     real(r_kind),allocatable :: r3d8b(:,:,:)
     real,allocatable :: r3d4b(:,:,:)
+    real,allocatable :: r2d4b(:,:)
     real,allocatable :: r3d4b2(:,:,:)
     real,allocatable :: r1d4b(:)
 !
@@ -339,6 +355,7 @@ contains
     nlat=this%fv3_layout_end(fv3_io_layout_y)
 !
 ! read model top pressure
+if(mype==2) then
     call fv3io%open('./fv_core.res.nc','r',200)
     call fv3io%get_dim("xaxis_1",nz)
     allocate(r1d4b(nz))
@@ -347,14 +364,24 @@ contains
     call fv3io%close
     deallocate(r1d4b)
     write(6,*) 'model top pressure (pa)=',this%p_top
-
+endif
 !
     allocate(this%ges_p1(nlon,nlat))
     allocate(this%ges_t1(nlon,nlat))
     allocate(this%ges_q1(nlon,nlat))
     allocate(this%sumqc(nlon,nlat))
     allocate(this%qsatg(nlon,nlat))
+    this%ges_p1=0.0
+    this%ges_t1=0.0
+    this%ges_q1=0.0
+    this%sumqc=0.0
+    this%qsatg=0.0
+    allocate(this%tinc(nlon,nlat))
+    allocate(this%qinc(nlon,nlat))
+    this%tinc=0.0
+    this%qinc=0.0
 
+if(mype==1) then
 ! read q, qc and qi from tracer    
     do id=1,fv3_io_layout_y
        if(fv3_io_layout_y > 1) then
@@ -364,36 +391,36 @@ contains
        endif
        nlat_local=this%fv3_layout_end(id)-this%fv3_layout_begin(id)+1
 
-       call fv3io%open(trim(thisfv3file),'r',200)
-       call fv3io%get_dim("zaxis_1",nz)
-       allocate(r3d4b(nlon,nlat_local,nz))
-       allocate(r3d4b2(nlon,nlat_local,nz))
-       allocate(r2d8b(nlon,nlat_local))
-       call fv3io%get_var("liq_wat",nlon,nlat_local,nz,r3d4b)
-       call fv3io%get_var("ice_wat",nlon,nlat_local,nz,r3d4b2)
-       r2d8b=0
-       do k=1,nz
-          do j=1,nlat_local
-             do i=1,nlon
-                r2d8b(i,j)=max(r2d8b(i,j),max(r3d4b(i,j,k),r3d4b2(i,j,k)))
-             enddo
-          enddo
-       enddo
-       this%sumqc(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
 ! use specific humidity 
-       call fv3io%get_var("sphum",nlon,nlat_local,nz,r3d4b)
-       this%ges_q1(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r3d4b(:,:,nz)
+       iret=nf90_open(trim(thisfv3file),nf90_nowrite,ncioid,info=MPI_INFO_NULL)
+       if(iret/=nf90_noerr) then
+           write(6,*)' problem opening ', trim(thisfv3file),', Status =',iret
+           write(6,*)  nf90_strerror(iret)
+           call flush(6)
+           stop(333)
+       endif
+       iret=nf90_inq_varid(ncioid,"zaxis_1",var_id)
+       iret=nf90_Inquire_Dimension(ncioid, var_id, len = nz)
 
-       call fv3io%close
-       deallocate(r2d8b)
+       allocate(r3d4b(nlon,nlat_local,1))
+       startloc=(/1,1,nz/)
+       countloc=(/nlon,nlat_local,1/)
+
+       iret=nf90_inq_varid(ncioid,"sphum",var_id)
+       iret=nf90_get_var(ncioid,var_id,r3d4b,start=startloc,count=countloc)
+       this%ges_q1(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r3d4b(:,:,1)
+
        deallocate(r3d4b)
-       deallocate(r3d4b2)
+       iret=nf90_close(ncioid)
     enddo
+    this%sumqc=0.0
     write(6,*) 'sumqc=',maxval(this%sumqc),minval(this%sumqc)
     write(6,*) 'ges_q1=',maxval(this%ges_q1),minval(this%ges_q1)
+endif
 !
 ! read t and pressure from dyn
 !
+if(mype==2) then
     do id=1,fv3_io_layout_y
        if(fv3_io_layout_y > 1) then
           write(thisfv3file,'(a,a,I4.4)') trim(this%dynfile),".",id-1
@@ -402,7 +429,7 @@ contains
        endif
        nlat_local=this%fv3_layout_end(id)-this%fv3_layout_begin(id)+1
 
-       call fv3io%open(trim(thisfv3file),'r',200)
+       call fv3io%open(trim(thisfv3file),'r',0)
        call fv3io%get_dim("zaxis_1",nz)
 ! Pressure
        allocate(r3d4b(nlon,nlat_local,nz+1))
@@ -416,25 +443,39 @@ contains
        this%ges_p1(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
        deallocate(r3d4b)
        deallocate(r2d8b)
-! T
-       allocate(r3d4b(nlon,nlat_local,nz))
-       call fv3io%get_var("T",nlon,nlat_local,nz,r3d4b)
-       this%ges_t1(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r3d4b(:,:,nz)
-
        call fv3io%close
+! T
+       iret=nf90_open(trim(thisfv3file),nf90_nowrite,ncioid,info=MPI_INFO_NULL)
+       if(iret/=nf90_noerr) then
+           write(6,*)' problem opening ', trim(thisfv3file),', Status =',iret
+           write(6,*)  nf90_strerror(iret)
+           call flush(6)
+           stop(333)
+       endif
+
+       iret=nf90_inq_varid(ncioid,"zaxis_1",var_id)
+       iret=nf90_Inquire_Dimension(ncioid, var_id, len = nz)
+
+       allocate(r3d4b(nlon,nlat_local,1))
+       startloc=(/1,1,nz/)
+       countloc=(/nlon,nlat_local,1/)
+
+       iret=nf90_inq_varid(ncioid,"T",var_id)
+       iret=nf90_get_var(ncioid,var_id,r3d4b,start=startloc,count=countloc)
+       this%ges_t1(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r3d4b(:,:,1)
+
        deallocate(r3d4b)
+       iret=nf90_close(ncioid)
     enddo
     write(6,*) 'ges_p1=',maxval(this%ges_p1),minval(this%ges_p1)
     write(6,*) 'ges_t1=',maxval(this%ges_t1),minval(this%ges_t1)
 !
     call genqsat_2m(this%qsatg,this%ges_t1,this%ges_p1,nlon,nlat,1,.true.)
     write(6,*) 'qsat=',maxval(this%qsatg),minval(this%qsatg)
+endif
 !
-! get analysis increments
-    allocate(this%tinc(nlon,nlat))
-    allocate(this%qinc(nlon,nlat))
-
 ! read q from tracer    
+if(mype==3) then
     do id=1,fv3_io_layout_y
        if(fv3_io_layout_y > 1) then
           write(thisfv3file,'(a,a,a,I4.4)') "bk_",trim(this%tracerfile),".",id-1
@@ -443,18 +484,33 @@ contains
        endif
        nlat_local=this%fv3_layout_end(id)-this%fv3_layout_begin(id)+1
 
-       call fv3io%open(trim(thisfv3file),'r',200)
-       call fv3io%get_dim("zaxis_1",nz)
-       allocate(r3d4b(nlon,nlat_local,nz))
 ! use specific humidity 
-       call fv3io%get_var("sphum",nlon,nlat_local,nz,r3d4b)
-       this%qinc(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r3d4b(:,:,nz)
+       iret=nf90_open(trim(thisfv3file),nf90_nowrite,ncioid,info=MPI_INFO_NULL)
+       if(iret/=nf90_noerr) then
+           write(6,*)' problem opening ', trim(thisfv3file),', Status =',iret
+           write(6,*)  nf90_strerror(iret)
+           call flush(6)
+           stop(333)
+       endif
 
-       call fv3io%close
+       iret=nf90_inq_varid(ncioid,"zaxis_1",var_id)
+       iret=nf90_Inquire_Dimension(ncioid, var_id, len = nz)
+
+       allocate(r3d4b(nlon,nlat_local,1))
+       startloc=(/1,1,nz/)
+       countloc=(/nlon,nlat_local,1/)
+
+       iret=nf90_inq_varid(ncioid,"sphum",var_id)
+       iret=nf90_get_var(ncioid,var_id,r3d4b,start=startloc,count=countloc)
+       this%qinc(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r3d4b(:,:,1)
+
        deallocate(r3d4b)
+       iret=nf90_close(ncioid)
     enddo
     write(6,*) 'q bk=',maxval(this%qinc),minval(this%qinc)
+endif
 !
+if(mype==4) then
     do id=1,fv3_io_layout_y
        if(fv3_io_layout_y > 1) then
           write(thisfv3file,'(a,a,a,I4.4)') "bk_",trim(this%dynfile),".",id-1
@@ -462,28 +518,35 @@ contains
           thisfv3file="bk_"//trim(this%dynfile)
        endif
        nlat_local=this%fv3_layout_end(id)-this%fv3_layout_begin(id)+1
-
-       call fv3io%open(trim(thisfv3file),'r',200)
-       call fv3io%get_dim("zaxis_1",nz)
 ! T
-       allocate(r3d4b(nlon,nlat_local,nz))
-       call fv3io%get_var("T",nlon,nlat_local,nz,r3d4b)
-       this%tinc(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r3d4b(:,:,nz)
+       iret=nf90_open(trim(thisfv3file),nf90_nowrite,ncioid,info=MPI_INFO_NULL)
+       if(iret/=nf90_noerr) then
+           write(6,*)' problem opening ', trim(thisfv3file),', Status =',iret
+           write(6,*)  nf90_strerror(iret)
+           call flush(6)
+           stop(333)
+       endif
+       iret=nf90_inq_varid(ncioid,"zaxis_1",var_id)
+       iret=nf90_Inquire_Dimension(ncioid, var_id, len = nz)
 
-       call fv3io%close
+       allocate(r3d4b(nlon,nlat_local,1))
+       startloc=(/1,1,nz/)
+       countloc=(/nlon,nlat_local,1/)
+
+       iret=nf90_inq_varid(ncioid,"T",var_id)
+       iret=nf90_get_var(ncioid,var_id,r3d4b,start=startloc,count=countloc)
+       this%tinc(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r3d4b(:,:,1)
+
        deallocate(r3d4b)
+       iret=nf90_close(ncioid)
     enddo
     write(6,*) 't bk=',maxval(this%tinc),minval(this%tinc)
-
-    this%qinc=this%ges_q1-this%qinc
-    this%tinc=this%ges_t1-this%tinc
-    write(6,*) 'qinc=',maxval(this%qinc),minval(this%qinc)
-    write(6,*) 'tinc=',maxval(this%tinc),minval(this%tinc)
-
+endif
 !
 !  read surface
 !
 
+if(mype==0) then
     allocate(this%coast_prox(nlon,nlat))
     allocate(this%sno(nlon,nlat))
     allocate(this%sncovr(nlon,nlat))
@@ -590,6 +653,45 @@ contains
     do k=1,nz
        write(6,*) 'this%ges_smois=',maxval(this%ges_smois(:,:,k)),minval(this%ges_smois(:,:,k))
     enddo
+endif
+
+    call mpi_barrier(mpi_comm_world,iret)
+if(mype==1) then
+    call MPI_Send(this%sumqc, nlon*nlat, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,iret)
+    call MPI_Send(this%ges_q1, nlon*nlat, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,iret)
+endif
+if(mype==2) then
+    call MPI_Send(this%ges_p1, nlon*nlat, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,iret)
+    call MPI_Send(this%ges_t1, nlon*nlat, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,iret)
+    call MPI_Send(this%qsatg, nlon*nlat, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,iret)
+endif
+
+if(mype==3) then
+    call MPI_Send(this%qinc, nlon*nlat, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,iret)
+endif
+if(mype==4) then
+    call MPI_Send(this%tinc, nlon*nlat, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,iret)
+endif
+
+if(mype==0) then
+   call MPI_Recv(this%tinc, nlon*nlat, MPI_DOUBLE, 4, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE,iret)
+   call MPI_Recv(this%qinc, nlon*nlat, MPI_DOUBLE, 3, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE,iret)
+   call MPI_Recv(this%sumqc, nlon*nlat, MPI_DOUBLE, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE,iret)
+   call MPI_Recv(this%ges_q1, nlon*nlat, MPI_DOUBLE, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE,iret)
+   call MPI_Recv(this%ges_p1, nlon*nlat, MPI_DOUBLE, 2, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE,iret)
+   call MPI_Recv(this%ges_t1, nlon*nlat, MPI_DOUBLE, 2, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE,iret)
+   call MPI_Recv(this%qsatg, nlon*nlat, MPI_DOUBLE, 2, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE,iret)
+
+   this%qinc=this%ges_q1-this%qinc
+   this%tinc=this%ges_t1-this%tinc
+   write(6,*) 'mype=0 qinc=',maxval(this%qinc),minval(this%qinc)
+   write(6,*) 'mype=0 tinc=',maxval(this%tinc),minval(this%tinc)
+   write(6,*) 'mype=0 sumqc=',maxval(this%sumqc),minval(this%sumqc)
+   write(6,*) 'mype=0 ges_q1=',maxval(this%ges_q1),minval(this%ges_q1)
+   write(6,*) 'mype=0 ges_p1=',maxval(this%ges_p1),minval(this%ges_p1)
+   write(6,*) 'mype=0 ges_t1=',maxval(this%ges_t1),minval(this%ges_t1)
+   write(6,*) 'mype=0 qsatg=',maxval(this%qsatg),minval(this%qsatg)
+endif
 
   end subroutine read_ges
 
@@ -659,4 +761,4 @@ subroutine gsl_gen_coast_prox(nlon,nlat,isli,coast_prox)
 end subroutine gsl_gen_coast_prox
 
 
-end module module_bkio_fv3lam
+end module module_bkio_fv3lam_parall

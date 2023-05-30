@@ -54,7 +54,7 @@ subroutine gsl_update_soil_tq(fv3bk)
   use kinds, only: r_kind,i_kind
   use constants, only: zero,one,fv,one_tenth,deg2rad,pi
   use constants, only: partialSnowThreshold,t0c,qmin
-  use module_bkio_fv3lam, only : bkio_fv3lam
+  use module_bkio_fv3lam_parall , only : bkio_fv3lam
 
   implicit none
 

@@ -2,7 +2,7 @@ list(APPEND src_adjust_soiltq
   adjust_soiltq.f90
   unfill_fv3lam_grid2.f90
   gsl_adjust_soiltq_mod.f90
-  module_bkio_fv3lam.f90
+  module_bkio_fv3lam_parall.f90
   genqsat.f90
   constants.f90)
 
