@@ -220,7 +220,7 @@ PROGRAM ens_mean_recenter
            write(6,*)' problem opening ', trim(filename),' fileid=',mype_fileid,', Status =',iret
            write(6,*)  nf90_strerror(iret)
            call flush(6)
-           stop(333)
+           stop 333 
         endif
         if(mype==0) write(*,*) 'reading ensemble member =',iens
 
@@ -268,7 +268,7 @@ PROGRAM ens_mean_recenter
            write(6,*)' problem opening ', trim(filename),' fileid=',mype_fileid,', Status =',iret
            write(6,*)  nf90_strerror(iret)
            call flush(6)
-           stop(555)
+           stop 555 
         endif
         if(mype==0) write(*,*) 'write ensemble mean = ', &
                                 trim(input_ensmean_file(mype_fileid))
@@ -323,7 +323,7 @@ PROGRAM ens_mean_recenter
               write(6,*)' problem opening ', trim(filename),' fileid=',mype_fileid,', Status =',iret
               write(6,*)  nf90_strerror(iret)
               call flush(6)
-              stop(444)
+              stop 444 
            endif
            if(mype==0) write(*,*) 'update ensemble member =',iens
 

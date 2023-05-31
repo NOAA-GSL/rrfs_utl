@@ -72,7 +72,7 @@ C
       PTYPE=0
       IF (PPT.LE.PTHRES) RETURN
 
-      T1=RTC()
+      T1=secnds(0.0)
       PSFCK=PINT(LMHK+1)
 C
 C   SKIP THIS POINT IF NO PRECIP THIS TIME STEP 
@@ -156,9 +156,9 @@ C             RAIN = 8
           ELSE
 C             TRANSITION ZONE, ASSUME EQUALLY LIKELY RAIN/SNOW
 C             PICKING A RANDOM NUMBER, IF <=0.5 SNOW
-              t2=rtc() 
+              t2=secnds(0.0) 
               ta=t2-t1
-              call srand(ta)
+              call srand(int(ta))
 !              r1 = rand()
               IF (r1.le.0.5) THEN
 C                 SNOW = 1
@@ -192,9 +192,9 @@ C                 RAIN = 8
               ELSE
 C                 TRANSITION ZONE, ASSUME EQUALLY LIKELY IP/RAIN
 C                 PICKING A RANDOM NUMBER, IF <=0.5 IP
-                  t2=rtc()
+                  t2=secnds(0.0)
                   ta=t2-t1
-                  call srand(ta)
+                  call srand(int(ta))
 !                  r1 = rand()
                   IF (r1.le.0.5) THEN
 C                     ICE PELLETS = 2
@@ -221,9 +221,9 @@ C                 RAIN = 8
           ELSE
 C             TRANSITION ZONE, ASSUME EQUALLY LIKELY IP/ZR
 C             PICKING A RANDOM NUMBER, IF <=0.5 IP
-              t2=rtc()
+              t2=secnds(0.0)
               ta=t2-t1
-              call srand(ta)
+              call srand(int(ta))
 !              r1 = rand()
               IF (r1.le.0.5) THEN
 C                 STILL NEED TO CHECK POSITIVE ENERGY
@@ -239,9 +239,9 @@ C                     RAIN = 8
                   ELSE
 C                     TRANSITION ZONE, ASSUME EQUALLY LIKELY IP/RAIN
 C                     PICKING A RANDOM NUMBER, IF <=0.5 IP
-                      t2=rtc()
+                      t2=secnds(0.0)
                       ta=t2-t1
-                      call srand(ta)
+                      call srand(int(ta))
                       r2 = rand()
                       IF (r2.le.0.5) THEN
 C                         ICE PELLETS = 2

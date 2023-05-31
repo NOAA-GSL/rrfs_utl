@@ -3,6 +3,7 @@ set(module_dir "${CMAKE_CURRENT_BINARY_DIR}/include")
 add_library(ncio STATIC module_ncio.f90)
 add_library(${PROJECT_NAME}::ncio ALIAS ncio)
 set_target_properties(ncio PROPERTIES Fortran_MODULE_DIRECTORY "${module_dir}")
+target_link_libraries(ncio PUBLIC NetCDF::NetCDF_Fortran)
 target_include_directories(ncio PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
                                        $<INSTALL_INTERFACE:include>)
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include DESTINATION ${CMAKE_INSTALL_PREFIX})
