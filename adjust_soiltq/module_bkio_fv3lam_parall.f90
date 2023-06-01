@@ -397,7 +397,7 @@ if(mype==1) then
            write(6,*)' problem opening ', trim(thisfv3file),', Status =',iret
            write(6,*)  nf90_strerror(iret)
            call flush(6)
-           stop(333)
+           stop 333
        endif
        iret=nf90_inq_varid(ncioid,"zaxis_1",var_id)
        iret=nf90_Inquire_Dimension(ncioid, var_id, len = nz)
@@ -450,7 +450,7 @@ if(mype==2) then
            write(6,*)' problem opening ', trim(thisfv3file),', Status =',iret
            write(6,*)  nf90_strerror(iret)
            call flush(6)
-           stop(333)
+           stop 333
        endif
 
        iret=nf90_inq_varid(ncioid,"zaxis_1",var_id)
@@ -490,7 +490,7 @@ if(mype==3) then
            write(6,*)' problem opening ', trim(thisfv3file),', Status =',iret
            write(6,*)  nf90_strerror(iret)
            call flush(6)
-           stop(333)
+           stop 333
        endif
 
        iret=nf90_inq_varid(ncioid,"zaxis_1",var_id)
@@ -524,7 +524,7 @@ if(mype==4) then
            write(6,*)' problem opening ', trim(thisfv3file),', Status =',iret
            write(6,*)  nf90_strerror(iret)
            call flush(6)
-           stop(333)
+           stop 333
        endif
        iret=nf90_inq_varid(ncioid,"zaxis_1",var_id)
        iret=nf90_Inquire_Dimension(ncioid, var_id, len = nz)
