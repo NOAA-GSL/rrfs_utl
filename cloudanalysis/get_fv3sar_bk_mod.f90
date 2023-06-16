@@ -202,7 +202,7 @@ contains
 !     pbk         - 3D background pressure  (hPa)
 !     hbk         - 3D height above the ground (not the sea level)
 !
-     call gsi_rfv3io_get_grid_specs(bg_fv3regfilenameg,ierror)
+!     call gsi_rfv3io_get_grid_specs(bg_fv3regfilenameg,ierror)
 
      if(fv3_io_layout_y > 1) then
        call read_fv3sar_layout

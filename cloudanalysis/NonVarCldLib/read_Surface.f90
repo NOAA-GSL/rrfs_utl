@@ -1,5 +1,4 @@
-!SUBROUTINE read_Surface(mype,lunin,istart,jstart,nlon,nlat,& 
-SUBROUTINE read_Surface(mype,lunin,nlon,nlat,& 
+SUBROUTINE read_Surface(mype,lunin,istart,jstart,nlon,nlat,& 
                   numsao,NVARCLD_P,OI,OJ,OCLD,OWX,Oelvtn,Odist,cstation, &
                   OIstation,OJstation)
 !
@@ -58,8 +57,8 @@ SUBROUTINE read_Surface(mype,lunin,nlon,nlat,&
 
   integer(i_kind), intent(in) :: mype
   integer(i_kind), intent(in) :: lunin
-!  integer(i_kind), intent(in) :: istart
-!  integer(i_kind), intent(in) :: jstart
+  integer(i_kind), intent(in) :: istart
+  integer(i_kind), intent(in) :: jstart
   INTEGER(i_kind), intent(in) :: nlon,nlat
   INTEGER(i_kind), intent(in) :: numsao
   INTEGER(i_kind), intent(in) :: NVARCLD_P
@@ -90,7 +89,7 @@ SUBROUTINE read_Surface(mype,lunin,nlon,nlat,&
   INTEGER(i_kind) :: nn_obs
   real(r_kind)    ::  cldamt,awx,cldhgt
   character*3     :: mwx
-  INTEGER(i_kind) :: i,j !,jb,ib
+  INTEGER(i_kind) :: i,j,jb,ib
   integer(i_kind) :: start, end
 
   real(r_kind)    ::     spval_p
@@ -106,8 +105,8 @@ SUBROUTINE read_Surface(mype,lunin,nlon,nlat,&
   OWX=''
   OCLD=-99999
  
-!  ib=jstart   ! begin i point of this domain
-!  jb=istart   ! begin j point of this domain
+  ib=jstart   ! begin i point of this domain
+  jb=istart   ! begin j point of this domain
 
 !
   rewind(lunin)
@@ -124,8 +123,8 @@ SUBROUTINE read_Surface(mype,lunin,nlon,nlat,&
     DO i=1,numsao
        rstation_id=data_s(1,i)
        cstation(i)=cstation1
-       OI(i) = data_s(2,i) !- ib + 2  ! covert it to the local grid   
-       OJ(i) = data_s(3,i) !- jb + 2  ! covert it to the local grid
+       OI(i) = data_s(2,i) - ib + 2  ! covert it to the local grid   
+       OJ(i) = data_s(3,i) - jb + 2  ! covert it to the local grid
        Oelvtn(i)  = data_s(4,i)
        Odist(i)   = data_s(23,i)
        OIstation(i) = data_s(24,i)
@@ -234,6 +233,7 @@ SUBROUTINE read_Surface(mype,lunin,nlon,nlat,&
 
     ENDDO    ! i = numsao
 !
+    deallocate(data_s)
 
 END SUBROUTINE read_Surface
 

@@ -361,7 +361,7 @@ SUBROUTINE cloudCover_NESDIS(mype,regional_time,nlat,nlon,nsig,&
 
           if (k_closest <= 0 .and. abs(xland(i,j)) > 0.0001_r_single) then
              npts_ctp_delete = npts_ctp_delete + 1
-             write (6,*) i,j,sat_tem(i,j),tdiff,k_closest,xland(i,j)
+             !write (6,*) i,j,sat_tem(i,j),tdiff,k_closest,xland(i,j)
              go to 111
           end if
 
