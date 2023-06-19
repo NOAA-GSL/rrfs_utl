@@ -414,10 +414,6 @@ contains
   call general_grid2sub(s,d3r4,sub_vars)
   deallocate(d3r4)
 
-  do k=1,s%num_fields
-     write(6,*) k,maxval(sub_vars(:,:,k)), minval(sub_vars(:,:,k))
-  enddo
-
   lon2=s%lon2
   lat2=s%lat2
   nsig=s%nsig
@@ -675,13 +671,11 @@ subroutine update_fv3sar(mype)
   allocate(sub_vars(lat2,lon2,s%num_fields))
   sub_vars=0.0
 
-  write(6,*) ntotalcore,lat2,lon2,s%num_fields,nsig
   i=0
   do n=1,ntotalcore
      do ilev=kbegin(n),kend(n)
         i=i+1
         k=nsig-ilev+1
-  write(6,*) i,k,ilev,kbegin(n),kend(n)
         if(trim(varname(n))=="liq_wat")   call reorg_ad(lon2,lat2,sub_vars(:,:,i),ges_ql(:,:,k))
         if(trim(varname(n))=="ice_wat")   call reorg_ad(lon2,lat2,sub_vars(:,:,i),ges_qi(:,:,k))
         if(trim(varname(n))=="rainwat")   call reorg_ad(lon2,lat2,sub_vars(:,:,i),ges_qr(:,:,k))
@@ -696,23 +690,10 @@ subroutine update_fv3sar(mype)
      enddo
   enddo
 
-  i=0
-  do n=1,ntotalcore
-     do ilev=kbegin(n),kend(n)
-        i=i+1
-        write(6,*) i,maxval(sub_vars(:,:,i)),minval(sub_vars(:,:,i))
-    enddo
-  enddo
   call mpi_barrier(MPI_COMM_WORLD,ierror)
-  write(6,*) mype_nx,mype_ny,mype_lbegin,mype_lend
   allocate(d3r4(mype_nx,mype_ny,mype_lbegin:mype_lend))
   call general_sub2grid(s,sub_vars,d3r4)
   deallocate(sub_vars)
-        do ilev=mype_lbegin,mype_lend
-           write(6,'(a,a20,I5,2f20.7)') 'writing =',trim(adjustl(mype_varname)), &
-                   ilev,maxval(d3r4(:,:,ilev)),minval(d3r4(:,:,ilev))
-        enddo
-   write(6,*) mype_fileid,totalnumfiles,mype
 
 ! Create sub-communicator to handle each file
   key=mype+1
@@ -763,7 +744,6 @@ subroutine update_fv3sar(mype)
             stop(444)
         endif
 
-        write(6,*) mype_lbegin,mype_lend,mype_vartype,trim(mype_varname), trim(filename)
         do ilev=mype_lbegin,mype_lend
            write(6,'(a,a20,I5,2f15.6)') 'writing =',trim(adjustl(mype_varname)), &
                    ilev,maxval(d3r4(:,:,ilev)),minval(d3r4(:,:,ilev))

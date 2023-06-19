@@ -1288,9 +1288,6 @@ program cloudanalysis
      do j=1,lat2
         do i=1,lon2
            ! hydrometeor update
-!if(mype==1)  then
-!           ges_ql(i,j,k)=ges_ql(i,j,k)+0.001*float(j)
-!endif
            ges_qr(i,j,k)=rain_3d(i,j,k)
            ges_qs(i,j,k)=snow_3d(i,j,k)
            ges_qg(i,j,k)=graupel_3d(i,j,k)

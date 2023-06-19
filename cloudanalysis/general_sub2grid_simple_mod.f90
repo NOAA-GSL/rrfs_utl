@@ -87,7 +87,7 @@ module general_sub2grid_simple_mod
 
    end type sub2grid_info
 
-   logical :: print_verbose=.true.
+   logical :: print_verbose=.false.
 
 !  other declarations  ...
 
@@ -145,7 +145,6 @@ module general_sub2grid_simple_mod
       if(s%lallocated) then
          call general_sub2grid_destroy_info(s)
       end if
-      write(6,*) 's%npe s%mype =',s%npe,s%mype,s%nlat,s%nlon
       allocate(s%jstart(s%npe),s%istart(s%npe),s%ilat1(s%npe),s%jlon1(s%npe))
       allocate(s%ijn(s%npe),s%ijn_s(s%npe))
 
@@ -264,7 +263,6 @@ module general_sub2grid_simple_mod
 
       s%kbegin_loc=s%kbegin(s%mype)
       s%kend_loc=s%kend(s%mype)
-      write(6,*) s%kbegin_loc,s%kend_loc
 
 !         get alltoallv indices for sub2grid
       allocate(s%sendcounts(0:s%npe-1),s%sdispls(0:s%npe))
@@ -478,7 +476,6 @@ module general_sub2grid_simple_mod
       implicit none
 
       type(sub2grid_info),intent(in   ) :: s
-     ! real(r_single),     intent(in   ) :: grid_vars(s%nlat,s%nlon,s%kbegin_loc:s%kend_loc)
       real(r_single),     intent(in   ) :: grid_vars(s%nlon,s%nlat,s%kbegin_loc:s%kend_loc)
       real(r_single),     intent(  out) :: sub_vars(s%lat2,s%lon2,s%num_fields)
 
@@ -502,7 +499,6 @@ module general_sub2grid_simple_mod
                icount=icount+1
                ilat=s%ltosi_s(icount)
                jlon=s%ltosj_s(icount)
-               !temp(iloc)=grid_vars(ilat,jlon,k)
                temp(iloc)=grid_vars(jlon,ilat,k)
             end do
          end do
@@ -565,7 +561,6 @@ module general_sub2grid_simple_mod
 
       type(sub2grid_info),intent(in   ) :: s
       real(r_single),     intent(in   ) :: sub_vars(s%lat2,s%lon2,s%num_fields)
-      !real(r_single),     intent(  out) :: grid_vars(s%nlat,s%nlon,s%kbegin_loc:s%kend_loc)
       real(r_single),     intent(  out) :: grid_vars(s%nlon,s%nlat,s%kbegin_loc:s%kend_loc)
 
       real(r_single) :: sub_vars0(s%lat1,s%lon1,s%num_fields)
@@ -608,7 +603,6 @@ module general_sub2grid_simple_mod
                iloc=iloc+1
                ilat=s%ltosi(iloc)
                jlon=s%ltosj(iloc)
-               !grid_vars(ilat,jlon,k)=work(i + ioffset)
                grid_vars(jlon,ilat,k)=work(i + ioffset)
             end do
          end do

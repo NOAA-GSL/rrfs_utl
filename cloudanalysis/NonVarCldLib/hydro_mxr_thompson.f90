@@ -108,13 +108,13 @@ SUBROUTINE hydro_mxr_thompson (nx, ny, nz, t_3d, p_3d, ref_3d, qr_3d, qnr_3d, qs
 
   istatus=0
 
-  write(6,*) 'check T and Q for hydrometeor retrival from radar reflectivity'
-  DO k = 1,nz
-    write(6,*) k,maxval(t_3d(:,:,k)),minval(t_3d(:,:,k))
-  END DO
-  DO k = 1,nz
-    write(6,*) k,maxval(p_3d(:,:,k)),minval(p_3d(:,:,k))
-  END DO
+!  write(6,*) 'check T and Q for hydrometeor retrival from radar reflectivity'
+!  DO k = 1,nz
+!    write(6,*) k,maxval(t_3d(:,:,k)),minval(t_3d(:,:,k))
+!  END DO
+!  DO k = 1,nz
+!    write(6,*) k,maxval(p_3d(:,:,k)),minval(p_3d(:,:,k))
+!  END DO
 
   f = (0.176_r_kind/0.93_r_kind) * (6.0_r_kind/PI)*(6.0_r_kind/PI) * (am_s/rho_i)*(am_s/rho_i)
   cse(1) = bm_s + 1.0_r_kind
