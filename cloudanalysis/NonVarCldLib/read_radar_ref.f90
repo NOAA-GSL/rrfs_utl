@@ -105,7 +105,7 @@ SUBROUTINE read_radar_ref(mype,lunin,istart,jstart,   &
 
 END SUBROUTINE read_radar_ref
 
-SUBROUTINE read_radar_ref_bin(mype,lunin,nlon,nlat,Nmsclvl,ref_mosaic31)
+SUBROUTINE read_radar_ref_bin(mype,lunin,istart,jstart,nlon,nlat,Nmsclvl,ref_mosaic31)
 !
 !
 !
@@ -153,22 +153,32 @@ SUBROUTINE read_radar_ref_bin(mype,lunin,nlon,nlat,Nmsclvl,ref_mosaic31)
 
   INTEGER(i_kind),intent(in) :: mype
   INTEGER(i_kind),intent(in) :: nlon,nlat
+  INTEGER(i_kind),intent(in) :: istart,jstart
   integer(i_kind),intent(in) :: lunin
   INTEGER(i_kind),intent(in) :: Nmsclvl
   real(r_single), intent(inout):: ref_mosaic31(nlon,nlat,Nmsclvl)
+  real(r_single), allocatable  :: ref_tmp(:,:,:)
   
 !
 !  local 
 !
   INTEGER(i_kind) :: Nmsclvl_radar,nlon_radar,nlat_radar
-  integer :: k
+  integer :: i,j,k
 !
   read(lunin) Nmsclvl_radar,nlon_radar,nlat_radar
-  if(nlon_radar == nlon .and. nlat_radar==nlat   &
-     .and. Nmsclvl_radar==Nmsclvl)  then
+  if( Nmsclvl_radar==Nmsclvl)  then
      write(6,*) 'read reflectivity dimension=',Nmsclvl_radar,nlon_radar,nlat_radar
-     read(lunin) ref_mosaic31
+     write(6,*) 'read reflectivity dimension=',istart,jstart,nlon,nlat
+     allocate(ref_tmp(nlon_radar,nlat_radar,Nmsclvl_radar))
+     read(lunin) ref_tmp
 
+     do j=1,nlat
+       do i=1,nlon
+          ref_mosaic31(i,j,:)=ref_tmp(min(max(jstart+i-2,1),nlon_radar),min(max(istart+j-2,1),nlat_radar),:)
+       enddo
+     enddo
+
+     deallocate(ref_tmp)
      do k=1,Nmsclvl_radar
         write(6,*) 'ref_mosaic31=',k,maxval(ref_mosaic31(:,:,k)), &
                                      minval(ref_mosaic31(:,:,k))

@@ -76,15 +76,17 @@ module namelist_mod
     integer :: ios
     integer :: iyear,imonth,iday,ihour,iminute,isecond
     integer :: fv3_io_layout_y
-    namelist/setup/iyear,imonth,iday,ihour,iminute,isecond,fv3_io_layout_y
+    integer :: fv3sar_bg_opt
+    namelist/setup/iyear,imonth,iday,ihour,iminute,isecond,fv3_io_layout_y,fv3sar_bg_opt
 ! set subroutines to public
   public :: load_namelist
   public :: iyear,imonth,iday,ihour,iminute,isecond
   public :: fv3_io_layout_y
+  public :: fv3sar_bg_opt
 
 contains
 
-  subroutine load_namelist
+  subroutine load_namelist(mype)
 !$$$  subprogram documentation block
 !                .      .    .                                       .
 ! subprogram:  init_rapidrefresh_cldsurf
@@ -105,10 +107,11 @@ contains
 !
 !$$$
     use kinds, only: i_kind 
-    use mpi_mod, only : mype
+!    use mpi_mod, only : mype
 !
     implicit none
    
+    integer, intent(in) :: mype
     integer:: ios
 
     iyear=2020
@@ -118,6 +121,7 @@ contains
     iminute=0
     isecond=0
     fv3_io_layout_y=1
+    fv3sar_bg_opt=0 
 
     open(11,file='gsiparm.anl')
 
@@ -129,8 +133,10 @@ contains
     endif
     close(11)
 
-    if(mype==0) write(6,setup)
-    if(mype==0) write(6,rapidrefresh_cldsurf)
+    if(mype==0) then
+       write(6,setup)
+       write(6,rapidrefresh_cldsurf)
+    endif
     return
   end subroutine load_namelist
 

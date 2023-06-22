@@ -17,7 +17,7 @@ module gsi_rfv3io_tten_mod
   integer(i_kind) rfv3io_mype
   integer(i_kind) nx,ny,nz 
   integer(i_kind) lat2,lon2,nsig
-  integer(i_kind) nlon_regional,nlat_regional,nsig_regional
+  integer :: nlon_regional,nlat_regional,nsig_regional
  
   real,parameter :: grav=9.8
 
@@ -113,25 +113,22 @@ contains
 
   end subroutine fv3regfilename_init
 
-subroutine gsi_rfv3io_get_grid_specs(fv3filenamegin,ierr)
+subroutine gsi_rfv3io_get_grid_specs(grid_spec,ak_bk,ierr)
 
 
   implicit none
   integer(i_kind),intent(  out) :: ierr
-  type (type_fv3regfilenameg),intent(in) :: fv3filenamegin
+  character(len=*),intent(in)  :: grid_spec
+  character(len=*),intent(in)  :: ak_bk
 
   integer(i_kind) gfile_grid_spec
 
-  character(len=:),allocatable    :: grid_spec
-  character(len=:),allocatable    :: ak_bk
   integer(i_kind) i,k,ndimensions,iret,nvariables,nattributes,unlimiteddimid
   integer(i_kind) len,gfile_loc
   character(len=128) :: name
 
   real(r_kind),allocatable :: ak(:),bk(:),abk_fv3(:)
 
-  grid_spec=fv3filenamegin%grid_spec
-  ak_bk=fv3filenamegin%ak_bk
 !!!!!!!!!!    grid_spec  !!!!!!!!!!!!!!!
     ierr=0
     iret=nf90_open(trim(grid_spec),nf90_nowrite,gfile_grid_spec)

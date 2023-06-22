@@ -33,6 +33,7 @@ program cloudanalysis
 !_____________________________________________________________________
 !
 ! 
+  use mpi
   use kinds,   only: r_single,i_kind, r_kind
 !  use wrf_mass_guess_mod, only: soil_temp_cld,isli_cld,ges_xlon,ges_xlat,ges_tten
 
@@ -60,25 +61,28 @@ program cloudanalysis
   use namelist_mod, only: load_namelist
   use namelist_mod, only: iyear,imonth,iday,ihour,iminute,isecond
   use namelist_mod, only: fv3_io_layout_y
-  use mpi_mod,      only: mpi_setup, mpi_finish, npe, mype
-  use mpi_mod,      only: MPI_Barrier,mpi_comm_world
+  use namelist_mod, only: fv3sar_bg_opt
 
-  use get_fv3sar_bk_mod, only: t_bk,h_bk,p_bk,ps_bk,zh,q_bk,pblh
-  use get_fv3sar_bk_mod, only: read_fv3sar_bk,release_mem_fv3sar_bk
-  use get_fv3sar_bk_mod, only: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg, &
+  use get_fv3sar_bk_parall_mod, only: lon2,lat2,nsig
+  use get_fv3sar_bk_parall_mod, only: mype_istart,mype_jstart
+  use get_fv3sar_bk_parall_mod, only: t_bk,h_bk,p_bk,ps_bk,zh,q_bk,pblh
+  use get_fv3sar_bk_parall_mod, only: read_fv3sar_bk_full
+  use get_fv3sar_bk_parall_mod, only: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg, &
                                ges_qnr,ges_qni,ges_qnc,ges_qcf
-  use get_fv3sar_bk_mod, only: xlon,xlat,xland,soiltbk
-  use get_fv3sar_bk_mod, only: read_fv3sar_hydr,release_mem_fv3sar_hydr
-  use get_fv3sar_bk_mod, only: read_fv3sar_fix,release_mem_fv3sar_fix
-  use get_fv3sar_bk_mod, only: update_fv3sar
-  use get_fv3sar_bk_mod, only: fv3_io_layout_end 
+  use get_fv3sar_bk_parall_mod, only: xlon,xlat,xland,soiltbk
+  use get_fv3sar_bk_parall_mod, only: release_mem_fv3sar
+  use get_fv3sar_bk_parall_mod, only: update_fv3sar
+  use get_fv3sar_bk_parall_mod, only: fv3_io_layout_end 
+  use get_fv3sar_bk_parall_mod, only: read_fv3sar_init 
   use gsi_rfv3io_tten_mod, only: nlon_regional,nlat_regional,nsig_regional
 !
   implicit none
 
+! MPI variables
+  integer :: npe, mype, ierror
+
 ! Declare passed variables
 !
-  integer :: lon2,lat2,nsig
   integer :: regional_time(6)
 ! background
 !
@@ -92,7 +96,7 @@ program cloudanalysis
   character(len=7) :: obstype
   character(len=20):: isis
   integer :: nreal,nchanl,ilat,ilon,ndatafv3
-  integer, allocatable :: istart(:),jstart(:)
+  integer :: istart,jstart
 !
   integer(i_kind) :: nvarcld_p
   parameter (nvarcld_p=13)
@@ -219,6 +223,7 @@ program cloudanalysis
   real(r_kind)    :: dbz_clean_graupel
   integer(i_kind) :: ilat1s,ilon1s
   integer(i_kind) :: clean_count,build_count,part_count,miss_count
+  integer :: sss,rrr
 
   real(r_kind)    :: refmax,snowtemp,raintemp,nraintemp,graupeltemp
   real(r_kind)    :: snowadd,ratio2
@@ -242,12 +247,13 @@ program cloudanalysis
   character(len=80) :: obsfile
   integer         :: lunin
   integer         :: nsat1
-  integer         :: ierror
   integer         :: istatus
 !
-  call mpi_setup
+  call MPI_INIT(ierror)
+  call MPI_COMM_SIZE(mpi_comm_world,npe,ierror)
+  call MPI_COMM_RANK(mpi_comm_world,mype,ierror)
 
-  write(obsfile,'(a,I2.2)') 'stdout_cloudanalysis.d',mype
+  write(obsfile,'(a,I4.4)') 'stdout_cloudanalysis.d',mype
   open(6, file=trim(obsfile),form='formatted',status='unknown')
   write(6,*) '===> cloud analysis over subdomain = ', mype
 !
@@ -265,26 +271,15 @@ program cloudanalysis
   call init_constants_derived
 
   call init_rapidrefresh_cldsurf
-  call load_namelist
+  call load_namelist(mype)
 !
-!  make sure have enough cores to run
-!
-  if(npe < fv3_io_layout_y) then
-     write(6,*) 'ERROR, this run must use at least ', fv3_io_layout_y,' cores !!!'
-     call mpi_finish
-     stop 1234
-  endif
-
-  if(mype < fv3_io_layout_y) then
-
 ! get background ready
-  call read_fv3sar_bk
-  call read_fv3sar_hydr
 !
-! set dimension
-  lon2=nlon_regional
-  lat2=nlat_regional
-  nsig=nsig_regional
+  call read_fv3sar_init(fv3sar_bg_opt,mype,npe)
+  call mpi_barrier(MPI_COMM_WORLD,ierror)
+
+  call read_fv3sar_bk_full(mype)
+!
 !
   krad_bot=7.0_r_single
 
@@ -383,9 +378,8 @@ program cloudanalysis
 
 !!  1.2.2 read in surface observations
 !!
-  allocate(istart(npe),jstart(npe))
-  istart=1
-  jstart=1
+  istart=mype_istart
+  jstart=mype_jstart
   numsao=0
 !
   fileexist=.false.
@@ -406,7 +400,7 @@ program cloudanalysis
      allocate(oistation(numsao))
      allocate(ojstation(numsao))
      allocate(wimaxstation(numsao))
-     call read_Surface(mype,lunin,lon2,lat2, &
+     call read_Surface(mype,lunin,istart,jstart,lon2,lat2, &
                        numsao,nvarcld_p,oi,oj,ocld,owx,oelvtn,&
                        odist,cstation,oistation,ojstation)
      if(mype == 0) write(6,*) 'gsdcloudanalysis: ',                                  &
@@ -434,7 +428,7 @@ program cloudanalysis
      allocate( ref_mosaic31(lon2,lat2,nmsclvl_radar) )
      ref_mosaic31=-99999.0_r_single
 
-     call read_radar_ref_bin(mype,lunin,lon2,lat2,nmsclvl_radar,ref_mosaic31)
+     call read_radar_ref_bin(mype,lunin,istart,jstart,lon2,lat2,nmsclvl_radar,ref_mosaic31)
      write(6,*) 'gsdcloudanalysis: ',                         &
                    ' radar reflectivity is read in successfully'
      istat_radar=1
@@ -445,7 +439,7 @@ program cloudanalysis
 !
   fileexist=.false.
   obsfile='LightningInFV3LAM.dat'
-  call read_Lightning2cld(obsfile,lon2,lat2,ybegin,yend,lightning, &
+  call read_Lightning2cld(obsfile,lon2,lat2,istart,jstart,lightning, &
                           istat_lightning)
   write(6,*) 'gsdcloudanalysis: Lightning is read in successfully'
 !
@@ -459,7 +453,7 @@ program cloudanalysis
      allocate(nasalarc_cld(lon2,lat2,5))
      nasalarc_cld=miss_obs_real
 
-     call read_NASALaRC_fv3(mype,lunin,lon2,lat2,ybegin,yend,nasalarc_cld)
+     call read_NASALaRC_fv3(mype,lunin,lon2,lat2,istart,jstart,nasalarc_cld)
      write(6,*) 'gsdcloudanalysis:',                       &
                   'NASA LaRC cloud products are read in successfully'
      istat_nasalarc = 1
@@ -627,7 +621,7 @@ program cloudanalysis
 !!          
 !! 2.4 read in background fields
 !!          
-   call read_fv3sar_fix
+!   call read_fv3sar_fix
 !        zh(i,j)     !  terrain in meter
 !        ps_bk(i,j)  !  surace pressure in mb
 !        xland(i,j)  !  0=water, 1=land, 2=ice
@@ -678,7 +672,7 @@ program cloudanalysis
 !!
 !  call MPI_Barrier(mpi_comm_world, ierror)
   if(istat_surface ==  1) then
-     call cloudCover_surface(mype,lat2,lon2,nsig,thunderRadius,ybegin,yend,  &
+     call cloudCover_surface(mype,lat2,lon2,nsig,thunderRadius,           &
               cld_bld_hgt,t_bk,p_bk,q_bk,h_bk,zh,                         &
               numsao,nvarcld_p,numsao,oi,oj,ocld,owx,oelvtn,odist,        &
               cld_cover_3d,cld_type_3d,wthr_type_2d,pcp_type_3d,          &
@@ -1311,7 +1305,7 @@ program cloudanalysis
 !
 !  check observations
 !
-  if(1==2) then
+if(1==2) then
 
   do k=1,nsig
      do j=1,lat2
@@ -1319,7 +1313,7 @@ program cloudanalysis
            ges_qg(i,j,k)=ref_mos_3d(i,j,k)
            ges_qs(i,j,k)=ref_mos_3d_tten(i,j,k)
            if(k<=33) then
-           !  ges_qni(i,j,k)=ref_mosaic31(i,j,k)
+!             ges_qni(i,j,k)=ref_mosaic31(i,j,k)
            endif
            if(k<=5 .and. istat_nasalarc == 1) then
              ges_qr(i,j,k)=nasalarc_cld(i,j,k)
@@ -1330,11 +1324,12 @@ program cloudanalysis
         enddo
      enddo
   enddo
-
+endif
+if(1==2) then
  ges_qi=-99999
  loopstation: DO ista=1,numsao
      i = int(oi(ista)+0.0001_r_kind)
-     j = int(oj(ista)+0.0001_r_kind)-ybegin+1
+     j = int(oj(ista)+0.0001_r_kind)
 
      if ( ( i >=1 .and. i <= lon2 ) .and. &
           ( j >=1 .and. j <= lat2 )) then
@@ -1345,11 +1340,11 @@ program cloudanalysis
      end if
    enddo loopstation
 
-   endif
+endif
 !
 !  update background for analysis results
 !
-  call update_fv3sar
+  call update_fv3sar(mype)
 !!
 !!----------------------------------------------
 !! 7.  release space
@@ -1373,21 +1368,16 @@ program cloudanalysis
   deallocate(sat_ctp,sat_tem,w_frac,nlev_cld)
   deallocate(ref_mos_3d,ref_mos_3d_tten,lightning)
 
-     call release_mem_fv3sar_fix
   endif
-  call release_mem_fv3sar_bk
-  call release_mem_fv3sar_hydr
+  call release_mem_fv3sar
 !
-  write(*,*) "CLDcount", r_cloudfrac_threshold,clean_count,build_count,part_count,miss_count
-  if(mype==0) then
-     write(6,*) '========================================'
-     write(6,*) 'gsdcloudanalysis: generalized cloud analysis finished:',mype
-     write(6,*) '========================================'
-  endif
+  write(6,*) "CLDcount", r_cloudfrac_threshold,clean_count,build_count,part_count,miss_count
+  write(6,*) '========================================'
+  write(6,*) 'gsdcloudanalysis: generalized cloud analysis finished:',mype
+  write(6,*) '========================================'
 !
-  endif ! my < fv3_io_layout_y
 !
-  call mpi_finish
+  call MPI_FINALIZE(ierror)
   stop
 !
 

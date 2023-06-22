@@ -1,4 +1,4 @@
-SUBROUTINE read_Lightning2cld(obsfile,nlon,nlat,ybegin,yend,lightning,&
+SUBROUTINE read_Lightning2cld(obsfile,nlon,nlat,istart,jstart,lightning,&
                               istat_lightning)
 !
 !
@@ -47,7 +47,7 @@ SUBROUTINE read_Lightning2cld(obsfile,nlon,nlat,ybegin,yend,lightning,&
 
   character(len=*), intent(in) :: obsfile
   integer(i_kind),intent(in) :: nlon,nlat
-  integer(i_kind),intent(in) :: ybegin,yend
+  integer(i_kind),intent(in) :: istart,jstart
 
   real(r_single), intent(inout):: lightning(nlon,nlat)
   integer(i_kind),intent(inout):: istat_lightning
@@ -89,7 +89,7 @@ SUBROUTINE read_Lightning2cld(obsfile,nlon,nlat,ybegin,yend,lightning,&
   ilon1s=header2
   ilat1s=header3
 
-  write(6,*) "process lightning obs for domain ", nlon,nlat,ybegin,yend
+  write(6,*) "process lightning obs for domain ", nlon,nlat,istart,jstart
   if(header1/= 4) then
      write(*,*) 'ERROR: not match expected item size ',header1
      stop 1234
@@ -101,12 +101,11 @@ SUBROUTINE read_Lightning2cld(obsfile,nlon,nlat,ybegin,yend,lightning,&
 
   num=0
   DO i=1,numlight
-    ii=int(lightning_in(ilon1s,i)+0.001_r_single)
-    jj=int(lightning_in(ilat1s,i)+0.001_r_single)
+    ii=int(lightning_in(ilon1s,i)-jstart+2+0.001_r_single)
+    jj=int(lightning_in(ilat1s,i)-istart+2+0.001_r_single)
 
     if( (ii >= 1 .and. ii <= nlon ) .and. &
-        (jj >= ybegin .and. jj <= yend ) ) then
-      jj=jj-ybegin+1
+        (jj >= 1 .and. jj <= nlat ) ) then
       lightning(ii,jj)=lightning_in(4,i)
       num=num+1
     else
