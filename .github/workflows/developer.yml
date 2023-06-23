@@ -27,7 +27,7 @@ jobs:
         bacio-version: [2.5.0]
         sigio-version: [2.3.2]
         sfcio-version: [1.4.1]
-        nemsio-version: [2.4.5]
+        nemsio-version: [2.5.4]
         sp-version: [2.3.3]
         ip-version: [3.3.3]
         w3nco-version: [2.4.1]
