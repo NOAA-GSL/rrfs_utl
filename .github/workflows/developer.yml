@@ -22,36 +22,66 @@ jobs:
 
     strategy:
       fail-fast: true
+      matrix:
+        g2-version: [3.4.5]
+        bacio-version: [2.5.0]
+        jasper-version: [4.0.0]
+        w3emc-version: [2.10.0]
 
     steps:
 
     - name: install-dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libpng-dev zlib1g-dev libjpeg-dev doxygen gcovr
+        sudo apt-get install libpng-dev zlib1g-dev libjpeg-dev gcovr
+
+    - name: cache-jasper
+      id: cache-jasper
+      uses: actions/cache@v2
+      with:
+        path: ~/jasper
+        key: jasper-Linux_versions-${{ matrix.jasper-version }}
+
+    - name: checkout-jasper
+      if: steps.cache-jasper.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: jasper-software/jasper
+        path: jasper
+        ref: version-${{ matrix.jasper-version }}
+
+    - name: build-jasper
+      if: steps.cache-jasper.outputs.cache-hit != 'true'
+      run: |
+        cd jasper
+        mkdir b && cd b
+        cmake .. -DCMAKE_INSTALL_PREFIX=~/jasper
+        make -j2
+        make install
+
+    - name: cache-bacio
+      id: cache-bacio
+      uses: actions/cache@v2
+      with:
+        path: ~/bacio
+        key: bacio-${{ runner.os }}-v${{ matrix.bacio-version }}
 
     - name: checkout-bacio
-      uses: actions/checkout@v3
+      if: steps.cache-bacio.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
       with:
         repository: NOAA-EMC/NCEPLIBS-bacio
         path: bacio
-        ref: develop
-
+        ref: v${{ matrix.bacio-version }}
+    
     - name: build-bacio
+      if: steps.cache-bacio.outputs.cache-hit != 'true'
       run: |
         cd bacio
-        mkdir build
-        cd build
+        mkdir build && cd build
         cmake .. -DCMAKE_INSTALL_PREFIX=~/bacio
         make -j2
         make install
-        
-    - name: checkout-w3emc
-      uses: actions/checkout@v3
-      with:
-        repository: NOAA-EMC/NCEPLIBS-w3emc
-        path: w3emc
-        ref: develop
 
     - name: build-w3emc
       run: |
@@ -62,26 +92,3 @@ jobs:
         make -j2
         make install
         
-    - name: cache-jasper
-      id: cache-jasper
-      uses: actions/cache@v3
-      with:
-        path: ~/Jasper
-        key: jasper-${{ runner.os }}-3.0.3
-
-    - name: checkout-jasper
-      if: steps.cache-jasper.outputs.cache-hit != 'true'    
-      uses: actions/checkout@v3
-      with:
-        repository: jasper-software/jasper
-        path: jasper
-        ref: version-3.0.3
-
-    - name: build-jasper
-      if: steps.cache-jasper.outputs.cache-hit != 'true'
-      run: |
-        cd jasper
-        mkdir build-jasper && cd build-jasper
-        cmake .. -DCMAKE_INSTALL_PREFIX=~/Jasper
-        make -j2
-        make install
