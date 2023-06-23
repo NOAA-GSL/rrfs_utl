@@ -32,6 +32,7 @@ jobs:
         g2-version: [3.4.5]
         wrf_io-version: [1.2.0]
         bufr-version: [11.7.1]
+        GSI-ncdiag-version: [1.1.1]
 
     steps:
 
@@ -259,6 +260,31 @@ jobs:
         mkdir build
         cd build
         cmake -DCMAKE_INSTALL_PREFIX=~/bufr ..
+        make -j2
+        make install
+        
+    - name: cache-GSI-ncdiag
+      id: cache-GSI-ncdiag
+      uses: actions/cache@v2
+      with:
+        path: ~/GSI-ncdiag
+        key: GSI-ncdiag-${{ runner.os }}-${{ matrix.GSI-ncdiag-version }}
+
+    - name: checkout-GSI-ncdiag
+      if: steps.cache-GSI-ncdiag.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: NOAA-EMC/NCEPLIBS-GSI-ncdiag
+        path: gsi-ncdiag
+        ref: GSI-ncdiag_v${{ matrix.GSI-ncdiag-version }}
+
+    - name: build-GSI-ncdiag
+      if: steps.cache-GSI-ncdiag.outputs.cache-hit != 'true'
+      run: |
+        cd gsi-ncdiag
+        mkdir build
+        cd build
+        cmake -DCMAKE_INSTALL_PREFIX=~/gsi-ncdiag ..
         make -j2
         make install
         
