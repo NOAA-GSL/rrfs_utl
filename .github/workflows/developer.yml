@@ -279,4 +279,22 @@ jobs:
         make -j2
         make install
         
+    - name: checkout-EMC_crtm
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: NOAA-EMC/EMC_crtm
+        path: emc_crtm
+        ref: v2.3.0
+
+    - name: build-EMC_crtm
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        cd emc_crtm
+        mkdir build
+        cd build
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps .. 
+        make -j2
+        make install
+        
         
