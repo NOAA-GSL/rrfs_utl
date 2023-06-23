@@ -276,7 +276,7 @@ jobs:
       with:
         repository: NOAA-EMC/NCEPLIBS-GSI-ncdiag
         path: gsi-ncdiag
-        ref: GSI-ncdiag_v${{ matrix.GSI-ncdiag-version }}
+        ref: v${{ matrix.GSI-ncdiag-version }}
 
     - name: build-GSI-ncdiag
       if: steps.cache-GSI-ncdiag.outputs.cache-hit != 'true'
