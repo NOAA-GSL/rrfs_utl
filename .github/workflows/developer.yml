@@ -31,6 +31,7 @@ jobs:
         w3emc-version: [2.10.0]
         g2-version: [3.4.5]
         wrf_io-version: [1.2.0]
+        bufr-version: [11.7.1]
 
     steps:
 
@@ -216,7 +217,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/wrf_io
-        key: wrf_io-${{ runner.os }}-${{ matrix.wrf_io-version }}-bacio-${{ matrix.bacio-version }}
+        key: wrf_io-${{ runner.os }}-${{ matrix.wrf_io-version }}
 
     - name: checkout-wrf_io
       if: steps.cache-wrf_io.outputs.cache-hit != 'true'
@@ -235,3 +236,29 @@ jobs:
         cmake -DCMAKE_INSTALL_PREFIX=~/wrf_io ..
         make -j2
         make install
+
+    - name: cache-bufr
+      id: cache-bufr
+      uses: actions/cache@v2
+      with:
+        path: ~/bufr
+        key: bufr-${{ runner.os }}-${{ matrix.bufr-version }}
+
+    - name: checkout-bufr
+      if: steps.cache-bufr.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: NOAA-EMC/NCEPLIBS-bufr
+        path: bufr
+        ref: v${{ matrix.bufr-version }}
+
+    - name: build-bufr
+      if: steps.cache-bufr.outputs.cache-hit != 'true'
+      run: |
+        cd bufr
+        mkdir build
+        cd build
+        cmake -DCMAKE_INSTALL_PREFIX=~/bufr ..
+        make -j2
+        make install
+        
