@@ -118,23 +118,6 @@ jobs:
         make -j2
         make install
 
-    - name: checkout-nemsio
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/checkout@v2
-      with:
-        repository: NOAA-EMC/NCEPLIBS-nemsio
-        path: nemsio
-        ref: v${{ matrix.nemsio-version }}
-    
-    - name: build-nemsio
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: |
-        cd nemsio
-        mkdir build && cd build
-        cmake .. -DCMAKE_INSTALL_PREFIX=~/deps
-        make -j2
-        make install
-
     - name: checkout-sp
       if: steps.cache-deps.outputs.cache-hit != 'true'
       uses: actions/checkout@v2
@@ -214,6 +197,23 @@ jobs:
         repository: NOAA-EMC/NCEPLIBS-g2
         path: g2
         ref: v${{ matrix.g2-version }}
+
+    - name: checkout-nemsio
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: NOAA-EMC/NCEPLIBS-nemsio
+        path: nemsio
+        ref: v${{ matrix.nemsio-version }}
+    
+    - name: build-nemsio
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        cd nemsio
+        mkdir build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps ..
+        make -j2
+        make install
 
     - name: build-g2
       if: steps.cache-deps.outputs.cache-hit != 'true'
