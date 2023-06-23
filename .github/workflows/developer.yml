@@ -274,7 +274,7 @@ jobs:
       if: steps.cache-GSI-ncdiag.outputs.cache-hit != 'true'
       uses: actions/checkout@v2
       with:
-        repository: NOAA-EMC/NCEPLIBS-GSI-ncdiag
+        repository: NOAA-EMC/GSI-ncdiag
         path: gsi-ncdiag
         ref: v${{ matrix.GSI-ncdiag-version }}
 
