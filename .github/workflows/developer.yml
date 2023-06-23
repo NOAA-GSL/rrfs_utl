@@ -295,7 +295,8 @@ jobs:
         repository: NOAA-EMC/GSI
         path: gsi
         ref: develop
-
+        submodules: recursive
+        
     - name: build-GSI
       if: steps.cache-GSI.outputs.cache-hit != 'true'
       run: |
