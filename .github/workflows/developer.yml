@@ -23,10 +23,12 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        g2-version: [3.4.5]
-        bacio-version: [2.5.0]
         jasper-version: [4.0.0]
+        bacio-version: [2.5.0]
+        sp-version: [2.3.3]
+        ip-version: [3.3.3]
         w3emc-version: [2.10.0]
+        g2-version: [3.4.5]
 
     steps:
 
@@ -83,12 +85,103 @@ jobs:
         make -j2
         make install
 
+    - name: cache-sp
+      id: cache-sp
+      uses: actions/cache@v2
+      with:
+        path: ~/sp
+        key: sp-${{ runner.os }}-${{ matrix.sp-version }}
+
+    - name: checkout-sp
+      if: steps.cache-sp.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: NOAA-EMC/NCEPLIBS-sp
+        path: sp
+        ref: v${{ matrix.sp-version }}
+
+    - name: build-sp
+      if: steps.cache-sp.outputs.cache-hit != 'true'
+      run: |
+        cd sp
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_INSTALL_PREFIX=~/sp
+        make -j2
+        make install
+          
+    - name: cache-ip
+      id: cache-ip
+      uses: actions/cache@v2
+      with:
+        path: ~/ip
+        key: ip-${{ runner.os }}-${{ matrix.ip-version }}
+
+    - name: checkout-ip
+      if: steps.cache-ip.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: NOAA-EMC/NCEPLIBS-ip
+        path: ip
+        ref: v${{ matrix.ip-version }}
+
+    - name: build-ip
+      if: steps.cache-ip.outputs.cache-hit != 'true'
+      run: |
+        cd ip
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_INSTALL_PREFIX=~/ip -DCMAKE_PREFIX_PATH=~/sp
+        make -j2
+        make install
+          
+    - name: cache-w3emc
+      id: cache-w3emc
+      uses: actions/cache@v2
+      with:
+        path: ~/w3emc
+        key: w3emc-${{ runner.os }}-${{ matrix.w3emc-version }}-bacio-${{ matrix.bacio-version }}
+
+    - name: checkout-w3emc
+      if: steps.cache-w3emc.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: NOAA-EMC/NCEPLIBS-w3emc
+        path: w3emc
+        ref: v${{ matrix.w3emc-version }}
+
     - name: build-w3emc
+      if: steps.cache-w3emc.outputs.cache-hit != 'true'
       run: |
         cd w3emc
         mkdir build
         cd build
         cmake -DCMAKE_PREFIX_PATH=~/bacio -DCMAKE_INSTALL_PREFIX=~/w3emc -DBUILD_WITH_BUFR=OFF ..
+        make -j2
+        make install
+          
+    - name: cache-g2
+      id: cache-g2
+      uses: actions/cache@v2
+      with:
+        path: ~/g2
+        key: g2-${{ runner.os }}-${{ matrix.bacio-version }}-${{ matrix.jasper-version }}-${{ matrix.w3emc-version }}-${{ matrix.g2-version }}
+
+    - name: checkout-g2
+      if: steps.cache-g2.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: NOAA-EMC/NCEPLIBS-g2
+        path: g2
+        ref: v${{ matrix.g2-version }}
+
+    - name: build-g2
+      if: steps.cache-g2.outputs.cache-hit != 'true'
+      run: |
+        cd g2
+        mkdir build
+        cd build
+        cmake -DCMAKE_INSTALL_PREFIX=~/g2 -DCMAKE_PREFIX_PATH="~/bacio;~/jasper;~/w3emc;~/g2c" ..
         make -j2
         make install
         
