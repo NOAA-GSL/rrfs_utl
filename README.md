@@ -18,7 +18,7 @@ This package requires the following third party libraries:
 - [libpng](http://www.libpng.org/pub/png/libpng.html)
 - [zlib](http://www.zlib.net/)
 
-This package requires the folling NCEPLIBS libraries:
+This package requires the following NCEPLIBS libraries:
 - [NCEPLIBS-bacio](https://github.com/NOAA-EMC/NCEPLIBS-bacio)
 - [NCEPLIBS-sp](https://github.com/NOAA-EMC/NCEPLIBS-sp)
 - [NCEPLIBS-ip](https://github.com/NOAA-EMC/NCEPLIBS-ip)
@@ -29,7 +29,7 @@ This package requires the folling NCEPLIBS libraries:
 - [NCEPLIBS-bufr](https://github.com/NOAA-EMC/NCEPLIBS-bufr)
 - [NCEPLIBS-wrf_io](https://github.com/NOAA-EMC/NCEPLIBS-wrf_io)
 
-This package requires the folling GSI packages:
+This package requires the following GSI packages:
 - [GSI-ncdiag](https://github.com/NOAA-EMC/GSI-ncdiag)
 - [GSI](https://github.com/NOAA-EMC/GSI)
 
