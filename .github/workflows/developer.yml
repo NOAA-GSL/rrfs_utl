@@ -36,7 +36,7 @@ jobs:
 
     - name: install-dependencies
       run: |
-        sudo apt-get install libpng-dev zlib1g-dev libjpeg-dev libnetcdf-dev gcovr
+        sudo apt-get install libpng-dev zlib1g-dev libjpeg-dev libnetcdf-dev libnetcdff-dev gcovr
 
     - name: cache-jasper
       id: cache-jasper
