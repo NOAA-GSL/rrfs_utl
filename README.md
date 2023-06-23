@@ -11,7 +11,7 @@ This repository includes many utilites for RRFS application:
  - preprocess METAR cloud observations
  - preprocess NASA LaRC cloud products
 
-## Prerequisites
+# Prerequisites
 
 This package requires the following third party libraries:
 - [Jasper](http://www.ece.uvic.ca/~mdadams/jasper/)
@@ -33,7 +33,7 @@ This package requires the following GSI packages:
 - [GSI-ncdiag](https://github.com/NOAA-EMC/GSI-ncdiag)
 - [GSI](https://github.com/NOAA-EMC/GSI)
 
-## Installing
+# Installing
 
 ```
 mkdir build
@@ -42,7 +42,7 @@ cmake PATH2ROOT
 make
 ```
 
-## Disclaimer
+# Disclaimer
 
 ```
 The United States Department of Commerce (DOC) GitHub project code is
