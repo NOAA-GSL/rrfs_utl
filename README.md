@@ -16,13 +16,12 @@ This repository includes many utilites for RRFS application:
 This package requires the following third party libraries:
 - [Jasper](http://www.ece.uvic.ca/~mdadams/jasper/)
 - [libpng](http://www.libpng.org/pub/png/libpng.html)
-- [libz](http://www.gzip.org/zlib/)
+- [zlib](http://www.zlib.net/)
 
 This package requires the folling NCEPLIBS libraries:
 - [NCEPLIBS-bacio](https://github.com/NOAA-EMC/NCEPLIBS-bacio)
 - [NCEPLIBS-sp](https://github.com/NOAA-EMC/NCEPLIBS-sp)
 - [NCEPLIBS-ip](https://github.com/NOAA-EMC/NCEPLIBS-ip)
-- [NCEPLIBS-bacio](https://github.com/NOAA-EMC/NCEPLIBS-bacio)
 - [NCEPLIBS-g2](https://github.com/NOAA-EMC/NCEPLIBS-g2)
 - [NCEPLIBS-g2tmpl](https://github.com/NOAA-EMC/NCEPLIBS-g2tmpl)
 - [NCEPLIBS-w3nco](https://github.com/NOAA-EMC/NCEPLIBS-w3nco)
