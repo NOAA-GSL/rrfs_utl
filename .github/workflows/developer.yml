@@ -288,3 +288,28 @@ jobs:
         make -j2
         make install
         
+    - name: cache-GSI
+      id: cache-GSI
+      uses: actions/cache@v2
+      with:
+        path: ~/gsi
+        key: GSI-${{ runner.os }}-${{ matrix.GSI-version }}
+
+    - name: checkout-GSI
+      if: steps.cache-GSI.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: NOAA-EMC/GSI
+        path: gsi
+        ref: GEFS_v12.0.2
+
+    - name: build-GSI
+      if: steps.cache-GSI.outputs.cache-hit != 'true'
+      run: |
+        cd gsi
+        mkdir build
+        cd build
+        cmake -DCMAKE_INSTALL_PREFIX=~/gsi ..
+        make -j2
+        make install
+        
