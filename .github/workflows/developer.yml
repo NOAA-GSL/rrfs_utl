@@ -250,7 +250,7 @@ jobs:
       with:
         repository: NOAA-EMC/NCEPLIBS-bufr
         path: bufr
-        ref: v${{ matrix.bufr-version }}
+        ref: bufr_v${{ matrix.bufr-version }}
 
     - name: build-bufr
       if: steps.cache-bufr.outputs.cache-hit != 'true'
