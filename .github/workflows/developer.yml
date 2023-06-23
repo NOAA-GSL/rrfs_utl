@@ -1,9 +1,9 @@
-# This is a GitHub actions workflow for NCEPLIBS-g2.
+# This is a GitHub actions workflow for rrfs_utl.
 #
 # This builds the develop branch with documentation, warning check,
 # and address sanitizer.
 #
-# Ed Hartnett, 12/22/22
+# Ed Hartnett, 6/23/23
 name: developer 
 on:
   push:
