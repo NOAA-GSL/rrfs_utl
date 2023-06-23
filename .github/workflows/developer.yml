@@ -30,12 +30,13 @@ jobs:
         w3nco-version: [2.4.1]
         w3emc-version: [2.10.0]
         g2-version: [3.4.5]
+        wrf_io-version: [1.2.0]
 
     steps:
 
     - name: install-dependencies
       run: |
-        sudo apt-get install libpng-dev zlib1g-dev libjpeg-dev gcovr
+        sudo apt-get install libpng-dev zlib1g-dev libjpeg-dev libnetcdf-dev gcovr
 
     - name: cache-jasper
       id: cache-jasper
@@ -156,7 +157,7 @@ jobs:
         cd w3nco
         mkdir build
         cd build
-        cmake -DCMAKE_PREFIX_PATH=~/bacio -DCMAKE_INSTALL_PREFIX=~/w3nco -DBUILD_WITH_BUFR=OFF ..
+        cmake -DCMAKE_PREFIX_PATH=~/bacio -DCMAKE_INSTALL_PREFIX=~/w3nco ..
         make -j2
         make install
           
@@ -210,3 +211,27 @@ jobs:
         make -j2
         make install
         
+    - name: cache-wrf_io
+      id: cache-wrf_io
+      uses: actions/cache@v2
+      with:
+        path: ~/wrf_io
+        key: wrf_io-${{ runner.os }}-${{ matrix.wrf_io-version }}-bacio-${{ matrix.bacio-version }}
+
+    - name: checkout-wrf_io
+      if: steps.cache-wrf_io.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: NOAA-EMC/NCEPLIBS-wrf_io
+        path: wrf_io
+        ref: v${{ matrix.wrf_io-version }}
+
+    - name: build-wrf_io
+      if: steps.cache-wrf_io.outputs.cache-hit != 'true'
+      run: |
+        cd wrf_io
+        mkdir build
+        cd build
+        cmake -DCMAKE_INSTALL_PREFIX=~/wrf_io ..
+        make -j2
+        make install
