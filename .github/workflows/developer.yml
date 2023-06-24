@@ -33,6 +33,7 @@ jobs:
         w3nco-version: [2.4.1]
         w3emc-version: [2.10.0]
         g2-version: [3.4.5]
+        g2tmpl-version: [1.10.2]
         wrf_io-version: [1.2.0]
         bufr-version: [11.7.1]
         GSI-ncdiag-version: [1.1.1]
@@ -198,6 +199,34 @@ jobs:
         path: g2
         ref: v${{ matrix.g2-version }}
 
+    - name: build-g2
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        cd g2
+        mkdir build
+        cd build
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps ..
+        make -j2
+        make install
+        
+    - name: checkout-g2tmpl
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: NOAA-EMC/NCEPLIBS-g2tmpl
+        path: g2tmpl
+        ref: v${{ matrix.g2tmpl-version }}
+
+    - name: build-g2tmpl
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        cd g2tmpl
+        mkdir build
+        cd build
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps ..
+        make -j2
+        make install
+        
     - name: checkout-nemsio
       if: steps.cache-deps.outputs.cache-hit != 'true'
       uses: actions/checkout@v2
@@ -215,16 +244,6 @@ jobs:
         make -j2
         make install
 
-    - name: build-g2
-      if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: |
-        cd g2
-        mkdir build
-        cd build
-        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps ..
-        make -j2
-        make install
-        
     - name: checkout-wrf_io
       if: steps.cache-deps.outputs.cache-hit != 'true'
       uses: actions/checkout@v2
