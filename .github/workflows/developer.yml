@@ -261,6 +261,13 @@ jobs:
         make -j2
         make install
         
+    - name: cache-deps2
+      id: cache-deps2
+      uses: actions/cache@v2
+      with:
+        path: ~/deps2
+        key: deps2-${{ matrix.jasper-version }}-2
+
     - name: checkout-GSI-ncdiag
       if: steps.cache-deps.outputs.cache-hit != 'true'
       uses: actions/checkout@v2
@@ -275,7 +282,7 @@ jobs:
         cd gsi-ncdiag
         mkdir build
         cd build
-        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps .. 
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps2 -DCMAKE_PREFIX_PATH=~/deps .. 
         make -j2
         make install
         
@@ -311,7 +318,7 @@ jobs:
         cd gsi
         mkdir build
         cd build
-        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps .. 
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps2 .. 
         make -j2
         make install
         
