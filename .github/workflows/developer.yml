@@ -49,7 +49,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/deps
-        key: deps-${{ matrix.jasper-version }}-2
+        key: deps-${{ matrix.jasper-version }}-3
 
     - name: checkout-jasper
       if: steps.cache-deps.outputs.cache-hit != 'true'
