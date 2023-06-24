@@ -322,4 +322,17 @@ jobs:
         make -j2
         make install
         
-        
+    - name: checkout-rrfs_utl
+      uses: actions/checkout@v2
+      with: 
+        path: rrfs_utl
+
+    - name: build-rrfs_utl
+      run: |
+        cd rrfs_utl
+        mkdir build && cd build
+        export LD_LIBRARY_PATH=/home/runner/deps/lib
+        export PATH="~/deps/bin:$PATH"
+        cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="~/deps;~/deps2" -DCMAKE_Fortran_FLAGS="-fprofile-arcs -ftest-coverage -O0 -Wall" -DCMAKE_C_FLAGS="-fprofile-arcs -ftest-coverage -O0 -Wall" ..
+        make -j2 VERBOSE=1
+
