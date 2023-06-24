@@ -297,4 +297,22 @@ jobs:
         make -j2
         make install
         
+    - name: checkout-GSI
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: NOAA-EMC/GSI
+        path: gsi
+        ref: develop
+
+    - name: build-GSI
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        cd gsi
+        mkdir build
+        cd build
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps .. 
+        make -j2
+        make install
+        
         
