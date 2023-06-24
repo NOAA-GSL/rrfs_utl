@@ -24,7 +24,7 @@ jobs:
       fail-fast: true
       matrix:
         jasper-version: [4.0.0]
-        bacio-version: [2.5.0]
+        bacio-version: [2.4.1]
         sigio-version: [2.3.2]
         sfcio-version: [1.4.1]
         nemsio-version: [2.5.4]
@@ -50,7 +50,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/deps
-        key: deps-${{ matrix.jasper-version }}-4
+        key: deps-${{ matrix.jasper-version }}-5
 
     - name: checkout-jasper
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -65,7 +65,7 @@ jobs:
       run: |
         cd jasper
         mkdir b && cd b
-        cmake .. -DCMAKE_INSTALL_PREFIX=~/deps
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DBUILD_TESTING=OFF ..
         make -j2
         make install
 
@@ -82,7 +82,7 @@ jobs:
       run: |
         cd bacio
         mkdir build && cd build
-        cmake .. -DCMAKE_INSTALL_PREFIX=~/deps
+        cmake -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=~/deps ..
         make -j2
         make install
 
@@ -99,7 +99,7 @@ jobs:
       run: |
         cd sigio
         mkdir build && cd build
-        cmake .. -DCMAKE_INSTALL_PREFIX=~/deps
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DBUILD_TESTING=OFF ..
         make -j2
         make install
 
@@ -116,7 +116,7 @@ jobs:
       run: |
         cd sfcio
         mkdir build && cd build
-        cmake .. -DCMAKE_INSTALL_PREFIX=~/deps
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DBUILD_TESTING=OFF ..
         make -j2
         make install
 
@@ -134,7 +134,7 @@ jobs:
         cd sp
         mkdir build
         cd build
-        cmake .. -DCMAKE_INSTALL_PREFIX=~/deps
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DBUILD_TESTING=OFF ..
         make -j2
         make install
           
@@ -152,7 +152,7 @@ jobs:
         cd ip
         mkdir build
         cd build
-        cmake .. -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps -DBUILD_TESTING=OFF ..
         make -j2
         make install
           
@@ -170,7 +170,7 @@ jobs:
         cd w3nco
         mkdir build
         cd build
-        cmake -DCMAKE_PREFIX_PATH=~/deps -DCMAKE_INSTALL_PREFIX=~/deps ..
+        cmake -DCMAKE_PREFIX_PATH=~/deps -DCMAKE_INSTALL_PREFIX=~/deps -DBUILD_TESTING=OFF ..
         make -j2
         make install
           
@@ -188,7 +188,7 @@ jobs:
         cd w3emc
         mkdir build
         cd build
-        cmake -DCMAKE_PREFIX_PATH=~/deps -DCMAKE_INSTALL_PREFIX=~/deps -DBUILD_WITH_BUFR=OFF ..
+        cmake -DCMAKE_PREFIX_PATH=~/deps -DCMAKE_INSTALL_PREFIX=~/deps -DBUILD_WITH_BUFR=OFF -DBUILD_TESTING=OFF ..
         make -j2
         make install
           
@@ -206,7 +206,7 @@ jobs:
         cd g2
         mkdir build
         cd build
-        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps ..
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps -DBUILD_TESTING=OFF ..
         make -j2
         make install
         
@@ -224,7 +224,7 @@ jobs:
         cd g2tmpl
         mkdir build
         cd build
-        cmake -DCMAKE_INSTALL_PREFIX=~/deps ..
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DBUILD_TESTING=OFF ..
         make -j2
         make install
         
@@ -241,7 +241,7 @@ jobs:
       run: |
         cd nemsio
         mkdir build && cd build
-        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps ..
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps -DBUILD_TESTING=OFF ..
         make -j2
         make install
 
@@ -259,7 +259,7 @@ jobs:
         cd wrf_io
         mkdir build
         cd build
-        cmake -DCMAKE_INSTALL_PREFIX=~/deps ..
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DBUILD_TESTING=OFF ..
         make -j2
         make install
 
@@ -277,7 +277,7 @@ jobs:
         cd ncio
         mkdir build
         cd build
-        cmake -DCMAKE_INSTALL_PREFIX=~/deps ..
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DBUILD_TESTING=OFF ..
         make -j2
         make install
 
@@ -295,7 +295,7 @@ jobs:
         cd bufr
         mkdir build
         cd build
-        cmake -DCMAKE_INSTALL_PREFIX=~/deps ..
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DBUILD_TESTING=OFF ..
         make -j2
         make install
         
@@ -338,7 +338,7 @@ jobs:
         cd emc_crtm
         mkdir build
         cd build
-        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps .. 
+        cmake -DCMAKE_INSTALL_PREFIX=~/deps -DCMAKE_PREFIX_PATH=~/deps -DBUILD_TESTING=OFF .. 
         make -j2
         make install
         
