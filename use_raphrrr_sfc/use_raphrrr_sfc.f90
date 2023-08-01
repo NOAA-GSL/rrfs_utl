@@ -36,7 +36,6 @@ program use_raphrrr_sfc
   integer(i_byte),allocatable :: landmask_raphrrr(:,:)
   integer(i_byte),allocatable :: landmask_rrfs(:,:)
   real(r_single),allocatable,target :: tmp2d4b(:,:)
-  real(r_kind),  allocatable,target :: tmp2d8b(:,:)
 
   integer :: i,j,k,n
   character*80 :: raphrrrfile
@@ -76,15 +75,15 @@ program use_raphrrr_sfc
 ! read in rrfs land mask
      call rrfs%open(trim(rrfsfile),"r",200)
      allocate(landmask_rrfs(nx_rrfs,ny_rrfs))
-     allocate(tmp2d8b(nx_rrfs,ny_rrfs))
-     call rrfs%get_var("slmsk",nx_rrfs,ny_rrfs,tmp2d8b)
+     allocate(tmp2d4b(nx_rrfs,ny_rrfs))
+     call rrfs%get_var("slmsk",nx_rrfs,ny_rrfs,tmp2d4b)
      do j=1,ny_rrfs
        do i=1,nx_rrfs
-          landmask_rrfs(i,j)=int(tmp2d8b(i,j))
+          landmask_rrfs(i,j)=int(tmp2d4b(i,j))
           if(landmask_rrfs(i,j) >=2 ) landmask_rrfs(i,j)=1
        enddo
      enddo
-     deallocate(tmp2d8b)
+     deallocate(tmp2d4b)
 
      call rrfs%get_dim("zaxis_1",nz_rrfs)
      call rrfs%close()
