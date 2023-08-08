@@ -39,7 +39,7 @@ PROGRAM update_GVF
   real, allocatable :: vegfrc_max(:,:)
   real, allocatable :: vegfrc_min(:,:)
   real, allocatable :: field2d(:,:)
-  real(8), allocatable,target :: field2d8b(:,:)
+  real, allocatable,target :: field2d4br(:,:)
 !
 !  for grib2
 !
@@ -105,14 +105,14 @@ if(mype==0) then
     enddo
     call rrfs%get_var("grid_latt",nx,ny,ylat)
     call rrfs%close()
-    allocate(field2d8b(nx,ny))
+    allocate(field2d4br(nx,ny))
     allocate(vegfrc_wrf(nx,ny))
     call rrfs%open("sfc_data.nc","r",200)
-    call rrfs%get_var("vfrac",nx,ny,field2d8b)
-    vegfrc_wrf=field2d8b(:,:)*100.0
+    call rrfs%get_var("vfrac",nx,ny,field2d4br)
+    vegfrc_wrf=field2d4br(:,:)*100.0
 !    call rrfs%get_att("filename",filename_att)
     call rrfs%close()
-    deallocate(field2d8b)
+    deallocate(field2d4br)
 ! get date
   !  read(filename_att(9:21),"(I4,2I2,1x,2I2)") ibkyr,ibkmon,ibkday,ibkhh,ibkmm
   else
@@ -323,16 +323,16 @@ if(mype==0) then
 !
 !
   if(bktype==1) then
-    allocate(field2d8b(nx,ny))
+    allocate(field2d4br(nx,ny))
     call rrfs%open('sfc_data.nc',"w",200)
-    field2d8b=vegfrc*0.01
-    call rrfs%replace_var("vfrac",nx,ny,field2d8b)
-    field2d8b=vegfrc_max*0.01
-    call rrfs%replace_var("shdmax",nx,ny,field2d8b)
-    field2d8b=vegfrc_min*0.01
-    call rrfs%replace_var("shdmin",nx,ny,field2d8b)
+    field2d4br=vegfrc*0.01
+    call rrfs%replace_var("vfrac",nx,ny,field2d4br)
+    field2d4br=vegfrc_max*0.01
+    call rrfs%replace_var("shdmax",nx,ny,field2d4br)
+    field2d4br=vegfrc_min*0.01
+    call rrfs%replace_var("shdmin",nx,ny,field2d4br)
     call rrfs%close()
-    deallocate(field2d8b)
+    deallocate(field2d4br)
   else
     filename='wrf_inout'
     write(*,*) 'open file =',trim(filename)

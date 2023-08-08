@@ -18,8 +18,7 @@ PROGRAM cycle_ice
   integer :: nx,ny,nz,n,i,j,k
 !
 !  from wrf netcdf 
-  real(8), allocatable,target :: field2d8b(:,:)
-  real(8), allocatable,target :: field3d8b(:,:,:)
+  real(4), allocatable,target :: field2d4br(:,:)
   real(4), allocatable :: field2d(:,:)
   character(len=30) :: varname
 !
@@ -46,7 +45,7 @@ if(mype==0) then
     write(*,*) 'nx_rrfs,ny_rrfs=',nx,ny,nz
     call rrfs%close()
 
-    allocate(field2d8b(nx,ny))
+    allocate(field2d4br(nx,ny))
 
     do n=1,8
        if(n==1) varname='hice' 
@@ -58,11 +57,11 @@ if(mype==0) then
        if(n==7) varname='zorli' 
        if(n==8) varname='zorlw' 
        call rrfs%open('gfsice.sfc_data.nc',"r",200)
-       call rrfs%get_var(trim(varname),nx,ny,field2d8b)
+       call rrfs%get_var(trim(varname),nx,ny,field2d4br)
        call rrfs%close()
 !
        call rrfs%open('sfc_data.nc',"w",200)
-       call rrfs%replace_var(trim(varname),nx,ny,field2d8b)
+       call rrfs%replace_var(trim(varname),nx,ny,field2d4br)
        call rrfs%close()
     enddo
 !

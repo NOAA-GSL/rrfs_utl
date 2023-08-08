@@ -35,15 +35,15 @@ PROGRAM check_process_imssnow
   integer :: nlon,nlat
   real,allocatable :: xlon(:,:)    !
   real,allocatable :: ylat(:,:)    !
-  real(8),allocatable :: slmsk(:,:)
-  real(8),allocatable :: sncovr(:,:)
-  real(8),allocatable :: snodl(:,:)
-  real(8),allocatable :: snwdph(:,:)
-  real(8),allocatable :: weasdl(:,:)
-  real(8),allocatable :: tsfc(:,:)
-  real(8),allocatable :: tsfcl(:,:)
-  real(8),allocatable :: tsnow_land(:,:)
-  real(8),allocatable :: tslb(:,:,:)
+  real,allocatable :: slmsk(:,:)
+  real,allocatable :: sncovr(:,:)
+  real,allocatable :: snodl(:,:)
+  real,allocatable :: snwdph(:,:)
+  real,allocatable :: weasdl(:,:)
+  real,allocatable :: tsfc(:,:)
+  real,allocatable :: tsfcl(:,:)
+  real,allocatable :: tsnow_land(:,:)
+  real,allocatable :: tslb(:,:,:)
 !
 !
   integer :: num_args

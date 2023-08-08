@@ -171,8 +171,8 @@ contains
 !
     real(r_single),allocatable,target :: tmp2d4b(:,:)
     real(r_single),allocatable,target :: tmp3d4b(:,:,:)
-    real(r_kind),  allocatable,target :: tmp2d8b(:,:)
-    real(r_kind),  allocatable,target :: tmp3d8b(:,:,:)
+    real(r_single),  allocatable,target :: tmp2d4br(:,:)
+    real(r_single),  allocatable,target :: tmp3d4br(:,:,:)
 !    integer(i_byte),allocatable :: landmask_rrfs(:,:)
 !
     integer  :: nx_rap,ny_rap
@@ -194,8 +194,8 @@ contains
 !
 !    call rrfs%open(trim(rrfsfile),"r",200)
 !    allocate(landmask_rrfs(nx_rrfs,ny_rrfs))
-!    allocate(tmp2d8b(nx_rrfs,ny_rrfs))
-!    call rrfs%get_var("slmsk",nx_rrfs,ny_rrfs,tmp2d8b)
+!    allocate(tmp2d4br(nx_rrfs,ny_rrfs))
+!    call rrfs%get_var("slmsk",nx_rrfs,ny_rrfs,tmp2d4br)
 !    do j=1,ny_rrfs
 !       do i=1,nx_rrfs
 !          ix=this%index_x(i,j)
@@ -203,7 +203,7 @@ contains
 !          if( (ix >= 1 .and. ix <= nx_rap) .and. &
 !              (jx >= 1 .and. jx <= ny_rap) ) then
 !             if(fld2d4b(ix,jx) > 0.025_r_single) then
-!                tmp2d8b(i,j)=2.0_r_kind
+!                tmp2d4br(i,j)=2.0_r_kind
 !             endif
 !          endif
 !        enddo
@@ -211,14 +211,14 @@ contains
 !    call rrfs%close()
 !!
 !    call rrfs%open(trim(rrfsfile),"w",200)
-!    call rrfs%replace_var("slmsk",nx_rrfs,ny_rrfs,tmp2d8b)
+!    call rrfs%replace_var("slmsk",nx_rrfs,ny_rrfs,tmp2d4br)
 !
 !    do j=1,ny_rrfs
 !      do i=1,nx_rrfs
-!         landmask_rrfs(i,j)=int(tmp2d8b(i,j))
+!         landmask_rrfs(i,j)=int(tmp2d4br(i,j))
 !      enddo
 !    enddo
-!    deallocate(tmp2d8b)
+!    deallocate(tmp2d4br)
 !    call rrfs%close()
 !
 !
@@ -233,9 +233,9 @@ contains
           allocate(tmp3d4b(nx_rap,ny_rap,nz_rrfs))
           call raphrrr%get_var(trim(thisvar_rap),nx_rap,ny_rap,nz_rrfs,tmp3d4b)
 
-          allocate(tmp3d8b(nx_rrfs,ny_rrfs,nz_rrfs))
+          allocate(tmp3d4br(nx_rrfs,ny_rrfs,nz_rrfs))
           call rrfs%open(trim(rrfsfile),"r",200)
-          call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,nz_rrfs,tmp3d8b)
+          call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,nz_rrfs,tmp3d4br)
           call rrfs%close()
 
           do j=1,ny_rrfs
@@ -246,11 +246,11 @@ contains
                    (jx >= 1 .and. jx <= ny_rap) ) then
                   if(trim(thisvar_rrfs) == "tslb") then
                      do kx=1,nz_rrfs-1
-                        tmp3d8b(i,j,kx)=tmp3d4b(ix,jx,kx)
+                        tmp3d4br(i,j,kx)=tmp3d4b(ix,jx,kx)
                      enddo
                   else
                      do kx=1,nz_rrfs
-                        tmp3d8b(i,j,kx)=tmp3d4b(ix,jx,kx)
+                        tmp3d4br(i,j,kx)=tmp3d4b(ix,jx,kx)
                      enddo
                   endif
                endif
@@ -259,36 +259,36 @@ contains
           deallocate(tmp3d4b)
 
           call rrfs%open(trim(rrfsfile),"w",200)
-          call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,nz_rrfs,tmp3d8b)
+          call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,nz_rrfs,tmp3d4br)
           if(trim(thisvar_rrfs) == "tslb") then
-             call rrfs%replace_var("tiice",nx_rrfs,ny_rrfs,nz_rrfs,tmp3d8b)
+             call rrfs%replace_var("tiice",nx_rrfs,ny_rrfs,nz_rrfs,tmp3d4br)
           elseif(trim(thisvar_rrfs) == "smois") then
              allocate(fld3d4b(nx_rrfs,ny_rrfs,nz_rrfs))
-             fld3d4b=tmp3d8b  ! save for calculating (smois-sh2o)
+             fld3d4b=tmp3d4br  ! save for calculating (smois-sh2o)
           elseif(trim(thisvar_rrfs) == "sh2o") then
-             tmp3d8b=max(0.0,(fld3d4b - tmp3d8b)/0.9)
+             tmp3d4br=max(0.0,(fld3d4b - tmp3d4br)/0.9)
              deallocate(fld3d4b)
-             call rrfs%replace_var("smfr",nx_rrfs,ny_rrfs,nz_rrfs,tmp3d8b)
+             call rrfs%replace_var("smfr",nx_rrfs,ny_rrfs,nz_rrfs,tmp3d4br)
           endif
-          deallocate(tmp3d8b)
+          deallocate(tmp3d4br)
           call rrfs%close()
        else
           allocate(tmp2d4b(nx_rap,ny_rap))
           call raphrrr%get_var(trim(thisvar_rap),nx_rap,ny_rap,tmp2d4b)
 
-          allocate(tmp2d8b(nx_rrfs,ny_rrfs))
+          allocate(tmp2d4br(nx_rrfs,ny_rrfs))
           call rrfs%open(trim(rrfsfile),"r",200)
-          call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
+          call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
           call rrfs%close()
         
-          if(maxval(tmp2d8b) - minval(tmp2d8b) < 1.0e-10) then
+          if(maxval(tmp2d4br) - minval(tmp2d4br) < 1.0e-10) then
             do j=1,ny_rrfs
               do i=1,nx_rrfs
                 ix=this%index_x_nomatch(i,j)
                 jx=this%index_y_nomatch(i,j)
                 if( (ix >= 1 .and. ix <= nx_rap) .and. &
                     (jx >= 1 .and. jx <= ny_rap) ) then
-                  tmp2d8b(i,j)=tmp2d4b(ix,jx)
+                  tmp2d4br(i,j)=tmp2d4b(ix,jx)
                 endif
               enddo
             enddo
@@ -299,7 +299,7 @@ contains
                 jx=this%index_y(i,j)
                 if( (ix >= 1 .and. ix <= nx_rap) .and. &
                     (jx >= 1 .and. jx <= ny_rap) ) then
-                  tmp2d8b(i,j)=tmp2d4b(ix,jx)
+                  tmp2d4br(i,j)=tmp2d4b(ix,jx)
                 endif
               enddo
             enddo
@@ -307,22 +307,22 @@ contains
           deallocate(tmp2d4b)
 
           call rrfs%open(trim(rrfsfile),"w",200)
-          call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
+          call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
           if(trim(thisvar_rrfs) == "weasdl") then
-            call rrfs%replace_var("sheleg",nx_rrfs,ny_rrfs,tmp2d8b)
+            call rrfs%replace_var("sheleg",nx_rrfs,ny_rrfs,tmp2d4br)
           elseif(trim(thisvar_rrfs) == "qwv_surf_land") then
-            call rrfs%replace_var("qwv_surf_ice",nx_rrfs,ny_rrfs,tmp2d8b)
+            call rrfs%replace_var("qwv_surf_ice",nx_rrfs,ny_rrfs,tmp2d4br)
           elseif(trim(thisvar_rrfs) == "clw_surf_land") then
-            call rrfs%replace_var("clw_surf_ice",nx_rrfs,ny_rrfs,tmp2d8b)
+            call rrfs%replace_var("clw_surf_ice",nx_rrfs,ny_rrfs,tmp2d4br)
           elseif(trim(thisvar_rrfs) == "tsnow_land") then
-            call rrfs%replace_var("tsnow_ice",nx_rrfs,ny_rrfs,tmp2d8b)
+            call rrfs%replace_var("tsnow_ice",nx_rrfs,ny_rrfs,tmp2d4br)
           elseif(trim(thisvar_rrfs) == "tsfc") then
-            call rrfs%replace_var("tsfcl",nx_rrfs,ny_rrfs,tmp2d8b)
-            call rrfs%replace_var("tsea",nx_rrfs,ny_rrfs,tmp2d8b)
-!            call rrfs%replace_var("tref",nx_rrfs,ny_rrfs,tmp2d8b)
-            call rrfs%replace_var("tisfc",nx_rrfs,ny_rrfs,tmp2d8b)
+            call rrfs%replace_var("tsfcl",nx_rrfs,ny_rrfs,tmp2d4br)
+            call rrfs%replace_var("tsea",nx_rrfs,ny_rrfs,tmp2d4br)
+!            call rrfs%replace_var("tref",nx_rrfs,ny_rrfs,tmp2d4br)
+            call rrfs%replace_var("tisfc",nx_rrfs,ny_rrfs,tmp2d4br)
           endif
-          deallocate(tmp2d8b)
+          deallocate(tmp2d4br)
           call rrfs%close()
 !
 ! for SOILT1 and SNOWC
@@ -333,12 +333,12 @@ contains
 !             allocate(tmp2d4b(nx_rap,ny_rap))
 !             call raphrrr%get_var(trim(thisvar_rap),nx_rap,ny_rap,tmp2d4b)
 !
-!             allocate(tmp2d8b(nx_rrfs,ny_rrfs))
+!             allocate(tmp2d4br(nx_rrfs,ny_rrfs))
 !             call rrfs%open(trim(rrfsfile),"r",200)
-!             call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
+!             call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
 !             call rrfs%close()
 !
-!             if(maxval(tmp2d8b) - minval(tmp2d8b) < 1.0e-10) then
+!             if(maxval(tmp2d4br) - minval(tmp2d4br) < 1.0e-10) then
 !               do j=1,ny_rrfs
 !                 do i=1,nx_rrfs
 !                   ix=this%index_x_nomatch(i,j)
@@ -346,7 +346,7 @@ contains
 !                   if( (ix >= 1 .and. ix <= nx_rap) .and. &
 !                       (jx >= 1 .and. jx <= ny_rap) ) then
 !                      if(fld2d4b(ix,jx) > 0.025) then
-!                        tmp2d8b(i,j)=tmp2d4b(ix,jx)
+!                        tmp2d4br(i,j)=tmp2d4b(ix,jx)
 !                      endif
 !                   endif
 !                 enddo
@@ -359,7 +359,7 @@ contains
 !                    if( (ix >= 1 .and. ix <= nx_rap) .and. &
 !                        (jx >= 1 .and. jx <= ny_rap) ) then
 !                       if(fld2d4b(ix,jx) > 0.025) then
-!                          tmp2d8b(i,j)=tmp2d4b(ix,jx)
+!                          tmp2d4br(i,j)=tmp2d4b(ix,jx)
 !                       endif
 !                    endif
 !                 enddo
@@ -368,8 +368,8 @@ contains
 !             deallocate(tmp2d4b)
 !
 !             call rrfs%open(trim(rrfsfile),"w",200)
-!             call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
-!             deallocate(tmp2d8b)
+!             call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
+!             deallocate(tmp2d4br)
 !             call rrfs%close()
 !          endif
 !
@@ -412,7 +412,7 @@ contains
     type(ncio)     :: raphrrr,rrfs
 !
     real(r_single),allocatable,target :: tmp2d4b(:,:)
-    real(r_kind),  allocatable,target :: tmp2d8b(:,:)
+    real(r_single),allocatable,target :: tmp2d4br(:,:)
 !
     integer  :: nx_rap,ny_rap
     integer  :: nx_rrfs,ny_rrfs,nz_rrfs
@@ -427,7 +427,7 @@ contains
     ny_rap=this%nlat_target
 !
     allocate(tmp2d4b(nx_rap,ny_rap))
-    allocate(tmp2d8b(nx_rrfs,ny_rrfs))
+    allocate(tmp2d4br(nx_rrfs,ny_rrfs))
 
     call raphrrr%open(trim(rapfile),"r",200)
     call raphrrr%get_var("SNOW",nx_rap,ny_rap,tmp2d4b)
@@ -440,7 +440,7 @@ contains
        if(nn==4) thisvar_rrfs="snodl"
 
        call rrfs%open(trim(rrfsfile),"r",200)
-       call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
+       call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
        call rrfs%close()
 
        do j=1,ny_rrfs
@@ -450,18 +450,18 @@ contains
              if( (ix >= 1 .and. ix <= nx_rap) .and. &
                  (jx >= 1 .and. jx <= ny_rap) ) then
                 if(tmp2d4b(ix,jx) < 1.0e-10_r_single .and. rlat(i,j) < 37.0 ) then
-                   tmp2d8b(i,j)=0.0_r_kind
+                   tmp2d4br(i,j)=0.0_r_kind
                 endif
              endif
            enddo
        enddo
 
        call rrfs%open(trim(rrfsfile),"w",200)
-       call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
+       call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
        call rrfs%close()
 
     end do ! nn
-    deallocate(tmp2d8b)
+    deallocate(tmp2d4br)
     deallocate(tmp2d4b)
   
   end subroutine remove_snow

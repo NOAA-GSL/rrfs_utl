@@ -187,8 +187,8 @@ contains
     integer :: id,fv3_io_layout_y
     integer :: nlon,nlat,nlat_local,nz
     integer :: i,j,k
-    real(r_kind),allocatable :: r2d8b(:,:)
-    real(r_kind),allocatable :: r3d8b(:,:,:)
+    real,allocatable :: r2d4b(:,:)
+    real,allocatable :: r3d4b(:,:,:)
 
     nlon=this%nlon
     nlat=this%nlat
@@ -217,31 +217,31 @@ contains
 
        call fv3io%open(trim(thisfv3file),'w',200)
 ! 
-       allocate(r2d8b(nlon,nlat_local))
-       r2d8b(:,:)=this%ges_tsk(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
-       call fv3io%replace_var("tsfcl",nlon,nlat_local,r2d8b)
+       allocate(r2d4b(nlon,nlat_local))
+       r2d4b(:,:)=this%ges_tsk(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
+       call fv3io%replace_var("tsfcl",nlon,nlat_local,r2d4b)
 
-       r2d8b(:,:)=this%tsk_comp(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
-       call fv3io%replace_var("tsfc",nlon,nlat_local,r2d8b)
+       r2d4b(:,:)=this%tsk_comp(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
+       call fv3io%replace_var("tsfc",nlon,nlat_local,r2d4b)
 
-       r2d8b(:,:)=this%ges_soilt1(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
-       call fv3io%replace_var("tsnow_land",nlon,nlat_local,r2d8b)
+       r2d4b(:,:)=this%ges_soilt1(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
+       call fv3io%replace_var("tsnow_land",nlon,nlat_local,r2d4b)
 
-       r2d8b(:,:)=this%ges_qvg(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
-       call fv3io%replace_var("qwv_surf_land",nlon,nlat_local,r2d8b)
+       r2d4b(:,:)=this%ges_qvg(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
+       call fv3io%replace_var("qwv_surf_land",nlon,nlat_local,r2d4b)
 
-       r2d8b(:,:)=this%ges_qcg(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
-       call fv3io%replace_var("clw_surf_land",nlon,nlat_local,r2d8b)
+       r2d4b(:,:)=this%ges_qcg(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))
+       call fv3io%replace_var("clw_surf_land",nlon,nlat_local,r2d4b)
 
-       deallocate(r2d8b)
+       deallocate(r2d4b)
 
-       allocate(r3d8b(nlon,nlat_local,nz))
-       r3d8b(:,:,:)=this%ges_tslb(:,this%fv3_layout_begin(id):this%fv3_layout_end(id),:)
-       call fv3io%replace_var("tslb",nlon,nlat_local,nz,r3d8b)
-       r3d8b(:,:,:)=this%ges_smois(:,this%fv3_layout_begin(id):this%fv3_layout_end(id),:)
-       call fv3io%replace_var("smois",nlon,nlat_local,nz,r3d8b)
+       allocate(r3d4b(nlon,nlat_local,nz))
+       r3d4b(:,:,:)=this%ges_tslb(:,this%fv3_layout_begin(id):this%fv3_layout_end(id),:)
+       call fv3io%replace_var("tslb",nlon,nlat_local,nz,r3d4b)
+       r3d4b(:,:,:)=this%ges_smois(:,this%fv3_layout_begin(id):this%fv3_layout_end(id),:)
+       call fv3io%replace_var("smois",nlon,nlat_local,nz,r3d4b)
 
-       deallocate(r3d8b)
+       deallocate(r3d4b)
        call fv3io%close
     enddo
 
@@ -563,12 +563,12 @@ if(mype==0) then
        call fv3io%open(trim(thisfv3file),'r',200)
        call fv3io%get_dim("zaxis_1",nz)
 ! slmsk: 0 - water, 1 - land, 2 - ice
-       allocate(r2d8b(nlon,nlat_local))
-       call fv3io%get_var("slmsk",nlon,nlat_local,r2d8b)
-       this%landmask(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
+       allocate(r2d4b(nlon,nlat_local))
+       call fv3io%get_var("slmsk",nlon,nlat_local,r2d4b)
+       this%landmask(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b(:,:)
 
        call fv3io%close
-       deallocate(r2d8b)
+       deallocate(r2d4b)
     enddo
     this%nsoil=nz
     write(6,*) 'slmsk=',maxval(this%landmask),minval(this%landmask)
@@ -604,44 +604,44 @@ if(mype==0) then
 
        call fv3io%open(trim(thisfv3file),'r',200)
 ! 
-       allocate(r2d8b(nlon,nlat_local))
-       call fv3io%get_var("tsfcl",nlon,nlat_local,r2d8b)
+       allocate(r2d4b(nlon,nlat_local))
+       call fv3io%get_var("tsfcl",nlon,nlat_local,r2d4b)
        !-- skin temperature on land
-       this%ges_tsk(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
+       this%ges_tsk(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b(:,:)
 
-       call fv3io%get_var("tsfc",nlon,nlat_local,r2d8b)
+       call fv3io%get_var("tsfc",nlon,nlat_local,r2d4b)
        !-- skin temperature composite
-       this%tsk_comp(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
+       this%tsk_comp(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b(:,:)
 
-       call fv3io%get_var("tsnow_land",nlon,nlat_local,r2d8b)
+       call fv3io%get_var("tsnow_land",nlon,nlat_local,r2d4b)
        !-- snow temperautre on land
-       this%ges_soilt1(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
+       this%ges_soilt1(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b(:,:)
 
-       call fv3io%get_var("qwv_surf_land",nlon,nlat_local,r2d8b)
+       call fv3io%get_var("qwv_surf_land",nlon,nlat_local,r2d4b)
        !-- snow temperautre on land
-       this%ges_qvg(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
+       this%ges_qvg(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b(:,:)
 
-       call fv3io%get_var("clw_surf_land",nlon,nlat_local,r2d8b)
+       call fv3io%get_var("clw_surf_land",nlon,nlat_local,r2d4b)
        !-- snow temperautre on land
-       this%ges_qcg(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
+       this%ges_qcg(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b(:,:)
 
-       call fv3io%get_var("snodl",nlon,nlat_local,r2d8b) 
+       call fv3io%get_var("snodl",nlon,nlat_local,r2d4b) 
        !--  snodl is snow depth on land, units [mm], convert to [m]
-       this%sno(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)*1.e-3
+       this%sno(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b(:,:)*1.e-3
 
-       call fv3io%get_var("sncovr",nlon,nlat_local,r2d8b) 
+       call fv3io%get_var("sncovr",nlon,nlat_local,r2d4b) 
        !-- snow cover: 0-1
-       this%sncovr(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d8b(:,:)
+       this%sncovr(:,this%fv3_layout_begin(id):this%fv3_layout_end(id))=r2d4b(:,:)
 
-       deallocate(r2d8b)
+       deallocate(r2d4b)
 
-       allocate(r3d8b(nlon,nlat_local,nz))
-       call fv3io%get_var("tslb",nlon,nlat_local,nz,r3d8b)
-       this%ges_tslb(:,this%fv3_layout_begin(id):this%fv3_layout_end(id),:)=r3d8b(:,:,:)
-       call fv3io%get_var("smois",nlon,nlat_local,nz,r3d8b)
-       this%ges_smois(:,this%fv3_layout_begin(id):this%fv3_layout_end(id),:)=r3d8b(:,:,:)
+       allocate(r3d4b(nlon,nlat_local,nz))
+       call fv3io%get_var("tslb",nlon,nlat_local,nz,r3d4b)
+       this%ges_tslb(:,this%fv3_layout_begin(id):this%fv3_layout_end(id),:)=r3d4b(:,:,:)
+       call fv3io%get_var("smois",nlon,nlat_local,nz,r3d4b)
+       this%ges_smois(:,this%fv3_layout_begin(id):this%fv3_layout_end(id),:)=r3d4b(:,:,:)
 
-       deallocate(r3d8b)
+       deallocate(r3d4b)
        call fv3io%close
     enddo
     write(6,*) 'this%tsk=',maxval(this%ges_tsk),minval(this%ges_tsk)

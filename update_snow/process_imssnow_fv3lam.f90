@@ -44,7 +44,8 @@ PROGRAM process_imssnow
   integer,allocatable :: xland(:,:)   !
   real,allocatable :: xlandIMS(:,:)   !
   real,allocatable :: snowice(:,:)    ! snow/ice in RR 
-  real(8),allocatable :: tmp8b(:,:)
+!  real(8),allocatable :: tmp8b(:,:)
+  real,allocatable :: tmp4b(:,:)
 !
 !
   integer :: num_args
@@ -149,12 +150,12 @@ PROGRAM process_imssnow
              thisfv3file='sfc_data.nc'
            endif
            allocate(xland(nlon,nlat))
-           allocate(tmp8b(nlon,nlat))
+           allocate(tmp4b(nlon,nlat))
            call fv3grid%open(trim(thisfv3file),'r',200)
-           call fv3grid%get_var("slmsk",nlon,nlat,tmp8b)
+           call fv3grid%get_var("slmsk",nlon,nlat,tmp4b)
            call fv3grid%close
-           xland=int(tmp8b)
-           deallocate(tmp8b)
+           xland=int(tmp4b)
+           deallocate(tmp4b)
 !
 ! map to grid
 !
