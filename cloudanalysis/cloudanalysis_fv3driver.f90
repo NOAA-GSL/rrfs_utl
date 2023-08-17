@@ -55,7 +55,7 @@ program cloudanalysis
                                       l_precip_clear_only,l_fog_off,cld_bld_coverage,cld_clr_coverage,&
                                       i_T_Q_adjust,l_saturate_bkCloud,i_precip_vertical_check,l_rtma3d, &
                                       l_qnr_from_qr, n0_rain, &
-                                      r_cloudfrac_threshold
+                                      r_cloudfrac_threshold, i_uncertainty
 
   use namelist_mod, only: load_namelist
   use namelist_mod, only: iyear,imonth,iday,ihour,iminute,isecond
@@ -67,6 +67,9 @@ program cloudanalysis
   use get_fv3sar_bk_mod, only: read_fv3sar_bk,release_mem_fv3sar_bk
   use get_fv3sar_bk_mod, only: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg, &
                                ges_qnr,ges_qni,ges_qnc,ges_qcf
+!  use get_fv3sar_bk_mod, only: unc_ql,unc_qi,unc_qr,unc_qs,unc_qg, &
+!                               unc_qnr,unc_qni,unc_qnc,unc_qcf
+  use get_fv3sar_bk_mod, only: unc_ql,unc_qi,unc_qr,unc_qs,unc_qg
   use get_fv3sar_bk_mod, only: xlon,xlat,xland,soiltbk
   use get_fv3sar_bk_mod, only: read_fv3sar_hydr,release_mem_fv3sar_hydr
   use get_fv3sar_bk_mod, only: read_fv3sar_fix,release_mem_fv3sar_fix
@@ -1293,6 +1296,15 @@ program cloudanalysis
   do k=1,nsig
      do j=1,lat2
         do i=1,lon2
+           if(i_uncertainty) then
+              ! hydrometeor uncertainties
+              unc_ql(i,j,k) = 0.1 * (cldwater_3d(i,j,k) - ges_ql(i,j,k))
+              unc_qi(i,j,k) = 0.1 * (cldice_3d(i,j,k) - ges_qi(i,j,k))
+              unc_qr(i,j,k) = 0.1 * (rain_3d(i,j,k) - ges_qr(i,j,k))
+              unc_qs(i,j,k) = 0.1 * (snow_3d(i,j,k) - ges_qs(i,j,k))
+              unc_qg(i,j,k) = 0.1 * (graupel_3d(i,j,k) - ges_qg(i,j,k))
+!              unc_qnr(i,j,k) = 0.1 * (nrain_3d(i,j,k) - ges_qnr(i,j,k))
+           endif
            ! hydrometeor update
            ges_qr(i,j,k)=rain_3d(i,j,k)
            ges_qs(i,j,k)=snow_3d(i,j,k)
@@ -1302,6 +1314,10 @@ program cloudanalysis
            ges_qnr(i,j,k)=nrain_3d(i,j,k)
            ! cloud number concentration update
            if( l_numconc ) then
+!             if(i_uncertainty) then
+!!              unc_qni(i,j,k) = 0.1 * (nice_3d(i,j,k) - ges_qni(i,j,k))
+!!              unc_qnc(i,j,k) = 0.1 * (nwater_3d(i,j,k) - ges_qnc(i,j,k))
+!             endif 
              ges_qni(i,j,k)=nice_3d(i,j,k)
              ges_qnc(i,j,k)=nwater_3d(i,j,k)
            endif

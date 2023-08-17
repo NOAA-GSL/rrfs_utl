@@ -41,12 +41,15 @@ module get_fv3sar_bk_mod
   use mpi_mod, only: npe, mype,mpi_comm_world
   use mpi_mod, only: mpi_finish,mpi_integer,mpi_sum
   use namelist_mod, only: fv3_io_layout_y
+  use rapidrefresh_cldsurf_mod, only: i_uncertainty
 
   implicit none
   private
 
   public :: t_bk,h_bk,p_bk,ps_bk,zh,q_bk,pblh
   public :: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg,ges_qnr,ges_qni,ges_qnc,ges_qcf
+!  public :: unc_ql,unc_qi,unc_qr,unc_qs,unc_qg,unc_qnr,unc_qni,unc_qnc,unc_qcf
+  public :: unc_ql,unc_qi,unc_qr,unc_qs,unc_qg
   public :: aeta1_ll,pt_ll
   public :: pt_regional
   public :: xlon,xlat,xland,soiltbk
@@ -98,6 +101,17 @@ module get_fv3sar_bk_mod
   real(r_single),allocatable :: ges_qni(:,:,:) ! cloud ice number concentration
   real(r_single),allocatable :: ges_qnc(:,:,:) ! cloud water number concentration
   real(r_single),allocatable :: ges_qcf(:,:,:) ! cloud fraction
+!
+! uncertainties
+  real(r_single),allocatable :: unc_ql(:,:,:)  ! cloud water
+  real(r_single),allocatable :: unc_qi(:,:,:)  ! could ice
+  real(r_single),allocatable :: unc_qr(:,:,:)  ! rain
+  real(r_single),allocatable :: unc_qs(:,:,:)  ! snow
+  real(r_single),allocatable :: unc_qg(:,:,:)  ! graupel
+!  real(r_single),allocatable :: unc_qnr(:,:,:) ! rain number concentration
+!  real(r_single),allocatable :: unc_qni(:,:,:) ! cloud ice number concentration
+!  real(r_single),allocatable :: unc_qnc(:,:,:) ! cloud water number concentration
+!  real(r_single),allocatable :: unc_qcf(:,:,:) ! cloud fraction
 
 ! fix files
   real(r_single),allocatable :: xlon(:,:)
@@ -105,12 +119,13 @@ module get_fv3sar_bk_mod
   real(r_single),allocatable :: xland(:,:)
   real(r_single),allocatable :: soiltbk(:,:)
 !
-! backgrond files
-  character(len=80) :: dynvars   !='fv3_dynvars'
-  character(len=80) :: tracers   !='fv3_tracer'
-  character(len=80) :: sfcvars   !='fv3_sfcdata'
-  character(len=80) :: phyvars   !='fv3_phydata'
-  character(len=80) :: gridspec  !='fv3_grid_spec'
+! background files
+  character(len=80) :: dynvars       !='fv3_dynvars'
+  character(len=80) :: tracers       !='fv3_tracer'
+  character(len=80) :: tracers_unc   !='fv3_tracer_unc'
+  character(len=80) :: sfcvars       !='fv3_sfcdata'
+  character(len=80) :: phyvars       !='fv3_phydata'
+  character(len=80) :: gridspec      !='fv3_grid_spec'
 !
 
 contains
@@ -171,10 +186,12 @@ contains
         write(gridspec,'(a,I4.4)') 'fv3_grid_spec.',mype
         write(dynvars,'(a,I4.4)') 'fv3_dynvars.',mype
         write(tracers,'(a,I4.4)') 'fv3_tracer.',mype
+        if(i_uncertainty) write(tracers_unc,'(a,I4.4)') 'fv3_tracer_unc.',mype
         write(sfcvars,'(a,I4.4)') 'fv3_sfcdata.',mype
         write(phyvars,'(a,I4.4)') 'fv3_phydata.',mype
         call bg_fv3regfilenameg%init(grid_spec_input=trim(gridspec), &
                  dynvars_input=trim(dynvars),tracers_input=trim(tracers),&
+                 tracers_unc_input=trim(tracers_unc),&
                  sfcdata_input=trim(sfcvars),phydata_input=trim(phyvars))
      endif
      mype_t=mype
@@ -183,15 +200,17 @@ contains
      mype_ql=mype
      mype_2d=mype
 
-     dynvars= bg_fv3regfilenameg%dynvars
-     tracers= bg_fv3regfilenameg%tracers
-     sfcvars= bg_fv3regfilenameg%sfcdata
-     phyvars= bg_fv3regfilenameg%phydata
+     dynvars    = bg_fv3regfilenameg%dynvars
+     tracers    = bg_fv3regfilenameg%tracers
+     tracers_unc= bg_fv3regfilenameg%tracers_unc
+     sfcvars    = bg_fv3regfilenameg%sfcdata
+     phyvars    = bg_fv3regfilenameg%phydata
      
-     write(6,*) 'dynvars=',mype,trim(dynvars)
-     write(6,*) 'tracers=',mype,trim(tracers)
-     write(6,*) 'sfcvars=',mype,trim(sfcvars)
-     write(6,*) 'phyvars=',mype,trim(phyvars)
+     write(6,*) 'dynvars    =',mype,trim(dynvars)
+     write(6,*) 'tracers    =',mype,trim(tracers)
+     if(i_uncertainty) write(6,*) 'tracers_unc=',mype,trim(tracers_unc)
+     write(6,*) 'sfcvars    =',mype,trim(sfcvars)
+     write(6,*) 'phyvars    =',mype,trim(phyvars)
 
 ! 2.1 read in background fields
 !
@@ -348,8 +367,9 @@ subroutine read_fv3sar_hydr
 !          
      rfv3io_mype=mype
      tracers= bg_fv3regfilenameg%tracers
+     tracers_unc= bg_fv3regfilenameg%tracers_unc
 
-     write(6,*) 'read in hybrometeors==========>', trim(tracers)
+     write(6,*) 'read in hydrometeors==========>', trim(tracers)
 ! 2.1 read in background fields
 !
 !    get cloud water
@@ -415,6 +435,29 @@ subroutine read_fv3sar_hydr
         write(6,*) 'qcf==',k,maxval(ges_qcf(:,:,k)),minval(ges_qcf(:,:,k))
      enddo 
 
+     if(i_uncertainty) then
+         write(6,*) 'set up hydrometeors uncertainties==========>', trim(tracers_unc)
+!     2.2 set up hydrometeors uncertainties
+!    
+!        cloud water
+         allocate(unc_ql(nlon_regional,nlat_regional,nsig_regional))
+!        cloud ice
+         allocate(unc_qi(nlon_regional,nlat_regional,nsig_regional))
+!        rain water
+         allocate(unc_qr(nlon_regional,nlat_regional,nsig_regional))
+!        snow water
+         allocate(unc_qs(nlon_regional,nlat_regional,nsig_regional))
+!        grapel
+         allocate(unc_qg(nlon_regional,nlat_regional,nsig_regional))
+!        cloud ice number concentration
+!         allocate(unc_qni(nlon_regional,nlat_regional,nsig_regional))
+!        rain water number concentration
+!         allocate(unc_qnr(nlon_regional,nlat_regional,nsig_regional))
+!        cloud water number concentration
+!         allocate(unc_qnc(nlon_regional,nlat_regional,nsig_regional))
+!        cloud fraction (from phydata file)
+!         allocate(unc_qcf(nlon_regional,nlat_regional,nsig_regional))
+     endif
 end subroutine read_fv3sar_hydr
 
 subroutine release_mem_fv3sar_hydr
@@ -430,6 +473,18 @@ subroutine release_mem_fv3sar_hydr
      if(allocated(ges_qnr)) deallocate(ges_qnr)
      if(allocated(ges_qni)) deallocate(ges_qni)
      if(allocated(ges_qnc)) deallocate(ges_qnc)
+     if(allocated(ges_qcf)) deallocate(ges_qcf)
+     if(i_uncertainty) then
+         if(allocated(unc_ql))  deallocate(unc_ql)
+         if(allocated(unc_qi))  deallocate(unc_qi)
+         if(allocated(unc_qr))  deallocate(unc_qr)
+         if(allocated(unc_qs))  deallocate(unc_qs)
+         if(allocated(unc_qg))  deallocate(unc_qg)
+!         if(allocated(unc_qnr)) deallocate(unc_qnr)
+!         if(allocated(unc_qni)) deallocate(unc_qni)
+!         if(allocated(unc_qnc)) deallocate(unc_qnc)
+!         if(allocated(unc_qcf)) deallocate(unc_qcf)
+     endif
 
 end subroutine release_mem_fv3sar_hydr
 
@@ -516,9 +571,10 @@ subroutine update_fv3sar
   real(r_single),allocatable:: t_tmp(:,:,:)
   integer :: k
 
-  tracers= bg_fv3regfilenameg%tracers
+  tracers    = bg_fv3regfilenameg%tracers
+  tracers_unc= bg_fv3regfilenameg%tracers_unc
 
-  write(6,*) 'write hybrometeors==========>', trim(tracers)
+  write(6,*) 'write hydrometeors==========>', trim(tracers)
 
   rfv3io_mype=mype
   call gsi_fv3ncdf_write(tracers,'liq_wat',ges_ql,rfv3io_mype)
@@ -530,6 +586,18 @@ subroutine update_fv3sar
     call gsi_fv3ncdf_write(tracers,'ice_nc',ges_qni,rfv3io_mype)
     call gsi_fv3ncdf_write(tracers,'rain_nc',ges_qnr,rfv3io_mype)
     call gsi_fv3ncdf_write(tracers,'water_nc',ges_qnc,rfv3io_mype)
+  endif
+
+  if(i_uncertainty) then
+    write(6,*) 'write hydrometeor uncertainty==========>', trim(tracers_unc)
+    call gsi_fv3ncdf_write(tracers_unc,'liq_wat',unc_ql,rfv3io_mype)
+    call gsi_fv3ncdf_write(tracers_unc,'ice_wat',unc_qi,rfv3io_mype)
+    call gsi_fv3ncdf_write(tracers_unc,'rainwat',unc_qr,rfv3io_mype)
+    call gsi_fv3ncdf_write(tracers_unc,'snowwat',unc_qs,rfv3io_mype)
+    call gsi_fv3ncdf_write(tracers_unc,'graupel',unc_qg,rfv3io_mype)
+!    call gsi_fv3ncdf_write(tracers_unc,'rain_nc',unc_qnr,rfv3io_mype)
+!    call gsi_fv3ncdf_write(tracers_unc,'ice_nc',unc_qni,rfv3io_mype)
+!    call gsi_fv3ncdf_write(tracers_unc,'water_nc',unc_qnc,rfv3io_mype)
   endif
 
   call gsi_fv3ncdf_write(tracers,'sphum',q_bk,rfv3io_mype)
