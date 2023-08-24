@@ -41,7 +41,7 @@ module get_fv3sar_bk_mod
   use mpi_mod, only: npe, mype,mpi_comm_world
   use mpi_mod, only: mpi_finish,mpi_integer,mpi_sum
   use namelist_mod, only: fv3_io_layout_y
-  use rapidrefresh_cldsurf_mod, only: l_uncertainty
+  use rapidrefresh_cldsurf_mod, only: l_cld_uncertainty
 
   implicit none
   private
@@ -181,7 +181,7 @@ contains
         write(gridspec,'(a,I4.4)') 'fv3_grid_spec.',mype
         write(dynvars,'(a,I4.4)') 'fv3_dynvars.',mype
         write(tracers,'(a,I4.4)') 'fv3_tracer.',mype
-        if(l_uncertainty) write(tracers_unc,'(a,I4.4)') 'fv3_tracer_unc.',mype
+        if(l_cld_uncertainty) write(tracers_unc,'(a,I4.4)') 'fv3_tracer_unc.',mype
         write(sfcvars,'(a,I4.4)') 'fv3_sfcdata.',mype
         write(phyvars,'(a,I4.4)') 'fv3_phydata.',mype
         call bg_fv3regfilenameg%init(grid_spec_input=trim(gridspec), &
@@ -197,13 +197,13 @@ contains
 
      dynvars= bg_fv3regfilenameg%dynvars
      tracers= bg_fv3regfilenameg%tracers
-     if(l_uncertainty) tracers_unc= bg_fv3regfilenameg%tracers_unc
+     if(l_cld_uncertainty) tracers_unc= bg_fv3regfilenameg%tracers_unc
      sfcvars= bg_fv3regfilenameg%sfcdata
      phyvars= bg_fv3regfilenameg%phydata
      
      write(6,*) 'dynvars    =',mype,trim(dynvars)
      write(6,*) 'tracers    =',mype,trim(tracers)
-     if(l_uncertainty) write(6,*) 'tracers_unc=',mype,trim(tracers_unc)
+     if(l_cld_uncertainty) write(6,*) 'tracers_unc=',mype,trim(tracers_unc)
      write(6,*) 'sfcvars    =',mype,trim(sfcvars)
      write(6,*) 'phyvars    =',mype,trim(phyvars)
 
@@ -362,7 +362,7 @@ subroutine read_fv3sar_hydr
 !          
      rfv3io_mype=mype
      tracers= bg_fv3regfilenameg%tracers
-     if(l_uncertainty) tracers_unc= bg_fv3regfilenameg%tracers_unc
+     if(l_cld_uncertainty) tracers_unc= bg_fv3regfilenameg%tracers_unc
 
      write(6,*) 'read in hydrometeors==========>', trim(tracers)
 ! 2.1 read in background fields
@@ -430,7 +430,7 @@ subroutine read_fv3sar_hydr
         write(6,*) 'qcf==',k,maxval(ges_qcf(:,:,k)),minval(ges_qcf(:,:,k))
      enddo 
 
-     if(l_uncertainty) then
+     if(l_cld_uncertainty) then
          write(6,*) 'set up hydrometeors uncertainties==========>', trim(tracers_unc)
 !     2.2 set up hydrometeors uncertainties
 !    
@@ -461,7 +461,7 @@ subroutine release_mem_fv3sar_hydr
      if(allocated(ges_qni)) deallocate(ges_qni)
      if(allocated(ges_qnc)) deallocate(ges_qnc)
      if(allocated(ges_qcf)) deallocate(ges_qcf)
-     if(l_uncertainty) then
+     if(l_cld_uncertainty) then
          if(allocated(unc_ql))  deallocate(unc_ql)
          if(allocated(unc_qi))  deallocate(unc_qi)
          if(allocated(unc_qr))  deallocate(unc_qr)
@@ -555,7 +555,7 @@ subroutine update_fv3sar
   integer :: k
 
   tracers    = bg_fv3regfilenameg%tracers
-  if(l_uncertainty) tracers_unc= bg_fv3regfilenameg%tracers_unc
+  if(l_cld_uncertainty) tracers_unc= bg_fv3regfilenameg%tracers_unc
 
   write(6,*) 'write hydrometeors==========>', trim(tracers)
 
@@ -571,7 +571,7 @@ subroutine update_fv3sar
     call gsi_fv3ncdf_write(tracers,'water_nc',ges_qnc,rfv3io_mype)
   endif
 
-  if(l_uncertainty) then
+  if(l_cld_uncertainty) then
     write(6,*) 'write hydrometeor uncertainty==========>', trim(tracers_unc)
     call gsi_fv3ncdf_write(tracers_unc,'liq_wat',unc_ql,rfv3io_mype)
     call gsi_fv3ncdf_write(tracers_unc,'ice_wat',unc_qi,rfv3io_mype)

@@ -55,7 +55,7 @@ program cloudanalysis
                                       l_precip_clear_only,l_fog_off,cld_bld_coverage,cld_clr_coverage,&
                                       i_T_Q_adjust,l_saturate_bkCloud,i_precip_vertical_check,l_rtma3d, &
                                       l_qnr_from_qr, n0_rain, &
-                                      r_cloudfrac_threshold, l_uncertainty
+                                      r_cloudfrac_threshold, l_cld_uncertainty
 
   use namelist_mod, only: load_namelist
   use namelist_mod, only: iyear,imonth,iday,ihour,iminute,isecond
@@ -1294,7 +1294,7 @@ program cloudanalysis
   do k=1,nsig
      do j=1,lat2
         do i=1,lon2
-           if(l_uncertainty) then
+           if(l_cld_uncertainty) then
               ! hydrometeor uncertainties
               unc_ql(i,j,k) = 0.1_r_kind * (cldwater_3d(i,j,k) - ges_ql(i,j,k))
               unc_qi(i,j,k) = 0.1_r_kind * (cldice_3d(i,j,k) - ges_qi(i,j,k))
