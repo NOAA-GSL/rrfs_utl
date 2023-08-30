@@ -112,6 +112,7 @@ program use_raphrrr_sfc
         nz_rrfs_lake=-99  
         nz_rrfs_snow=-99
      endif
+
      call rrfs%close()
      write(*,*) "landmask=",maxval(landmask_rrfs), minval(landmask_rrfs)
      write(*,*) "lakemask=",maxval(lakemask_rrfs), minval(lakemask_rrfs)
@@ -147,6 +148,7 @@ program use_raphrrr_sfc
            nz_raphrrr_lake=-99
            nz_raphrrr_snow=-99
         endif
+
         write(*,*) 'nx_rap,ny_rap=',nx_rap,ny_rap,nz_raphrrr
         write(*,*) 'nz_raphrrr_lake,nz_raphrrr_snow=',nz_raphrrr_lake,nz_raphrrr_snow
         if(nz_raphrrr /= nz_rrfs .or. nz_raphrrr_lake /= nz_rrfs_lake .or. &
@@ -198,6 +200,7 @@ program use_raphrrr_sfc
         call sfc%use_sfc(raphrrrfile,rrfsfile,rrfsfile_read)
         if(do_lake_surgery) &
            call sfc%use_lake(raphrrrfile,rrfsfile,rrfsfile_read)
+
         if(n==2) call sfc%remove_snow(raphrrrfile,rrfsfile,rlat2d_rrfs)
         call sfc%close()
 ! release memory
