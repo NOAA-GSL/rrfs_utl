@@ -58,10 +58,6 @@ program pmbufr
  open (unit = unit_var, file = infile,status = 'old')
  do i = 1,cnt
    read(unit_var,'(7a16)')            sta_id(i), lat_str(i), lon_str(i), elv_str(i), pm_aqi_str(i), pm_measured_str(i), pm_str(i)
-   !write(*,'(a10,7a15)')     'obs  ', trim(adjustl(sta_id(i))), trim(adjustl(lat_str(i))), trim(adjustl(lon_str(i))),trim(adjustl(elv_str(i))), &
-   !                                   trim(adjustl(pm_aqi_str(i))), trim(adjustl(pm_measured_str(i))), trim(adjustl(pm_str(i)))
-   !write(*,'(a10,7i15)')     'len  ', len(trim(adjustl(sta_id(i)))), len(trim(adjustl(lat_str(i)))), len(trim(adjustl(lon_str(i)))), len(trim(adjustl(elv_str(i)))), &
-   !                                   len(trim(adjustl(pm_aqi_str(i)))), len(trim(adjustl(pm_measured_str(i)))), len(trim(adjustl(pm_str(i))))
  end do
 
 
@@ -80,15 +76,13 @@ program pmbufr
  subset="ANOWPM"
  read(analysis_time,'(I10)')  idate    ! string to integer
 
- ! hdstr='SID XOB YOB DHR TYP T29 SQN PROCN RPT CAT TYPO TSIG'
- ! obstr='TPHR QCIND COPOPM'
 
  do j=1, cnt
 
   hdr=bmiss
   obs=bmiss;
 
-  ! write out pm which is not empty as single character ", but has valule like "2.0
+  ! write out pm which is not empty as single character ", but has valule e.g. "2.0
   pm_len=len(trim(adjustl(pm_str(j))))
   if (pm_len > 1) then
 
@@ -106,7 +100,6 @@ program pmbufr
 
     str=adjustl(sta_id(j))
     c_sid=str(2:9)
-    !write(*,'(2a15,4f15.5)')     'Obs   ', c_sid, lat, lon, elv, pm 
     hdr(1)=rstation_id; hdr(2)=lon; hdr(3)=lat; hdr(4)=0.0_8; hdr(5)=102; hdr(10)=6 ! Single level report
 
 
@@ -135,6 +128,8 @@ program pmbufr
 
   endif
  enddo
+
+ write(*,*) "Process PM is successful"
 
  call closbf(unit_out)
  close(unit_var)
