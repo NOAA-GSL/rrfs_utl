@@ -28,11 +28,12 @@ install(
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-#if(CMAKE_Fortran_COMPILER_ID MATCHES "^(Intel)$")
-#  set(CMAKE_Fortran_FLAGS
-#  "-g -traceback -fp-model precise -convert big_endian -assume noold_ldout_format")
-#   set(CMAKE_Fortran_FLAGS_RELEASE "-O2")
-#   set(CMAKE_Fortran_FLAGS_DEBUG "-O0")
+if(CMAKE_Fortran_COMPILER_ID MATCHES "^(Intel)$")
+  set(CMAKE_Fortran_FLAGS
+  "-g -traceback -fp-model precise -assume noold_ldout_format")
+   set(CMAKE_Fortran_FLAGS_RELEASE "-O2")
+   set(CMAKE_Fortran_FLAGS_DEBUG "-O0")
+
 #elseif(CMAKE_Fortran_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
 #   set(CMAKE_Fortran_FLAGS
 #   "-g -fbacktrace -ffree-form -ffree-line-length-none -fconvert=big-endian")
@@ -41,4 +42,5 @@ install(
 #  if(CMAKE_Fortran_COMPILER_VERSION VERSION_GREATER_EQUAL 10)
 #     set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
 #  endif()
-#endif()
+
+endif()
