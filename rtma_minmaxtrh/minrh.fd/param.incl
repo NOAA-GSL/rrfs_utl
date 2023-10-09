@@ -1,0 +1,140 @@
+!**************************************************        
+!        param.incl
+!**************************************************        
+        logical,parameter::recomputeq=.true.
+
+!==>parameter definition for conus
+        integer(4),parameter::nx_conus=1073
+        integer(4),parameter::ny_conus=689
+
+        real(8),parameter::alat1_conus=20.192_8
+        real(8),parameter::elon1_conus=238.446_8
+        real(8),parameter::da_conus=5079.406_8
+        real(8),parameter::elonv_conus=265.000_8
+        real(8),parameter::alatan_conus=25.000_8
+!
+!==>parameter definition for alaska
+        integer(4),parameter::nx_alaska=825
+        integer(4),parameter::ny_alaska=553
+
+        real(8),parameter::alat1_alaska=40.530101_8
+        real(8),parameter::elon1_alaska=181.429000_8
+        real(8),parameter::da_alaska=5953.125_8
+        real(8),parameter::elonv_alaska=210.000000_8
+        real(8),parameter::alatan_alaska=60.000000_8
+!
+!==>parameter definition for hawaii
+        integer(4),parameter::nx_hawaii=321
+        integer(4),parameter::ny_hawaii=225
+
+!       real(8),parameter::alat1_hawaii=18.066780_8    !before domain shift
+!       real(8),parameter::elon1_hawaii=198.374755_8   !before domain shift
+!       real(8),parameter::alat2_hawaii=23.082000_8    !before domain shift
+!       real(8),parameter::elon2_hawaii=206.031000_8   !before domain shift
+
+        real(8),parameter::alat1_hawaii=18.072699_8
+        real(8),parameter::elon1_hawaii=198.474999_8
+        real(8),parameter::alat2_hawaii=23.087799_8
+        real(8),parameter::elon2_hawaii=206.130999_8
+        real(8),parameter::alad_hawaii=20.000000_8
+        real(8),parameter::da_hawaii=2500.000_8
+
+!==>parameter definition for puerto rico
+!       integer(4),parameter::nx_prico=177            !2p5 grid
+!       integer(4),parameter::ny_prico=129            !2p5 grid
+
+!       real(8),parameter::alat1_prico=16.828685_8    !2p5 grid
+!       real(8),parameter::elon1_prico=291.804687_8   !2p5 grid
+!       real(8),parameter::alat2_prico=19.747399_8    !2p5 grid
+!       real(8),parameter::elon2_prico=296.027600_8   !2p5 grid
+!       real(8),parameter::alad_prico=20.000000_8     !2p5 grid
+!       real(8),parameter::da_prico=2500.000_8        !2p5 grid
+
+        integer(4),parameter::nx_prico=353            !1p25 grid
+        integer(4),parameter::ny_prico=257            !1p25 grid
+
+        real(8),parameter::alat1_prico=16.828700_8    !1p25 grid
+        real(8),parameter::elon1_prico=291.804700_8   !1p25 grid
+        real(8),parameter::alat2_prico=19.736200_8    !1p25 grid
+        real(8),parameter::elon2_prico=296.015500_8   !1p25 grid
+        real(8),parameter::alad_prico=20.000000_8     !1p25 grid
+        real(8),parameter::da_prico=1250.000_8        !1p25 grid
+
+!==>parameter definition for guam
+        integer(4),parameter::nx_guam=193
+        integer(4),parameter::ny_guam=193
+
+        real(8),parameter::alat1_guam=12.349884_8
+        real(8),parameter::elon1_guam=143.686538_8
+        real(8),parameter::alat2_guam=16.794399_8
+        real(8),parameter::elon2_guam=148.280000_8
+        real(8),parameter::alad_guam=20.000000_8
+        real(8),parameter::da_guam=2500.000_8
+
+!==>parameter definition for hres conus
+        integer(4),parameter::nx_cohres=2145
+        integer(4),parameter::ny_cohres=1377
+
+        real(8),parameter::alat1_cohres=20.192_8
+        real(8),parameter::elon1_cohres=238.446_8
+        real(8),parameter::da_cohres=2539.703_8
+        real(8),parameter::elonv_cohres=265.000_8
+        real(8),parameter::alatan_cohres=25.000_8
+!
+!==>parameter definition for hres alaska
+        integer(4),parameter::nx_akhres=1649
+        integer(4),parameter::ny_akhres=1105
+
+        real(8),parameter::alat1_akhres=40.530101_8
+        real(8),parameter::elon1_akhres=181.429000_8
+        real(8),parameter::da_akhres=2976.563
+        real(8),parameter::elonv_akhres=210.000000_8
+        real(8),parameter::alatan_akhres=60.000000_8
+!
+!==>parameter definition for hrrr
+        integer(4),parameter::nx_hrrr=1799
+        integer(4),parameter::ny_hrrr=1059
+
+        real(8),parameter::alat1_hrrr=21.138000_8
+        real(8),parameter::elon1_hrrr=237.280000_8
+        real(8),parameter::da_hrrr=3000.000_8
+        real(8),parameter::elonv_hrrr=262.500000_8
+        real(8),parameter::alatan_hrrr=38.500000_8
+!
+!==>parameter definition for juneau
+        integer(4),parameter::nx_juneau=655
+        integer(4),parameter::ny_juneau=855
+
+        real(8),parameter::alat1_juneau=51.500000_8
+        real(8),parameter::elon1_juneau=217.500000_8
+        real(8),parameter::da_juneau=1448.281_8
+        real(8),parameter::elonv_juneau=225.000000_8
+        real(8),parameter::alatan_juneau=60.000000_8
+!
+!==>parameter definition for hresext conus
+        integer(4),parameter::nx_cohresext=2145
+        integer(4),parameter::ny_cohresext=1597
+
+        real(8),parameter::alat1_cohresext=20.192_8
+        real(8),parameter::elon1_cohresext=238.446_8
+        real(8),parameter::da_cohresext=2539.703_8
+        real(8),parameter::elonv_cohresext=265.000_8
+        real(8),parameter::alatan_cohresext=25.000_8
+
+!==>parameter definition for hreswexp conus
+        integer(4),parameter::nx_cohreswexp=2345
+        integer(4),parameter::ny_cohreswexp=1597
+
+        real(8),parameter::alat1_cohreswexp=19.228976_8
+        real(8),parameter::elon1_cohreswexp=233.723448_8
+        real(8),parameter::da_cohreswexp=2539.703_8
+        real(8),parameter::elonv_cohreswexp=265.000_8
+        real(8),parameter::alatan_cohreswexp=25.000_8
+
+!==>parameter definitions used in both source codes for min/max 	
+
+	integer(4),parameter::nhours=25	
+  	integer(4),parameter::misint=9999
+  	integer(4),parameter::max=9999999
+  	real(4),parameter::misreal=9999.
+  	real(4),parameter::missing=9.999e20 !missing value in time zone binary/grib2 file
