@@ -37,6 +37,7 @@ module get_fv3sar_bk_parall_mod
   use gsi_rfv3io_tten_mod, only: nlon_regional,nlat_regional,nsig_regional
   use gsi_rfv3io_tten_mod, only: eta1_ll
   use namelist_mod, only: fv3_io_layout_y
+  use rapidrefresh_cldsurf_mod, only: l_cld_uncertainty
 
   use general_sub2grid_simple_mod, only: sub2grid_info
 
@@ -47,6 +48,7 @@ module get_fv3sar_bk_parall_mod
 
   public :: t_bk,h_bk,p_bk,ps_bk,zh,q_bk,pblh
   public :: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg,ges_qnr,ges_qni,ges_qnc,ges_qcf
+  public :: unc_ql,unc_qi,unc_qr,unc_qs,unc_qg
   public :: aeta1_ll,pt_ll
   public :: pt_regional
   public :: xlon,xlat,xland,soiltbk
@@ -55,6 +57,7 @@ module get_fv3sar_bk_parall_mod
   public :: read_fv3sar_bk_full
   public :: release_mem_fv3sar
   public :: update_fv3sar
+  public :: update_fv3sar_unc
   public :: read_fv3sar_init
 !
   public :: lon2, lat2, nsig
@@ -110,6 +113,13 @@ module get_fv3sar_bk_parall_mod
   real(r_single),allocatable :: ges_qni(:,:,:) ! cloud ice number concentration
   real(r_single),allocatable :: ges_qnc(:,:,:) ! cloud water number concentration
   real(r_single),allocatable :: ges_qcf(:,:,:) ! cloud fraction
+!
+! uncertainties
+  real(r_single),allocatable :: unc_ql(:,:,:)  ! cloud water
+  real(r_single),allocatable :: unc_qi(:,:,:)  ! could ice
+  real(r_single),allocatable :: unc_qr(:,:,:)  ! rain
+  real(r_single),allocatable :: unc_qs(:,:,:)  ! snow
+  real(r_single),allocatable :: unc_qg(:,:,:)  ! graupel
 
 ! fix files
   real(r_single),allocatable :: xlon(:,:)
@@ -120,6 +130,7 @@ module get_fv3sar_bk_parall_mod
 ! backgrond files
   character(len=80) :: dynvars   !='fv3_dynvars'
   character(len=80) :: tracers   !='fv3_tracer'
+  character(len=80) :: tracers_unc   !='fv3_tracer_unc'
   character(len=80) :: sfcvars   !='fv3_sfcdata'
   character(len=80) :: phyvars   !='fv3_phydata'
   character(len=80) :: gridspec  !='fv3_grid_spec'
@@ -165,6 +176,7 @@ contains
   ak_bk='fv3_akbk'
   dynvars='fv3_dynvars'
   tracers='fv3_tracer'
+  tracers_unc='fv3_tracer_unc'
   sfcvars='fv3_sfcdata'
   phyvars='fv3_phydata'
 !
@@ -427,6 +439,12 @@ contains
   allocate(ges_qni(lon2,lat2,nsig))   ! cloud ice number concentration
   allocate(ges_qnc(lon2,lat2,nsig))   ! cloud water number concentration
   allocate(ges_qcf(lon2,lat2,nsig))   ! cloud fraction
+! hydrometeor uncertainties
+  allocate(unc_ql(lon2,lat2,nsig))   ! cloud water
+  allocate(unc_qi(lon2,lat2,nsig))   ! cloud ice
+  allocate(unc_qr(lon2,lat2,nsig))   ! rain
+  allocate(unc_qs(lon2,lat2,nsig))   ! snow
+  allocate(unc_qg(lon2,lat2,nsig))   ! graupel
 !
 ! fix files
   allocate(xlon(lon2,lat2))
@@ -613,6 +631,12 @@ subroutine release_mem_fv3sar
      if(allocated(ges_qnr)) deallocate(ges_qnr)
      if(allocated(ges_qni)) deallocate(ges_qni)
      if(allocated(ges_qnc)) deallocate(ges_qnc)
+     write(6,*) 'core', 1 ,', release memory for hydrometeor uncertainties'
+     if(allocated(unc_ql))  deallocate(unc_ql)
+     if(allocated(unc_qi))  deallocate(unc_qi)
+     if(allocated(unc_qr))  deallocate(unc_qr)
+     if(allocated(unc_qs))  deallocate(unc_qs)
+     if(allocated(unc_qg))  deallocate(unc_qg)
 !
 !  release memory
 !
@@ -778,8 +802,167 @@ subroutine update_fv3sar(mype)
 
   deallocate(d3r4)
 
-  call general_sub2grid_destroy_info(s)
+!  call general_sub2grid_destroy_info(s)
 
 end subroutine update_fv3sar
+
+subroutine update_fv3sar_unc(mype)
+
+  use mpi
+  use netcdf, only: nf90_open,nf90_close,nf90_noerr
+  use netcdf, only: nf90_write,nf90_put_var
+  use netcdf, only: nf90_Inquire_Dimension
+  use netcdf, only: nf90_inq_varid
+  use netcdf, only: nf90_strerror
+
+  use general_sub2grid_simple_mod, only: general_sub2grid_destroy_info
+  use general_sub2grid_simple_mod, only: general_sub2grid
+  implicit none
+!
+  integer,intent(in) :: mype
+!
+! sub communicator
+  integer :: new_comm
+  integer :: color, key
+!
+! array
+  real(4),allocatable :: tmpd3r4(:,:,:)
+  real(8),allocatable :: tmpd3r8(:,:,:)
+  real(4),allocatable :: d3r4(:,:,:)
+  real(r_single),allocatable :: sub_vars(:,:,:)
+
+  integer :: startloc(3)
+  integer :: countloc(3)
+  integer :: ncioid,var_id
+!
+  character(len=80) :: filename
+  integer :: n,i,j,k,iret,ilev,iens
+  integer :: ierror
+!
+  integer :: lon2,lat2,nsig
+!
+!
+  write(6,*)'get_fv3sar_bk_parallel_mod: begin update_fv3sar_unc'
+!
+  lon2=s%lon2
+  lat2=s%lat2
+  nsig=s%nsig
+!
+  allocate(sub_vars(lat2,lon2,s%num_fields))
+  sub_vars=0.0
+
+  i=0
+  do n=1,ntotalcore
+     do ilev=kbegin(n),kend(n)
+        i=i+1
+        k=nsig-ilev+1
+        if(trim(varname(n))=="liq_wat")   call reorg_ad(lon2,lat2,sub_vars(:,:,i),ges_ql(:,:,k))
+        if(trim(varname(n))=="ice_wat")   call reorg_ad(lon2,lat2,sub_vars(:,:,i),ges_qi(:,:,k))
+        if(trim(varname(n))=="rainwat")   call reorg_ad(lon2,lat2,sub_vars(:,:,i),ges_qr(:,:,k))
+        if(trim(varname(n))=="snowwat")   call reorg_ad(lon2,lat2,sub_vars(:,:,i),ges_qs(:,:,k))
+        if(trim(varname(n))=="graupel")   call reorg_ad(lon2,lat2,sub_vars(:,:,i),ges_qg(:,:,k))
+        if(trim(varname(n))=="water_nc")  call reorg_ad(lon2,lat2,sub_vars(:,:,i),ges_qnc(:,:,k))
+        if(trim(varname(n))=="ice_nc")    call reorg_ad(lon2,lat2,sub_vars(:,:,i),ges_qni(:,:,k))
+        if(trim(varname(n))=="rain_nc")   call reorg_ad(lon2,lat2,sub_vars(:,:,i),ges_qnr(:,:,k))
+        if(trim(varname(n))=="T" .or. trim(varname(n))=="t") call reorg_ad(lon2,lat2,sub_vars(:,:,i),t_bk(:,:,k))
+        if(trim(varname(n))=="sphum")   call reorg_ad(lon2,lat2,sub_vars(:,:,i),q_bk(:,:,k))
+
+     enddo
+  enddo
+
+  call mpi_barrier(MPI_COMM_WORLD,ierror)
+  allocate(d3r4(mype_nx,mype_ny,mype_lbegin:mype_lend))
+  call general_sub2grid(s,sub_vars,d3r4)
+  deallocate(sub_vars)
+
+! Create sub-communicator to handle each file
+  key=mype+1
+  if(mype_fileid > 0 .and. mype_fileid <= totalnumfiles) then
+     if(trim(adjustl(mype_varname))=="liq_wat" .or. &
+        trim(adjustl(mype_varname))=="ice_wat" .or. &
+        trim(adjustl(mype_varname))=="rainwat" .or. &
+        trim(adjustl(mype_varname))=="snowwat" .or. &
+        trim(adjustl(mype_varname))=="graupel" .or. &
+        trim(adjustl(mype_varname))=="water_nc" .or. &
+        trim(adjustl(mype_varname))=="ice_nc" .or. &
+        trim(adjustl(mype_varname))=="rain_nc" .or. &
+        trim(adjustl(mype_varname))=="T" .or. &
+        trim(adjustl(mype_varname))=="t" .or. &
+        trim(adjustl(mype_varname))=="sphum") then
+        color = mype_fileid
+     else
+        color = MPI_UNDEFINED
+     endif
+  else
+     color = MPI_UNDEFINED
+  endif
+
+  call MPI_Comm_split(mpi_comm_world,color,key,new_comm,ierror)
+  if ( ierror /= 0 ) then
+     write(6,'(a,i5)')'***ERROR*** after mpi_comm_create with iret = ',ierror
+     call mpi_abort(mpi_comm_world,101,ierror)
+  endif
+!
+! read 2D field from each file using sub communicator
+!
+  if (MPI_COMM_NULL /= new_comm) then
+
+        if(mype_vartype==5) then
+           allocate(tmpd3r4(mype_nx,mype_ny,1))
+        elseif(mype_vartype==6) then
+           allocate(tmpd3r8(mype_nx,mype_ny,1))
+        else
+           write(6,*) 'Warning, unknown datatype'
+        endif
+
+        filename = trim(filelist(mype_fileid))
+        write(6,*)'get_fv3sar_bk_parallel_mod: filename: ', filename
+        if(filename==trim(tracers)) filename=trim(tracers_unc)
+        write(6,*)'get_fv3sar_bk_parallel_mod: filename: ', filename
+        iret=nf90_open(trim(filename),nf90_write,ncioid,comm=new_comm,info=MPI_INFO_NULL)
+        if(iret/=nf90_noerr) then
+            write(6,*)' problem opening ', trim(filename),'fileid=',mype_fileid,', Status =',iret
+            write(6,*)  nf90_strerror(iret)
+            call flush(6)
+            stop(444)
+        endif
+
+        do ilev=mype_lbegin,mype_lend
+           write(6,'(a,a20,I5,2f15.6)') 'writing =',trim(adjustl(mype_varname)), &
+                   ilev,maxval(d3r4(:,:,ilev)),minval(d3r4(:,:,ilev))
+
+           startloc=(/1,1,ilev/)
+           countloc=(/mype_nx,mype_ny,1/)
+
+           iret=nf90_inq_varid(ncioid,trim(adjustl(mype_varname)),var_id)
+           if(mype_vartype==5) then
+              tmpd3r4(:,:,1)=d3r4(:,:,ilev)
+              iret=nf90_put_var(ncioid,var_id,tmpd3r4,start=startloc,count=countloc)
+           elseif(mype_vartype==6) then
+              tmpd3r8(:,:,1)=d3r4(:,:,ilev)
+              iret=nf90_put_var(ncioid,var_id,tmpd3r8,start=startloc,count=countloc)
+           endif
+        enddo  ! ilev
+        iret=nf90_close(ncioid)
+
+        if(mype_vartype==5) then
+           deallocate(tmpd3r4)
+        elseif(mype_vartype==6) then
+           deallocate(tmpd3r8)
+        else
+           write(6,*) 'Warning, unknown datatype'
+        endif
+
+  endif
+
+  if (MPI_COMM_NULL /= new_comm) then
+     call MPI_Comm_free(new_comm,iret)
+  endif
+
+  deallocate(d3r4)
+
+  call general_sub2grid_destroy_info(s)
+
+end subroutine update_fv3sar_unc
 
 end module get_fv3sar_bk_parall_mod

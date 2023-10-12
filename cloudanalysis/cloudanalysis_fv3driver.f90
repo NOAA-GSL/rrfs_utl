@@ -56,7 +56,7 @@ program cloudanalysis
                                       l_precip_clear_only,l_fog_off,cld_bld_coverage,cld_clr_coverage,&
                                       i_T_Q_adjust,l_saturate_bkCloud,i_precip_vertical_check,l_rtma3d, &
                                       l_qnr_from_qr, n0_rain, &
-                                      r_cloudfrac_threshold
+                                      r_cloudfrac_threshold,l_cld_uncertainty
 
   use namelist_mod, only: load_namelist
   use namelist_mod, only: iyear,imonth,iday,ihour,iminute,isecond
@@ -69,9 +69,10 @@ program cloudanalysis
   use get_fv3sar_bk_parall_mod, only: read_fv3sar_bk_full
   use get_fv3sar_bk_parall_mod, only: ges_ql,ges_qi,ges_qr,ges_qs,ges_qg, &
                                ges_qnr,ges_qni,ges_qnc,ges_qcf
+  use get_fv3sar_bk_parall_mod, only: unc_ql,unc_qi,unc_qr,unc_qs,unc_qg
   use get_fv3sar_bk_parall_mod, only: xlon,xlat,xland,soiltbk
   use get_fv3sar_bk_parall_mod, only: release_mem_fv3sar
-  use get_fv3sar_bk_parall_mod, only: update_fv3sar
+  use get_fv3sar_bk_parall_mod, only: update_fv3sar,update_fv3sar_unc
   use get_fv3sar_bk_parall_mod, only: fv3_io_layout_end 
   use get_fv3sar_bk_parall_mod, only: read_fv3sar_init 
   use gsi_rfv3io_tten_mod, only: nlon_regional,nlat_regional,nsig_regional
@@ -1287,6 +1288,14 @@ program cloudanalysis
   do k=1,nsig
      do j=1,lat2
         do i=1,lon2
+           if(l_cld_uncertainty) then
+              ! hydrometeor uncertainties
+              unc_ql(i,j,k) = 0.1_r_kind * (cldwater_3d(i,j,k) - ges_ql(i,j,k))
+              unc_qi(i,j,k) = 0.1_r_kind * (cldice_3d(i,j,k) - ges_qi(i,j,k))
+              unc_qr(i,j,k) = 0.1_r_kind * (rain_3d(i,j,k) - ges_qr(i,j,k))
+              unc_qs(i,j,k) = 0.1_r_kind * (snow_3d(i,j,k) - ges_qs(i,j,k))
+              unc_qg(i,j,k) = 0.1_r_kind * (graupel_3d(i,j,k) - ges_qg(i,j,k))
+           endif
            ! hydrometeor update
            ges_qr(i,j,k)=rain_3d(i,j,k)
            ges_qs(i,j,k)=snow_3d(i,j,k)
@@ -1345,6 +1354,17 @@ endif
 !  update background for analysis results
 !
   call update_fv3sar(mype)
+  if(l_cld_uncertainty) then
+    write(6,*) 'gsdcloudanalysis: updating hydrometeor uncertainty file'
+    ges_ql = unc_ql
+    ges_qi = unc_qi
+    ges_qr = unc_qr
+    ges_qs = unc_qs
+    ges_qg = unc_qg
+    call update_fv3sar_unc(mype)
+    write(6,*) 'gsdcloudanalysis: hydrometeor uncertainty update complete'
+  end if
+
 !!
 !!----------------------------------------------
 !! 7.  release space
