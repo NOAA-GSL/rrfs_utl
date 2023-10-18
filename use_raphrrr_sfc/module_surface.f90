@@ -15,21 +15,27 @@ module module_surface
 ! set default to private
   private
   type :: use_surface
-      integer :: nvar
-      integer :: nvar3d
+      integer :: nvar,nvarlake
+      integer :: nvar3d,nvar3dlake,nvar3dsnow
       character(len=20),allocatable :: var_rrfs(:),var_rap(:)
+      character(len=20),allocatable :: var_rrfs_lake(:),var_rap_lake(:)
       integer :: halo
-      integer :: nlat,nlon,nlev
+      integer :: nlat,nlon
+      integer :: nlev,nlev_snow,nlev_lake
       integer :: nlat_target,nlon_target
       integer(i_short), allocatable :: index_x(:,:)
       integer(i_short), allocatable :: index_y(:,:)
       integer(i_short), allocatable :: index_x_nomatch(:,:)
       integer(i_short), allocatable :: index_y_nomatch(:,:)
+      integer(i_short), allocatable :: lake_index_x(:,:)
+      integer(i_short), allocatable :: lake_index_y(:,:)
     contains
       procedure :: init
       procedure :: build_mapindex
+      procedure :: build_lakeindex
       procedure :: set_varname
       procedure :: use_sfc
+      procedure :: use_lake
       procedure :: remove_snow
       procedure :: close
   end type use_surface
@@ -71,6 +77,7 @@ contains
 ! 12. SEAICE to fice
 ! 13. slmsk = 2 when seaice > 0.025
 !
+
     implicit none
 
     class(use_surface) :: this
@@ -140,10 +147,99 @@ contains
     this%var_rap(12)="SEAICE"
     this%var_rrfs(12)="fice"  !  double
 !
+!    Add lake model fields
+! We have to read the variable clm_lake_initialized. If it is =1, then it is a lake in the RRFS. 
+! If this point is not a lake in RAP/HRRR we keep the values from cold-start run.
+! The RAP/HRRR variables go to:
+! 3dsoil   1  float T_LAKE3D --> lake_t_lake3d
+! 3dsoil   2  float LAKE_ICEFRAC3D --> lake_icefrac3d, fice (2d) 
+! 3dsnow   3  float T_SOISNO3D   --> lake_t_soisno3d
+! 3dsnow   4  float H2OSOI_ICE3D --> lake_h2osoi_ice3d
+! 3dsnow   5  float H2OSOI_LIQ3D --> lake_h2osoi_liq3d
+! 3dsnow   6  float H2OSOI_VOL3D --> lake_h2osoi_vol3d
+! 3dsnow   7  float DZ3D --> lake_snow_dz3d
+! 3dsnow   8  float Z3D --> lake_snow_z3d
+! 3dsnow+1 9  float ZI3D --> lake_snow_zi3d
+!         10  float SAVEDTKE12D  --> lake_savedtke12d
+!         11  float SNOWDP2D --> lake_sndpth2d
+!         12  float SNOWDP2D --> snodi
+!         13  float H2OSNO2D --> lake_h2osno2d
+!         14  float H2OSNO2D --> weasdi
+!         15  float T_GRND2D --> lake_tsfc
+!         16  float T_GRND2D --> tisfc
+!         17  float T_GRND2D --> tsea
+!         18  float T_GRND2D --> T_snow
+!         19  float T_GRND2D --> tsfc
+!         20  float T_GRND2D --> tsnow_ice
+!         21  float SNL2D    --> lake_snl2d
+!
+    this%nvarlake=21
+    this%nvar3dlake=2
+    this%nvar3dsnow=7
+    if(allocated(this%var_rrfs_lake)) deallocate(this%var_rrfs_lake)
+    allocate(this%var_rrfs_lake(this%nvarlake))
+    if(allocated(this%var_rap_lake)) deallocate(this%var_rap_lake)
+    allocate(this%var_rap_lake(this%nvarlake))
+!
+    this%var_rap_lake(1)="T_LAKE3D"
+    this%var_rrfs_lake(1)="lake_t_lake3d"
+
+    this%var_rap_lake(2)="LAKE_ICEFRAC3D"
+    this%var_rrfs_lake(2)="lake_icefrac3d"
+
+    this%var_rap_lake(3)="T_SOISNO3D"
+    this%var_rrfs_lake(3)="lake_t_soisno3d"
+
+    this%var_rap_lake(4)="H2OSOI_ICE3D"
+    this%var_rrfs_lake(4)="lake_h2osoi_ice3d"
+
+    this%var_rap_lake(5)="H2OSOI_LIQ3D"
+    this%var_rrfs_lake(5)="lake_h2osoi_liq3d"
+
+    this%var_rap_lake(6)="H2OSOI_VOL3D"
+    this%var_rrfs_lake(6)="lake_h2osoi_vol3d"
+
+    this%var_rap_lake(7)="DZ3D"
+    this%var_rrfs_lake(7)="lake_snow_dz3d"
+
+    this%var_rap_lake(8)="Z3D"
+    this%var_rrfs_lake(8)="lake_snow_z3d"
+
+    this%var_rap_lake(9)="ZI3D"
+    this%var_rrfs_lake(9)="lake_snow_zi3d"
+
+    this%var_rap_lake(10)="SAVEDTKE12D"
+    this%var_rrfs_lake(10)="lake_savedtke12d"
+
+    this%var_rap_lake(11)="SNOWDP2D"
+    this%var_rrfs_lake(11)="lake_sndpth2d"
+    this%var_rap_lake(12)="SNOWDP2D"
+    this%var_rrfs_lake(12)="snodi"
+
+    this%var_rap_lake(13)="H2OSNO2D"
+    this%var_rrfs_lake(13)="lake_h2osno2d"
+    this%var_rap_lake(14)="H2OSNO2D"
+    this%var_rrfs_lake(14)="weasdi"
+
+    this%var_rap_lake(15)="T_GRND2D"
+    this%var_rrfs_lake(15)="lake_tsfc"
+    this%var_rap_lake(16)="T_GRND2D"
+    this%var_rrfs_lake(16)="tisfc"
+    this%var_rap_lake(17)="T_GRND2D"
+    this%var_rrfs_lake(17)="tsea"
+    this%var_rap_lake(18)="T_GRND2D"
+    this%var_rrfs_lake(18)="T_snow"
+    this%var_rap_lake(19)="T_GRND2D"
+    this%var_rrfs_lake(19)="tsfc"
+    this%var_rap_lake(20)="T_GRND2D"
+    this%var_rrfs_lake(20)="tsnow_ice"
+
+    this%var_rap_lake(21)="SNL2D"
+    this%var_rrfs_lake(21)="lake_snl2d"
 !
   end subroutine set_varname
 
-  subroutine use_sfc(this,rapfile,rrfsfile)
+  subroutine use_lake(this,rapfile,rrfsfile,rrfsfile_read)
 !                .      .    .                                       .
 ! subprogram:   build_mapindex
 !   prgmmr:
@@ -162,17 +258,156 @@ contains
 
     character*80,intent(in) :: rapfile
     character*80,intent(in) :: rrfsfile
+    character*80,intent(in) :: rrfsfile_read
 
     class(use_surface) :: this
-    type(ncio)     :: raphrrr,rrfs
+    type(ncio)     :: raphrrr,rrfs,rrfsr
+!
+    real(r_single),allocatable,target :: fld3d4b(:,:,:)
+!
+    real(r_single),allocatable,target :: tmp2d4b(:,:)
+    real(r_single),allocatable,target :: tmp3d4b(:,:,:)
+    real(r_single),  allocatable,target :: tmp2d4br(:,:)
+    real(r_single),  allocatable,target :: tmp3d4br(:,:,:)
+!
+    integer  :: nx_rap,ny_rap
+    integer  :: nx_rrfs,ny_rrfs,nz_rrfs
+    integer  :: i,j,ix,jx
+    character(len=20) :: thisvar_rrfs,thisvar_rap
+    integer  :: k,kx 
+!
+
+    nx_rrfs=this%nlon
+    ny_rrfs=this%nlat
+    nx_rap=this%nlon_target
+    ny_rap=this%nlat_target
+!
+    call raphrrr%open(trim(rapfile),"r",200)
+    call rrfsr%open(trim(rrfsfile_read),"r",200)
+    call rrfs%open(trim(rrfsfile),"w",200)
+!
+    do k=1,this%nvarlake
+       thisvar_rrfs=this%var_rrfs_lake(k)
+       thisvar_rap=this%var_rap_lake(k)
+       write(*,*) "=============================================="
+       write(*,'(I4,4a)') k," Working to replace rrfs lake variable ",trim(thisvar_rrfs), &
+                  " from RAP/HRRR ",trim(thisvar_rap)
+       if(k <= (this%nvar3dlake+this%nvar3dsnow)) then
+          if(k<=this%nvar3dlake) then
+             nz_rrfs=this%nlev_lake
+          else
+             nz_rrfs=this%nlev_snow
+             if(k==9) nz_rrfs=this%nlev_snow+1
+          endif
+          allocate(tmp3d4b(nx_rap,ny_rap,nz_rrfs))
+          call raphrrr%get_var(trim(thisvar_rap),nx_rap,ny_rap,nz_rrfs,tmp3d4b)
+
+          allocate(tmp3d4br(nx_rrfs,ny_rrfs,nz_rrfs))
+          call rrfsr%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,nz_rrfs,tmp3d4br)
+          if(trim(thisvar_rrfs) == "lake_icefrac3d") then
+             allocate(tmp2d4b(nx_rrfs,ny_rrfs))
+             call rrfsr%get_var("fice",nx_rrfs,ny_rrfs,tmp2d4b)
+          endif
+
+          do j=1,ny_rrfs
+            do i=1,nx_rrfs
+               ix=this%lake_index_x(i,j)
+               jx=this%lake_index_y(i,j)
+               if( (ix >= 1 .and. ix <= nx_rap) .and. &
+                   (jx >= 1 .and. jx <= ny_rap) ) then
+                  do kx=1,nz_rrfs
+                     tmp3d4br(i,j,kx)=tmp3d4b(ix,jx,kx)
+                  enddo
+               endif
+            enddo
+          enddo
+          if(trim(thisvar_rrfs) == "lake_icefrac3d") then
+             do j=1,ny_rrfs
+               do i=1,nx_rrfs
+                  ix=this%lake_index_x(i,j)
+                  jx=this%lake_index_y(i,j)
+                  if( (ix >= 1 .and. ix <= nx_rap) .and. &
+                      (jx >= 1 .and. jx <= ny_rap) ) then
+                     tmp2d4b(i,j)=tmp3d4b(ix,jx,1)
+                  endif
+               enddo
+             enddo
+          endif
+          deallocate(tmp3d4b)
+
+          do kx = 1,nz_rrfs
+            write(*,*) k,maxval(tmp3d4br(:,:,kx)),minval(tmp3d4br(:,:,kx))
+          enddo
+          call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,nz_rrfs,tmp3d4br)
+          if(trim(thisvar_rrfs) == "lake_icefrac3d") then
+             write(*,*) k,maxval(tmp2d4b(:,:)),minval(tmp2d4b(:,:))
+             call rrfs%replace_var("fice",nx_rrfs,ny_rrfs,tmp2d4b(:,:))
+             deallocate(tmp2d4b)
+          endif
+          deallocate(tmp3d4br)
+       else
+          allocate(tmp2d4b(nx_rap,ny_rap))
+          call raphrrr%get_var(trim(thisvar_rap),nx_rap,ny_rap,tmp2d4b)
+
+          allocate(tmp2d4br(nx_rrfs,ny_rrfs))
+          call rrfsr%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
+        
+          do j=1,ny_rrfs
+             do i=1,nx_rrfs
+                ix=this%lake_index_x(i,j)
+                jx=this%lake_index_y(i,j)
+                if( (ix >= 1 .and. ix <= nx_rap) .and. &
+                    (jx >= 1 .and. jx <= ny_rap) ) then
+                  tmp2d4br(i,j)=tmp2d4b(ix,jx)
+                endif
+             enddo
+          enddo
+          deallocate(tmp2d4b)
+
+          write(*,*) k,maxval(tmp2d4br),minval(tmp2d4br)
+          call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
+          deallocate(tmp2d4br)
+!
+       endif
+    enddo
+!
+    call rrfs%close()
+    call rrfsr%close()
+    call raphrrr%close()
+
+  end subroutine use_lake
+
+  subroutine use_sfc(this,rapfile,rrfsfile,rrfsfile_read)
+!                .      .    .                                       .
+! subprogram:   build_mapindex
+!   prgmmr:
+!
+! abstract:
+!
+! program history log:
+!
+!   input argument list:
+!
+!   output argument list:
+!
+    use module_ncio, only : ncio
+  
+    implicit none
+
+    character*80,intent(in) :: rapfile
+    character*80,intent(in) :: rrfsfile
+    character*80,intent(in) :: rrfsfile_read
+
+    class(use_surface) :: this
+    type(ncio)     :: raphrrr,rrfs,rrfsr
 !
 !    real(r_single),allocatable,target :: fld2d4b(:,:)
     real(r_single),allocatable,target :: fld3d4b(:,:,:)
 !
     real(r_single),allocatable,target :: tmp2d4b(:,:)
     real(r_single),allocatable,target :: tmp3d4b(:,:,:)
-    real(r_kind),  allocatable,target :: tmp2d8b(:,:)
-    real(r_kind),  allocatable,target :: tmp3d8b(:,:,:)
+    real(r_single),  allocatable,target :: tmp2d4br(:,:)
+    real(r_single),  allocatable,target :: tmp3d4br(:,:,:)
 !    integer(i_byte),allocatable :: landmask_rrfs(:,:)
 !
     integer  :: nx_rap,ny_rap
@@ -189,54 +424,22 @@ contains
     ny_rap=this%nlat_target
 !
     call raphrrr%open(trim(rapfile),"r",200)
-!    allocate(fld2d4b(nx_rap,ny_rap))
-!    call raphrrr%get_var("SEAICE",nx_rap,ny_rap,fld2d4b)
-!
-!    call rrfs%open(trim(rrfsfile),"r",200)
-!    allocate(landmask_rrfs(nx_rrfs,ny_rrfs))
-!    allocate(tmp2d8b(nx_rrfs,ny_rrfs))
-!    call rrfs%get_var("slmsk",nx_rrfs,ny_rrfs,tmp2d8b)
-!    do j=1,ny_rrfs
-!       do i=1,nx_rrfs
-!          ix=this%index_x(i,j)
-!          jx=this%index_y(i,j)
-!          if( (ix >= 1 .and. ix <= nx_rap) .and. &
-!              (jx >= 1 .and. jx <= ny_rap) ) then
-!             if(fld2d4b(ix,jx) > 0.025_r_single) then
-!                tmp2d8b(i,j)=2.0_r_kind
-!             endif
-!          endif
-!        enddo
-!    enddo
-!    call rrfs%close()
-!!
-!    call rrfs%open(trim(rrfsfile),"w",200)
-!    call rrfs%replace_var("slmsk",nx_rrfs,ny_rrfs,tmp2d8b)
-!
-!    do j=1,ny_rrfs
-!      do i=1,nx_rrfs
-!         landmask_rrfs(i,j)=int(tmp2d8b(i,j))
-!      enddo
-!    enddo
-!    deallocate(tmp2d8b)
-!    call rrfs%close()
-!
+    call rrfsr%open(trim(rrfsfile_read),"r",200)
+    call rrfs%open(trim(rrfsfile),"w",200)
 !
     do k=1,this%nvar
        thisvar_rrfs=this%var_rrfs(k)
        thisvar_rap=this%var_rap(k)
        write(*,*) "=============================================="
-       write(*,'(4a)') "Working to replace rrfs variable ",trim(thisvar_rrfs), &
+       write(*,'(I4,4a)') k," Working to replace rrfs variable ",trim(thisvar_rrfs), &
                   " from RAP/HRRR ",trim(thisvar_rap)
        if(k>=9) cycle
        if(k <= this%nvar3d) then
           allocate(tmp3d4b(nx_rap,ny_rap,nz_rrfs))
           call raphrrr%get_var(trim(thisvar_rap),nx_rap,ny_rap,nz_rrfs,tmp3d4b)
 
-          allocate(tmp3d8b(nx_rrfs,ny_rrfs,nz_rrfs))
-          call rrfs%open(trim(rrfsfile),"r",200)
-          call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,nz_rrfs,tmp3d8b)
-          call rrfs%close()
+          allocate(tmp3d4br(nx_rrfs,ny_rrfs,nz_rrfs))
+          call rrfsr%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,nz_rrfs,tmp3d4br)
 
           do j=1,ny_rrfs
             do i=1,nx_rrfs
@@ -246,11 +449,11 @@ contains
                    (jx >= 1 .and. jx <= ny_rap) ) then
                   if(trim(thisvar_rrfs) == "tslb") then
                      do kx=1,nz_rrfs-1
-                        tmp3d8b(i,j,kx)=tmp3d4b(ix,jx,kx)
+                        tmp3d4br(i,j,kx)=tmp3d4b(ix,jx,kx)
                      enddo
                   else
                      do kx=1,nz_rrfs
-                        tmp3d8b(i,j,kx)=tmp3d4b(ix,jx,kx)
+                        tmp3d4br(i,j,kx)=tmp3d4b(ix,jx,kx)
                      enddo
                   endif
                endif
@@ -258,37 +461,33 @@ contains
           enddo
           deallocate(tmp3d4b)
 
-          call rrfs%open(trim(rrfsfile),"w",200)
-          call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,nz_rrfs,tmp3d8b)
+          call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,nz_rrfs,tmp3d4br)
           if(trim(thisvar_rrfs) == "tslb") then
-             call rrfs%replace_var("tiice",nx_rrfs,ny_rrfs,nz_rrfs,tmp3d8b)
+             call rrfs%replace_var("tiice",nx_rrfs,ny_rrfs,nz_rrfs,tmp3d4br)
           elseif(trim(thisvar_rrfs) == "smois") then
              allocate(fld3d4b(nx_rrfs,ny_rrfs,nz_rrfs))
-             fld3d4b=tmp3d8b  ! save for calculating (smois-sh2o)
+             fld3d4b=tmp3d4br  ! save for calculating (smois-sh2o)
           elseif(trim(thisvar_rrfs) == "sh2o") then
-             tmp3d8b=max(0.0,(fld3d4b - tmp3d8b)/0.9)
+             tmp3d4br=max(0.0,(fld3d4b - tmp3d4br)/0.9)
              deallocate(fld3d4b)
-             call rrfs%replace_var("smfr",nx_rrfs,ny_rrfs,nz_rrfs,tmp3d8b)
+             call rrfs%replace_var("smfr",nx_rrfs,ny_rrfs,nz_rrfs,tmp3d4br)
           endif
-          deallocate(tmp3d8b)
-          call rrfs%close()
+          deallocate(tmp3d4br)
        else
           allocate(tmp2d4b(nx_rap,ny_rap))
           call raphrrr%get_var(trim(thisvar_rap),nx_rap,ny_rap,tmp2d4b)
 
-          allocate(tmp2d8b(nx_rrfs,ny_rrfs))
-          call rrfs%open(trim(rrfsfile),"r",200)
-          call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
-          call rrfs%close()
+          allocate(tmp2d4br(nx_rrfs,ny_rrfs))
+          call rrfsr%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
         
-          if(maxval(tmp2d8b) - minval(tmp2d8b) < 1.0e-10) then
+          if((maxval(tmp2d4br) - minval(tmp2d4br) )< 1.0e-10) then
             do j=1,ny_rrfs
               do i=1,nx_rrfs
                 ix=this%index_x_nomatch(i,j)
                 jx=this%index_y_nomatch(i,j)
                 if( (ix >= 1 .and. ix <= nx_rap) .and. &
                     (jx >= 1 .and. jx <= ny_rap) ) then
-                  tmp2d8b(i,j)=tmp2d4b(ix,jx)
+                  tmp2d4br(i,j)=tmp2d4b(ix,jx)
                 endif
               enddo
             enddo
@@ -299,85 +498,34 @@ contains
                 jx=this%index_y(i,j)
                 if( (ix >= 1 .and. ix <= nx_rap) .and. &
                     (jx >= 1 .and. jx <= ny_rap) ) then
-                  tmp2d8b(i,j)=tmp2d4b(ix,jx)
+                  tmp2d4br(i,j)=tmp2d4b(ix,jx)
                 endif
               enddo
             enddo
           endif
           deallocate(tmp2d4b)
 
-          call rrfs%open(trim(rrfsfile),"w",200)
-          call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
+          call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
           if(trim(thisvar_rrfs) == "weasdl") then
-            call rrfs%replace_var("sheleg",nx_rrfs,ny_rrfs,tmp2d8b)
+            call rrfs%replace_var("sheleg",nx_rrfs,ny_rrfs,tmp2d4br)
           elseif(trim(thisvar_rrfs) == "qwv_surf_land") then
-            call rrfs%replace_var("qwv_surf_ice",nx_rrfs,ny_rrfs,tmp2d8b)
+            call rrfs%replace_var("qwv_surf_ice",nx_rrfs,ny_rrfs,tmp2d4br)
           elseif(trim(thisvar_rrfs) == "clw_surf_land") then
-            call rrfs%replace_var("clw_surf_ice",nx_rrfs,ny_rrfs,tmp2d8b)
+            call rrfs%replace_var("clw_surf_ice",nx_rrfs,ny_rrfs,tmp2d4br)
           elseif(trim(thisvar_rrfs) == "tsnow_land") then
-            call rrfs%replace_var("tsnow_ice",nx_rrfs,ny_rrfs,tmp2d8b)
+            call rrfs%replace_var("tsnow_ice",nx_rrfs,ny_rrfs,tmp2d4br)
           elseif(trim(thisvar_rrfs) == "tsfc") then
-            call rrfs%replace_var("tsfcl",nx_rrfs,ny_rrfs,tmp2d8b)
-            call rrfs%replace_var("tsea",nx_rrfs,ny_rrfs,tmp2d8b)
-!            call rrfs%replace_var("tref",nx_rrfs,ny_rrfs,tmp2d8b)
-            call rrfs%replace_var("tisfc",nx_rrfs,ny_rrfs,tmp2d8b)
+            call rrfs%replace_var("tsfcl",nx_rrfs,ny_rrfs,tmp2d4br)
+            call rrfs%replace_var("tsea",nx_rrfs,ny_rrfs,tmp2d4br)
+            call rrfs%replace_var("tisfc",nx_rrfs,ny_rrfs,tmp2d4br)
           endif
-          deallocate(tmp2d8b)
-          call rrfs%close()
-!
-! for SOILT1 and SNOWC
-!          if(trim(thisvar_rap) == "SOILT1" .or. trim(thisvar_rap) == "SNOWC") then
-!             if(trim(thisvar_rap) == "SOILT1") thisvar_rrfs="tsnow_ice"
-!             if(trim(thisvar_rap) == "SNOWC")  thisvar_rrfs="sncovr_ice"
-!
-!             allocate(tmp2d4b(nx_rap,ny_rap))
-!             call raphrrr%get_var(trim(thisvar_rap),nx_rap,ny_rap,tmp2d4b)
-!
-!             allocate(tmp2d8b(nx_rrfs,ny_rrfs))
-!             call rrfs%open(trim(rrfsfile),"r",200)
-!             call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
-!             call rrfs%close()
-!
-!             if(maxval(tmp2d8b) - minval(tmp2d8b) < 1.0e-10) then
-!               do j=1,ny_rrfs
-!                 do i=1,nx_rrfs
-!                   ix=this%index_x_nomatch(i,j)
-!                   jx=this%index_y_nomatch(i,j)
-!                   if( (ix >= 1 .and. ix <= nx_rap) .and. &
-!                       (jx >= 1 .and. jx <= ny_rap) ) then
-!                      if(fld2d4b(ix,jx) > 0.025) then
-!                        tmp2d8b(i,j)=tmp2d4b(ix,jx)
-!                      endif
-!                   endif
-!                 enddo
-!               enddo
-!             else
-!               do j=1,ny_rrfs
-!                 do i=1,nx_rrfs
-!                    ix=this%index_x(i,j)
-!                    jx=this%index_y(i,j)
-!                    if( (ix >= 1 .and. ix <= nx_rap) .and. &
-!                        (jx >= 1 .and. jx <= ny_rap) ) then
-!                       if(fld2d4b(ix,jx) > 0.025) then
-!                          tmp2d8b(i,j)=tmp2d4b(ix,jx)
-!                       endif
-!                    endif
-!                 enddo
-!               enddo
-!             endif
-!             deallocate(tmp2d4b)
-!
-!             call rrfs%open(trim(rrfsfile),"w",200)
-!             call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
-!             deallocate(tmp2d8b)
-!             call rrfs%close()
-!          endif
+          deallocate(tmp2d4br)
 !
        endif
     enddo
 !
-!    deallocate(fld2d4b)
-!    deallocate(landmask_rrfs)
+    call rrfs%close()
+    call rrfsr%close()
     call raphrrr%close()
 
   end subroutine use_sfc
@@ -412,7 +560,7 @@ contains
     type(ncio)     :: raphrrr,rrfs
 !
     real(r_single),allocatable,target :: tmp2d4b(:,:)
-    real(r_kind),  allocatable,target :: tmp2d8b(:,:)
+    real(r_single),allocatable,target :: tmp2d4br(:,:)
 !
     integer  :: nx_rap,ny_rap
     integer  :: nx_rrfs,ny_rrfs,nz_rrfs
@@ -427,7 +575,7 @@ contains
     ny_rap=this%nlat_target
 !
     allocate(tmp2d4b(nx_rap,ny_rap))
-    allocate(tmp2d8b(nx_rrfs,ny_rrfs))
+    allocate(tmp2d4br(nx_rrfs,ny_rrfs))
 
     call raphrrr%open(trim(rapfile),"r",200)
     call raphrrr%get_var("SNOW",nx_rap,ny_rap,tmp2d4b)
@@ -440,7 +588,7 @@ contains
        if(nn==4) thisvar_rrfs="snodl"
 
        call rrfs%open(trim(rrfsfile),"r",200)
-       call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
+       call rrfs%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
        call rrfs%close()
 
        do j=1,ny_rrfs
@@ -450,21 +598,98 @@ contains
              if( (ix >= 1 .and. ix <= nx_rap) .and. &
                  (jx >= 1 .and. jx <= ny_rap) ) then
                 if(tmp2d4b(ix,jx) < 1.0e-10_r_single .and. rlat(i,j) < 37.0 ) then
-                   tmp2d8b(i,j)=0.0_r_kind
+                   tmp2d4br(i,j)=0.0
                 endif
              endif
            enddo
        enddo
 
        call rrfs%open(trim(rrfsfile),"w",200)
-       call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d8b)
+       call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
        call rrfs%close()
 
     end do ! nn
-    deallocate(tmp2d8b)
+    deallocate(tmp2d4br)
     deallocate(tmp2d4b)
   
   end subroutine remove_snow
+
+  subroutine build_lakeindex(this,map,rlon,rlat,lakemask_this,lakemask_target)
+!                .      .    .                                       .
+! subprogram:   build_mapindex
+!   prgmmr:
+!
+! abstract:
+!
+! program history log:
+!
+!   input argument list:
+!    map: grid convert class
+!    lakemask_this: lake mask for this grid
+!    lakemask_target: lake mask for target grid
+!
+!   output argument list:
+!
+    use module_map_utils, only : map_util
+    implicit none
+
+    class(use_surface) :: this
+    type(map_util),  intent(in) :: map
+    integer(i_byte), intent(in) :: lakemask_this(this%nlon,this%nlat)
+    integer(i_byte), intent(in) :: lakemask_target(this%nlon_target,this%nlat_target)
+    real(r_single),  intent(in) :: rlon(this%nlon,this%nlat)
+    real(r_single),  intent(in) :: rlat(this%nlon,this%nlat)
+!
+    real(r_single) :: xc,yc
+    integer  :: ixc,jyc
+    integer  :: i,j,ix,jx
+    integer  :: ii,jj,ixx,jxx
+    real(r_single) :: dist,thisdist
+!
+    do j=1,this%nlat
+    do i=1,this%nlon
+       call map%tll2xy(rlon(i,j),rlat(i,j),xc,yc)
+       ixc=int(xc+0.5)
+       jyc=int(yc+0.5)
+       if( (ixc > 0 .and. ixc < this%nlon_target + 1) .and. &
+           (jyc > 0 .and. jyc < this%nlat_target + 1) ) then
+          ix=min(max(ixc,1),this%nlon_target)
+          jx=min(max(jyc,1),this%nlat_target)
+! lake in RRFS
+          if( lakemask_this (i,j) == 1 ) then
+             if( lakemask_target(ix,jx) == 1 ) then
+! lake in RAP HRRR
+                this%lake_index_x(i,j)=ix
+                this%lake_index_y(i,j)=jx 
+             else
+! deal with not matched lake: if there is a lake within a grid point, count as
+!                             match
+                dist=99999.0
+                do jj=max(1,jx-1),min(jx+1,this%nlat_target)
+                do ii=max(1,ix-1),min(ix+1,this%nlon_target)
+                   if(lakemask_this(i,j)==lakemask_target(ii,jj)) then
+                      thisdist=(jj-jx)*(jj-jx)+(ii-ix)*(ii-ix)
+                      thisdist=sqrt(thisdist)
+                      if(thisdist <= dist) then
+                         dist=thisdist
+                         ixx=ii
+                         jxx=jj
+                      endif
+                   endif
+                enddo
+                enddo
+                if(dist < 88888.0) then
+                   this%lake_index_x(i,j)=ixx
+                   this%lake_index_y(i,j)=jxx
+                  !write(*,*) i,j,this%lake_index_x(i,j),this%lake_index_y(i,j)
+                endif
+             endif
+          endif  ! if RRFS lake
+       endif  ! if inside the traget domain
+    enddo
+    enddo
+
+  end subroutine build_lakeindex
 
   subroutine build_mapindex(this,map,rlon,rlat,landmask_this,landmask_target)
 !                .      .    .                                       .
@@ -518,7 +743,7 @@ contains
              this%index_x(i,j)=ix
              this%index_y(i,j)=jx 
           else
-! dewl with not matched water and land
+! deal with not matched water and land
              dist=99999.0
              do jj=max(1,jx-this%halo),min(jx+this%halo,this%nlat_target)
                do ii=max(1,ix-this%halo),min(ix+this%halo,this%nlon_target)
@@ -547,7 +772,7 @@ contains
 !
   end subroutine build_mapindex
 
-  subroutine init(this,nlon,nlat,nlev,nlon_target,nlat_target,halo)
+  subroutine init(this,nlon,nlat,nlev,nlev_lake,nlev_snow,nlon_target,nlat_target,halo)
 !                .      .    .                                       .
 ! subprogram:    init
 !   prgmmr:
@@ -565,13 +790,15 @@ contains
 
     class(use_surface) :: this
     integer,intent(in) :: halo
-    integer,intent(in) :: nlon,nlat,nlev
+    integer,intent(in) :: nlon,nlat,nlev,nlev_lake,nlev_snow
     integer,intent(in) :: nlon_target,nlat_target
 
     this%halo=halo
     this%nlon=nlon
     this%nlat=nlat
     this%nlev=nlev
+    this%nlev_lake=nlev_lake
+    this%nlev_snow=nlev_snow
     this%nlon_target=nlon_target
     this%nlat_target=nlat_target
     allocate(this%index_x(this%nlon,this%nlat))
@@ -580,8 +807,12 @@ contains
     this%index_y=-999
     allocate(this%index_x_nomatch(this%nlon,this%nlat))
     allocate(this%index_y_nomatch(this%nlon,this%nlat))
-    this%index_x=-999
-    this%index_y=-999
+    this%index_x_nomatch=-999
+    this%index_y_nomatch=-999
+    allocate(this%lake_index_x(this%nlon,this%nlat))
+    allocate(this%lake_index_y(this%nlon,this%nlat))
+    this%lake_index_x=-999
+    this%lake_index_y=-999
 
   end subroutine init
 
@@ -604,10 +835,15 @@ contains
 
     this%nvar=0
     this%nvar3d=0
+    this%nvarlake=0
+    this%nvar3dlake=0
+    this%nvar3dsnow=0
     this%halo=0
     this%nlon=0
     this%nlat=0
     this%nlev=0
+    this%nlev_lake=0
+    this%nlev_snow=0
     this%nlon_target=0
     this%nlat_target=0
 
@@ -615,9 +851,13 @@ contains
     deallocate(this%index_y)
     deallocate(this%index_x_nomatch)
     deallocate(this%index_y_nomatch)
+    deallocate(this%lake_index_x)
+    deallocate(this%lake_index_y)
 
     deallocate(this%var_rrfs)
     deallocate(this%var_rap)
+    deallocate(this%var_rrfs_lake)
+    deallocate(this%var_rap_lake)
 
   end subroutine close
 

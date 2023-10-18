@@ -54,7 +54,7 @@ subroutine update_snow_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
   character (len=5) :: lutype
   integer(i_kind) :: l, n
   
-  real(8),allocatable :: tmp8b3d(:,:,:),tmp8b2d(:,:)
+!  real(8),allocatable :: tmp8b3d(:,:,:),tmp8b2d(:,:)
   real,allocatable :: tmp4b3d(:,:,:),tmp4b2d(:,:)
 
   character (len=31) :: rmse_var
@@ -197,8 +197,8 @@ subroutine update_snow_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
      stop 1234
   endif
 
-  allocate(tmp8b3d(nlon_regional,nlat_regional,nsig_soil_regional))
-  allocate(tmp8b2d(nlon_regional,nlat_regional))
+  allocate(tmp4b3d(nlon_regional,nlat_regional,nsig_soil_regional))
+  allocate(tmp4b2d(nlon_regional,nlat_regional))
 
   write(6,*)' nlon,lat,sig_regional=',nlon_regional,nlat_regional,nsig_regional
 
@@ -229,82 +229,82 @@ subroutine update_snow_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
   landmask=0
   
 !  rmse_var='T2M' skin temperature on land
-  call fv3grid%get_var("t2m",nlon,nlat,tmp8b2d)
-  surftemp(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
+  call fv3grid%get_var("t2m",nlon,nlat,tmp4b2d)
+  surftemp(1:nlon_regional,1:nlat_regional)=tmp4b2d(:,:)
   write(6,*)' max,min 2-m temp (K)=',maxval(surftemp),minval(surftemp)
 !
 !  rmse_var='TSFCL' skin temperature on land
-  call fv3grid%get_var("tsfcl",nlon,nlat,tmp8b2d)
-  tskin(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
+  call fv3grid%get_var("tsfcl",nlon,nlat,tmp4b2d)
+  tskin(1:nlon_regional,1:nlat_regional)=tmp4b2d(:,:)
   write(6,*)' max,min skin temp (K)=',maxval(tskin),minval(tskin)
 !
 !  rmse_var='TSNOW_LAND' snow temperature on land
-  call fv3grid%get_var("tsnow_land",nlon,nlat,tmp8b2d)
-  tsnow(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
+  call fv3grid%get_var("tsnow_land",nlon,nlat,tmp4b2d)
+  tsnow(1:nlon_regional,1:nlat_regional)=tmp4b2d(:,:)
   write(6,*)' max,min snow temp (K)=',maxval(tsnow),minval(tsnow)
 !
 !  rmse_var='WEASD (SHELEG)' [mm] combined swe
-  call fv3grid%get_var("sheleg",nlon,nlat,tmp8b2d)
-  weasd(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
+  call fv3grid%get_var("sheleg",nlon,nlat,tmp4b2d)
+  weasd(1:nlon_regional,1:nlat_regional)=tmp4b2d(:,:)
   write(6,*)' max,min combined WEASD=',maxval(snow),minval(snow)
 !
 !  rmse_var='SNOW' [mm] swe on land
-  call fv3grid%get_var("weasdl",nlon,nlat,tmp8b2d)
-  snow(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
+  call fv3grid%get_var("weasdl",nlon,nlat,tmp4b2d)
+  snow(1:nlon_regional,1:nlat_regional)=tmp4b2d(:,:)
   write(6,*)' max,min SNOW=',maxval(snow),minval(snow)
 !
 !  rmse_var='WEASDI' [mm] swe on ice
-  call fv3grid%get_var("weasdi",nlon,nlat,tmp8b2d)
-  weasdi(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
+  call fv3grid%get_var("weasdi",nlon,nlat,tmp4b2d)
+  weasdi(1:nlon_regional,1:nlat_regional)=tmp4b2d(:,:)
   write(6,*)' max,min WEASDI=',maxval(weasdi),minval(weasdi)
 !
 !  rmse_var='SNWDPH' [mm] combined snow depth
-  call fv3grid%get_var("snwdph",nlon,nlat,tmp8b2d)
-  snwdph(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)*1.e-3 ! convert to [m]
+  call fv3grid%get_var("snwdph",nlon,nlat,tmp4b2d)
+  snwdph(1:nlon_regional,1:nlat_regional)=tmp4b2d(:,:)*1.e-3 ! convert to [m]
   write(6,*)' max,min SNWDPH=',maxval(snwdph),minval(snwdph)
 
 !  rmse_var='SNODL' [mm] snow depth on land
-  call fv3grid%get_var("snodl",nlon,nlat,tmp8b2d)
-  snowh(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)*1.e-3 ! convert to [m]
+  call fv3grid%get_var("snodl",nlon,nlat,tmp4b2d)
+  snowh(1:nlon_regional,1:nlat_regional)=tmp4b2d(:,:)*1.e-3 ! convert to [m]
   write(6,*)' max,min SNODL=',maxval(snowh),minval(snowh)
 
 !  rmse_var='SNODI' [mm] snow_depth on ice
-  call fv3grid%get_var("snodi",nlon,nlat,tmp8b2d)
-  snodi(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)*1.e-3 ! convert to [m]
+  call fv3grid%get_var("snodi",nlon,nlat,tmp4b2d)
+  snodi(1:nlon_regional,1:nlat_regional)=tmp4b2d(:,:)*1.e-3 ! convert to [m]
   write(6,*)' max,min SNODI=',maxval(snodi),minval(snodi)
 !
 !  rmse_var='SNCOVR' [fraction] combined snow fraction
-  call fv3grid%get_var("sncovr",nlon,nlat,tmp8b2d)
-  snowc(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
+  call fv3grid%get_var("sncovr",nlon,nlat,tmp4b2d)
+  snowc(1:nlon_regional,1:nlat_regional)=tmp4b2d(:,:)
   write(6,*)' max,min SNOWC=',maxval(snowc),minval(snowc)
 !
 !  rmse_var='SNCOVR_ICE' [fraction] snow fraction on ice
-  call fv3grid%get_var("sncovr_ice",nlon,nlat,tmp8b2d)
-  snowc_ice(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
+  call fv3grid%get_var("sncovr_ice",nlon,nlat,tmp4b2d)
+  snowc_ice(1:nlon_regional,1:nlat_regional)=tmp4b2d(:,:)
   write(6,*)' max,min SNOWC_ICE=',maxval(snowc_ice),minval(snowc_ice)
 !
 !  rmse_var='SEAICE' fraction of ice
-  call fv3grid%get_var("fice",nlon,nlat,tmp8b2d)
-  seaice(1:nlon_regional,1:nlat_regional)=tmp8b2d(:,:)
+  call fv3grid%get_var("fice",nlon,nlat,tmp4b2d)
+  seaice(1:nlon_regional,1:nlat_regional)=tmp4b2d(:,:)
   write(6,*)' max,min SEAICE=',maxval(seaice),minval(seaice)
 !
   allocate(soiltemp(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo,nsig_soil_regional))
   allocate(soiltempRRbk(1-halo:nlon_regional+halo,1-halo:nlat_regional+halo,nsig_soil_regional))
 !  rmse_var='TSLB' soil temperature
-  call fv3grid%get_var("tslb",nlon,nlat,nsig_soil_regional,tmp8b3d)
+  call fv3grid%get_var("tslb",nlon,nlat,nsig_soil_regional,tmp4b3d)
   do k=1,nsig_soil_regional
-     soiltemp(1:nlon_regional,1:nlat_regional,k)=tmp8b3d(:,:,k)
+     soiltemp(1:nlon_regional,1:nlat_regional,k)=tmp4b3d(:,:,k)
      write(6,*)' max,min TSLB=',k, maxval(soiltemp(:,:,k)),minval(soiltemp(:,:,k))
   enddo
 !
-  deallocate(tmp8b3d)
+  deallocate(tmp4b3d)
 !
 !  rmse_var='SLMSK' 0 - water, 1 - land, 2 - ice
-  call fv3grid%get_var("slmsk",nlon,nlat,tmp8b2d)
-  landmask(1:nlon_regional,1:nlat_regional)=tmp8b2d
+  call fv3grid%get_var("slmsk",nlon,nlat,tmp4b2d)
+  landmask(1:nlon_regional,1:nlat_regional)=tmp4b2d
   write(6,*)' max,min LANDMASK=',maxval(landmask),minval(landmask)
 !
-  deallocate(tmp8b2d)
+  deallocate(tmp4b2d)
   call fv3grid%close()
 !
 ! fill halo first 
@@ -366,38 +366,38 @@ subroutine update_snow_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
            stop 1234
         endif
 
-        allocate(tmp8b3d(nxlocal,nylocal,nsig_soil_regional))
-        allocate(tmp8b2d(nxlocal,nylocal))
+        allocate(tmp4b3d(nxlocal,nylocal,nsig_soil_regional))
+        allocate(tmp4b2d(nxlocal,nylocal))
 
-        call fv3grid%get_var("tsfcl",nxlocal,nylocal,tmp8b2d)
-        tskin(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp8b2d(:,1:halo)
+        call fv3grid%get_var("tsfcl",nxlocal,nylocal,tmp4b2d)
+        tskin(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp4b2d(:,1:halo)
 !
-        call fv3grid%get_var("tsnow_land",nxlocal,nylocal,tmp8b2d)
-        tsnow(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp8b2d(:,1:halo)
+        call fv3grid%get_var("tsnow_land",nxlocal,nylocal,tmp4b2d)
+        tsnow(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp4b2d(:,1:halo)
 !
-        call fv3grid%get_var("weasdl",nxlocal,nylocal,tmp8b2d)
-        snow(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp8b2d(:,1:halo)
+        call fv3grid%get_var("weasdl",nxlocal,nylocal,tmp4b2d)
+        snow(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp4b2d(:,1:halo)
 !
-        call fv3grid%get_var("snodl",nxlocal,nylocal,tmp8b2d)
-        snowh(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp8b2d(:,1:halo)
+        call fv3grid%get_var("snodl",nxlocal,nylocal,tmp4b2d)
+        snowh(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp4b2d(:,1:halo)
 !
-        call fv3grid%get_var("sncovr",nxlocal,nylocal,tmp8b2d)
-        snowc(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp8b2d(:,1:halo)
+        call fv3grid%get_var("sncovr",nxlocal,nylocal,tmp4b2d)
+        snowc(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp4b2d(:,1:halo)
 !
-        call fv3grid%get_var("fice",nxlocal,nylocal,tmp8b2d)
-        seaice(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp8b2d(:,1:halo)
+        call fv3grid%get_var("fice",nxlocal,nylocal,tmp4b2d)
+        seaice(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp4b2d(:,1:halo)
 !
-        call fv3grid%get_var("tslb",nxlocal,nylocal,nsig_soil_regional,tmp8b3d)
+        call fv3grid%get_var("tslb",nxlocal,nylocal,nsig_soil_regional,tmp4b3d)
         do k=1,nsig_soil_regional
-           soiltemp(1:nlon_regional,nlat_regional+1:nlat_regional+halo,k)=tmp8b3d(:,1:halo,k)
+           soiltemp(1:nlon_regional,nlat_regional+1:nlat_regional+halo,k)=tmp4b3d(:,1:halo,k)
         enddo
 !
-        deallocate(tmp8b3d)
+        deallocate(tmp4b3d)
 !
-        call fv3grid%get_var("slmsk",nxlocal,nylocal,tmp8b2d)
-        landmask(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp8b2d(:,1:halo)
+        call fv3grid%get_var("slmsk",nxlocal,nylocal,tmp4b2d)
+        landmask(1:nlon_regional,nlat_regional+1:nlat_regional+halo)=tmp4b2d(:,1:halo)
 
-        deallocate(tmp8b2d)
+        deallocate(tmp4b2d)
         call fv3grid%close()
      endif
 
@@ -432,38 +432,38 @@ subroutine update_snow_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
            stop 1234
         endif
 
-        allocate(tmp8b3d(nxlocal,nylocal,nsig_soil_regional))
-        allocate(tmp8b2d(nxlocal,nylocal))
+        allocate(tmp4b3d(nxlocal,nylocal,nsig_soil_regional))
+        allocate(tmp4b2d(nxlocal,nylocal))
 
-        call fv3grid%get_var("tsfcl",nxlocal,nylocal,tmp8b2d)
-        tskin(1:nlon_regional,1-halo:0)=tmp8b2d(:,nylocal-halo+1:nylocal)
+        call fv3grid%get_var("tsfcl",nxlocal,nylocal,tmp4b2d)
+        tskin(1:nlon_regional,1-halo:0)=tmp4b2d(:,nylocal-halo+1:nylocal)
 !
-        call fv3grid%get_var("tsnow_land",nxlocal,nylocal,tmp8b2d)
-        tsnow(1:nlon_regional,1-halo:0)=tmp8b2d(:,nylocal-halo+1:nylocal)
+        call fv3grid%get_var("tsnow_land",nxlocal,nylocal,tmp4b2d)
+        tsnow(1:nlon_regional,1-halo:0)=tmp4b2d(:,nylocal-halo+1:nylocal)
 !
-        call fv3grid%get_var("weasdl",nxlocal,nylocal,tmp8b2d)
-        snow(1:nlon_regional,1-halo:0)=tmp8b2d(:,nylocal-halo+1:nylocal)
+        call fv3grid%get_var("weasdl",nxlocal,nylocal,tmp4b2d)
+        snow(1:nlon_regional,1-halo:0)=tmp4b2d(:,nylocal-halo+1:nylocal)
 !
-        call fv3grid%get_var("snodl",nxlocal,nylocal,tmp8b2d)
-        snowh(1:nlon_regional,1-halo:0)=tmp8b2d(:,nylocal-halo+1:nylocal)
+        call fv3grid%get_var("snodl",nxlocal,nylocal,tmp4b2d)
+        snowh(1:nlon_regional,1-halo:0)=tmp4b2d(:,nylocal-halo+1:nylocal)
 !
-        call fv3grid%get_var("sncovr",nxlocal,nylocal,tmp8b2d)
-        snowc(1:nlon_regional,1-halo:0)=tmp8b2d(:,nylocal-halo+1:nylocal)
+        call fv3grid%get_var("sncovr",nxlocal,nylocal,tmp4b2d)
+        snowc(1:nlon_regional,1-halo:0)=tmp4b2d(:,nylocal-halo+1:nylocal)
 !
-        call fv3grid%get_var("fice",nxlocal,nylocal,tmp8b2d)
-        seaice(1:nlon_regional,1-halo:0)=tmp8b2d(:,nylocal-halo+1:nylocal)
+        call fv3grid%get_var("fice",nxlocal,nylocal,tmp4b2d)
+        seaice(1:nlon_regional,1-halo:0)=tmp4b2d(:,nylocal-halo+1:nylocal)
 !
-        call fv3grid%get_var("tslb",nxlocal,nylocal,nsig_soil_regional,tmp8b3d)
+        call fv3grid%get_var("tslb",nxlocal,nylocal,nsig_soil_regional,tmp4b3d)
         do k=1,nsig_soil_regional
-           soiltemp(1:nlon_regional,1-halo:0,k)=tmp8b3d(:,nylocal-halo+1:nylocal,k)
+           soiltemp(1:nlon_regional,1-halo:0,k)=tmp4b3d(:,nylocal-halo+1:nylocal,k)
         enddo
 !
-        deallocate(tmp8b3d)
+        deallocate(tmp4b3d)
 !
-        call fv3grid%get_var("slmsk",nxlocal,nylocal,tmp8b2d)
-        landmask(1:nlon_regional,1-halo:0)=tmp8b2d(:,nylocal-halo+1:nylocal)
+        call fv3grid%get_var("slmsk",nxlocal,nylocal,tmp4b2d)
+        landmask(1:nlon_regional,1-halo:0)=tmp4b2d(:,nylocal-halo+1:nylocal)
 
-        deallocate(tmp8b2d)
+        deallocate(tmp4b2d)
         call fv3grid%close()
      endif
 
@@ -842,102 +842,102 @@ subroutine update_snow_fv3lam(snowiceRR,xland,nlon,nlat,id,fv3_io_layout_y)
      stop 1234
   endif
 
-  allocate(tmp8b3d(nlon_regional,nlat_regional,nsig_soil_regional))
-  allocate(tmp8b2d(nlon_regional,nlat_regional))
+  allocate(tmp4b3d(nlon_regional,nlat_regional,nsig_soil_regional))
+  allocate(tmp4b2d(nlon_regional,nlat_regional))
 
 !  rmse_var='TSLB'
   do k=1,nsig_soil_regional
-     tmp8b3d(:,:,k)=soiltemp(1:nlon_regional,1:nlat_regional,k)
-     write(6,*)' max,min TSLB=',k, maxval(tmp8b3d(:,:,k)),minval(tmp8b3d(:,:,k))
+     tmp4b3d(:,:,k)=soiltemp(1:nlon_regional,1:nlat_regional,k)
+     write(6,*)' max,min TSLB=',k, maxval(tmp4b3d(:,:,k)),minval(tmp4b3d(:,:,k))
   enddo
-  call fv3grid%replace_var("tslb",nlon,nlat,nsig_soil_regional,tmp8b3d)
-  deallocate(tmp8b3d)
+  call fv3grid%replace_var("tslb",nlon,nlat,nsig_soil_regional,tmp4b3d)
+  deallocate(tmp4b3d)
 ! SNCOVR (combined)
-  tmp8b2d=snowc(1:nlon_regional,1:nlat_regional)
+  tmp4b2d=snowc(1:nlon_regional,1:nlat_regional)
   do j=1,nlat_regional
      do i =1,nlon_regional
-        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+        if(tmp4b2d(i,j)<1.0e-10) tmp4b2d(i,j)=0.0_4
      enddo
   enddo
-  write(6,*)' max,min sncovr=',maxval(tmp8b2d),minval(tmp8b2d)
-  call fv3grid%replace_var("sncovr",nlon,nlat,tmp8b2d)
+  write(6,*)' max,min sncovr=',maxval(tmp4b2d),minval(tmp4b2d)
+  call fv3grid%replace_var("sncovr",nlon,nlat,tmp4b2d)
 ! SNCOVR_ice
-  tmp8b2d=snowc_ice(1:nlon_regional,1:nlat_regional)
+  tmp4b2d=snowc_ice(1:nlon_regional,1:nlat_regional)
   do j=1,nlat_regional
      do i =1,nlon_regional
-        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+        if(tmp4b2d(i,j)<1.0e-10) tmp4b2d(i,j)=0.0_4
      enddo
   enddo
-  write(6,*)' max,min sncovr_ice=',maxval(tmp8b2d),minval(tmp8b2d)
-  call fv3grid%replace_var("sncovr_ice",nlon,nlat,tmp8b2d)
+  write(6,*)' max,min sncovr_ice=',maxval(tmp4b2d),minval(tmp4b2d)
+  call fv3grid%replace_var("sncovr_ice",nlon,nlat,tmp4b2d)
 ! 'SNODL' on land
-  tmp8b2d=snowh(1:nlon_regional,1:nlat_regional)*1.e3 ! convert to [mm]
+  tmp4b2d=snowh(1:nlon_regional,1:nlat_regional)*1.e3 ! convert to [mm]
   do j=1,nlat_regional
      do i =1,nlon_regional
-        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+        if(tmp4b2d(i,j)<1.0e-10) tmp4b2d(i,j)=0.0_4
      enddo
   enddo
-  write(6,*)' max,min snodl=',maxval(tmp8b2d),minval(tmp8b2d)
-  call fv3grid%replace_var("snodl",nlon,nlat,tmp8b2d)
+  write(6,*)' max,min snodl=',maxval(tmp4b2d),minval(tmp4b2d)
+  call fv3grid%replace_var("snodl",nlon,nlat,tmp4b2d)
 ! 'SNODI' on ice
-  tmp8b2d=snodi(1:nlon_regional,1:nlat_regional)*1.e3 ! convert to [mm]
+  tmp4b2d=snodi(1:nlon_regional,1:nlat_regional)*1.e3 ! convert to [mm]
   do j=1,nlat_regional
      do i =1,nlon_regional
-        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+        if(tmp4b2d(i,j)<1.0e-10) tmp4b2d(i,j)=0.0_4
      enddo
   enddo
-  write(6,*)' max,min snodi=',maxval(tmp8b2d),minval(tmp8b2d)
-  call fv3grid%replace_var("snodi",nlon,nlat,tmp8b2d)
+  write(6,*)' max,min snodi=',maxval(tmp4b2d),minval(tmp4b2d)
+  call fv3grid%replace_var("snodi",nlon,nlat,tmp4b2d)
 ! 'SNWDPH' combined
-  tmp8b2d=snwdph(1:nlon_regional,1:nlat_regional)*1.e3 ! convert to [mm]
+  tmp4b2d=snwdph(1:nlon_regional,1:nlat_regional)*1.e3 ! convert to [mm]
   do j=1,nlat_regional
      do i =1,nlon_regional
-        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+        if(tmp4b2d(i,j)<1.0e-10) tmp4b2d(i,j)=0.0_4
      enddo
   enddo
-  write(6,*)' max,min snowdph=',maxval(tmp8b2d),minval(tmp8b2d)
-  call fv3grid%replace_var("snwdph",nlon,nlat,tmp8b2d)
+  write(6,*)' max,min snowdph=',maxval(tmp4b2d),minval(tmp4b2d)
+  call fv3grid%replace_var("snwdph",nlon,nlat,tmp4b2d)
 ! 'WEASDL' on land
-  tmp8b2d=snow(1:nlon_regional,1:nlat_regional)
+  tmp4b2d=snow(1:nlon_regional,1:nlat_regional)
   do j=1,nlat_regional
      do i =1,nlon_regional
-        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+        if(tmp4b2d(i,j)<1.0e-10) tmp4b2d(i,j)=0.0_4
      enddo
   enddo
-  write(6,*)' max,min weasdl=',maxval(tmp8b2d),minval(tmp8b2d)
-  call fv3grid%replace_var("weasdl",nlon,nlat,tmp8b2d)
+  write(6,*)' max,min weasdl=',maxval(tmp4b2d),minval(tmp4b2d)
+  call fv3grid%replace_var("weasdl",nlon,nlat,tmp4b2d)
 ! 'WEASDI' on ice
-  tmp8b2d=weasdi(1:nlon_regional,1:nlat_regional)
+  tmp4b2d=weasdi(1:nlon_regional,1:nlat_regional)
   do j=1,nlat_regional
      do i =1,nlon_regional
-        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+        if(tmp4b2d(i,j)<1.0e-10) tmp4b2d(i,j)=0.0_4
      enddo
   enddo
-  write(6,*)' max,min weasdi=',maxval(tmp8b2d),minval(tmp8b2d)
-  call fv3grid%replace_var("weasdi",nlon,nlat,tmp8b2d)
+  write(6,*)' max,min weasdi=',maxval(tmp4b2d),minval(tmp4b2d)
+  call fv3grid%replace_var("weasdi",nlon,nlat,tmp4b2d)
 ! 'WEASD' combined
-  tmp8b2d=weasd(1:nlon_regional,1:nlat_regional)
+  tmp4b2d=weasd(1:nlon_regional,1:nlat_regional)
   do j=1,nlat_regional
      do i =1,nlon_regional
-        if(tmp8b2d(i,j)<1.0e-10) tmp8b2d(i,j)=0.0_8
+        if(tmp4b2d(i,j)<1.0e-10) tmp4b2d(i,j)=0.0_4
      enddo
   enddo
-  write(6,*)' max,min sheleg=',maxval(tmp8b2d),minval(tmp8b2d)
-  call fv3grid%replace_var("sheleg",nlon,nlat,tmp8b2d)
+  write(6,*)' max,min sheleg=',maxval(tmp4b2d),minval(tmp4b2d)
+  call fv3grid%replace_var("sheleg",nlon,nlat,tmp4b2d)
 ! TSFC
-  tmp8b2d=tskin(1:nlon_regional,1:nlat_regional)
-  write(6,*)' max,min tsfc=',maxval(tmp8b2d),minval(tmp8b2d)
-  call fv3grid%replace_var("tsfc",nlon,nlat,tmp8b2d)
+  tmp4b2d=tskin(1:nlon_regional,1:nlat_regional)
+  write(6,*)' max,min tsfc=',maxval(tmp4b2d),minval(tmp4b2d)
+  call fv3grid%replace_var("tsfc",nlon,nlat,tmp4b2d)
 ! TSFCL
-  tmp8b2d=tskin(1:nlon_regional,1:nlat_regional)
-  write(6,*)' max,min tsfcl=',maxval(tmp8b2d),minval(tmp8b2d)
-  call fv3grid%replace_var("tsfcl",nlon,nlat,tmp8b2d)
+  tmp4b2d=tskin(1:nlon_regional,1:nlat_regional)
+  write(6,*)' max,min tsfcl=',maxval(tmp4b2d),minval(tmp4b2d)
+  call fv3grid%replace_var("tsfcl",nlon,nlat,tmp4b2d)
 ! TSNOW_LAND
-  tmp8b2d=tsnow(1:nlon_regional,1:nlat_regional)
-  write(6,*)' max,min tsnow_land=',maxval(tmp8b2d),minval(tmp8b2d)
-  call fv3grid%replace_var("tsnow_land",nlon,nlat,tmp8b2d)
+  tmp4b2d=tsnow(1:nlon_regional,1:nlat_regional)
+  write(6,*)' max,min tsnow_land=',maxval(tmp4b2d),minval(tmp4b2d)
+  call fv3grid%replace_var("tsnow_land",nlon,nlat,tmp4b2d)
 !
-  deallocate(tmp8b2d)
+  deallocate(tmp4b2d)
   call fv3grid%close()
   
   deallocate(snow)
