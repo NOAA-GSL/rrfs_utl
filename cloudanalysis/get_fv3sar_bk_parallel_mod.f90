@@ -439,12 +439,14 @@ contains
   allocate(ges_qni(lon2,lat2,nsig))   ! cloud ice number concentration
   allocate(ges_qnc(lon2,lat2,nsig))   ! cloud water number concentration
   allocate(ges_qcf(lon2,lat2,nsig))   ! cloud fraction
-! hydrometeor uncertainties
-  allocate(unc_ql(lon2,lat2,nsig))   ! cloud water
-  allocate(unc_qi(lon2,lat2,nsig))   ! cloud ice
-  allocate(unc_qr(lon2,lat2,nsig))   ! rain
-  allocate(unc_qs(lon2,lat2,nsig))   ! snow
-  allocate(unc_qg(lon2,lat2,nsig))   ! graupel
+  if(l_cld_uncertainty) then
+!   hydrometeor uncertainties
+    allocate(unc_ql(lon2,lat2,nsig))   ! cloud water
+    allocate(unc_qi(lon2,lat2,nsig))   ! cloud ice
+    allocate(unc_qr(lon2,lat2,nsig))   ! rain
+    allocate(unc_qs(lon2,lat2,nsig))   ! snow
+    allocate(unc_qg(lon2,lat2,nsig))   ! graupel
+  endif
 !
 ! fix files
   allocate(xlon(lon2,lat2))
@@ -631,12 +633,14 @@ subroutine release_mem_fv3sar
      if(allocated(ges_qnr)) deallocate(ges_qnr)
      if(allocated(ges_qni)) deallocate(ges_qni)
      if(allocated(ges_qnc)) deallocate(ges_qnc)
-     write(6,*) 'core', 1 ,', release memory for hydrometeor uncertainties'
-     if(allocated(unc_ql))  deallocate(unc_ql)
-     if(allocated(unc_qi))  deallocate(unc_qi)
-     if(allocated(unc_qr))  deallocate(unc_qr)
-     if(allocated(unc_qs))  deallocate(unc_qs)
-     if(allocated(unc_qg))  deallocate(unc_qg)
+     if(l_cld_uncertainty) then
+       write(6,*) 'core', 1 ,', release memory for hydrometeor uncertainties'
+       if(allocated(unc_ql))  deallocate(unc_ql)
+       if(allocated(unc_qi))  deallocate(unc_qi)
+       if(allocated(unc_qr))  deallocate(unc_qr)
+       if(allocated(unc_qs))  deallocate(unc_qs)
+       if(allocated(unc_qg))  deallocate(unc_qg)
+     endif
 !
 !  release memory
 !
