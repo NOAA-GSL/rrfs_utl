@@ -23,16 +23,3 @@ execute_process(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     RESULT_VARIABLE F2PY_RESULT
 )
-
-if(F2PY_RESULT EQUAL 0)
-    message(STATUS "Fortran code compiled successfully with f2py")
-else()
-    message(FATAL_ERROR "Failed to compile Fortran code with f2py")
-endif()
-
-# Clean target
-add_custom_target(clean-all
-    COMMAND ${CMAKE_COMMAND} -E remove -f *.so *.mod *.o
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
