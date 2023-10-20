@@ -806,7 +806,7 @@ subroutine update_fv3sar(mype)
 
   deallocate(d3r4)
 
-!  call general_sub2grid_destroy_info(s)
+  if(.not.l_cld_uncertainty) call general_sub2grid_destroy_info(s)
 
 end subroutine update_fv3sar
 
