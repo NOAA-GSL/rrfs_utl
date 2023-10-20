@@ -1,7 +1,7 @@
  subroutine main(km, npz, ak0, bk0, Atm_ak, Atm_bk, psc, ud, vd, is, ie, js, je, Atm_u, Atm_v, Atm_ps)
  use ISO_FORTRAN_ENV
  use omp_lib
- use, intrinsic :: ieee_arithmetic
+ !use, intrinsic :: ieee_arithmetic
  implicit none
  integer, parameter :: r8_kind = selected_real_kind(15) ! 15 decimal digits
  integer,                          intent(IN)    ::  is, ie, js, je

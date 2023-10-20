@@ -15,12 +15,15 @@ add_library(chgres_winds MODULE chgres_winds.f90)
 # Set the output name of the module
 set_target_properties(chgres_winds PROPERTIES OUTPUT_NAME chgres_winds)
 
+# Find the path to libiomp5.so
+find_library(LIBIOMP5_PATH NAMES libiomp5.so)
+
 # Specify the build directory for f2py
 set(F2PY_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 # Compile the Fortran code using f2py
 execute_process(
-    COMMAND f2py3.8 -DF2PY_REPORT_ATEXIT --build-dir ${F2PY_BUILD_DIR} -c --f90flags='-fopenmp' -L/pe/intel/compilers_and_libraries_2020.4.304/linux/compiler/lib/intel64_lin/libiomp5.so -liomp5 -m chgres_winds chgres_winds.f90
+    COMMAND f2py -DF2PY_REPORT_ATEXIT --build-dir ${F2PY_BUILD_DIR} -c --f90flags='-fopenmp' -L${LIBIOMP5_PATH} -liomp5 -m chgres_winds chgres_winds.f90
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     RESULT_VARIABLE F2PY_RESULT
 )

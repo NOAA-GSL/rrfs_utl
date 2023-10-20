@@ -2,7 +2,7 @@
                  is, ie, js, je, Atm_pt, Atm_q, Atm_delp, Atm_phis, Atm_ps)
  use ISO_FORTRAN_ENV
  use omp_lib
- use, intrinsic :: ieee_arithmetic
+ !use, intrinsic :: ieee_arithmetic
  implicit none
  integer, parameter :: r8_kind = selected_real_kind(15) ! 15 decimal digits
  integer,                          intent(IN)    ::  is, ie, js, je

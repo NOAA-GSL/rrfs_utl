@@ -1,7 +1,7 @@
  subroutine main(gridx,gridy,u_s,v_s,u_w,v_w,ud,vd)
  use ISO_FORTRAN_ENV
  use omp_lib
- use, intrinsic :: ieee_arithmetic
+! use, intrinsic :: ieee_arithmetic
  implicit none
  integer, parameter     :: f_p = selected_real_kind(20)
  integer, parameter     :: f_d  = 8
@@ -181,7 +181,7 @@
  end subroutine vect_cross
 
 !>@brief The subroutine 'latlon2xyz' maps (lon, lat) to (x,y,z)
- subroutine latlon2xyz(p, e, id)
+ subroutine latlon2xyz(p, e)
  use ISO_FORTRAN_ENV
  implicit none
 
@@ -189,7 +189,6 @@
  integer, parameter     :: f_d  = 8
  real(kind=8), intent(in) :: p(2)
  real(kind=8), intent(out):: e(3)
- integer, optional, intent(in):: id !< id=0 do nothing; id=1, right_hand
 
  integer n
  real(kind=f_p):: q(2)
