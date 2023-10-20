@@ -8,7 +8,7 @@ constants.f90
 calcrh.f90)
 
 add_executable(rrfs_minrh.exe ${src_rrfs_minrh})
-target_link_libraries(rrfs_minh.exe PRIVATE w3nco::w3nco_4
+target_link_libraries(rrfs_minrh.exe PRIVATE w3nco::w3nco_4
                                     PRIVATE w3emc::w3emc_4
                                     PRIVATE bufr::bufr_4
                                     PRIVATE NetCDF::NetCDF_Fortran
