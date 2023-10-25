@@ -634,7 +634,7 @@ subroutine release_mem_fv3sar
      if(allocated(ges_qni)) deallocate(ges_qni)
      if(allocated(ges_qnc)) deallocate(ges_qnc)
      if(l_cld_uncertainty) then
-       write(6,*) 'core', 1 ,', release memory for hydrometeor uncertainties'
+       write(6,*) 'release memory for hydrometeor uncertainties'
        if(allocated(unc_ql))  deallocate(unc_ql)
        if(allocated(unc_qi))  deallocate(unc_qi)
        if(allocated(unc_qr))  deallocate(unc_qr)
