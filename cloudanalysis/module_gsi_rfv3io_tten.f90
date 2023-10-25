@@ -27,6 +27,7 @@ module gsi_rfv3io_tten_mod
       character(len=:),allocatable :: ak_bk     !='fv3_akbk'
       character(len=:),allocatable :: dynvars   !='fv3_dynvars'
       character(len=:),allocatable :: tracers   !='fv3_tracer'
+      character(len=:),allocatable :: tracers_unc   !='fv3_tracer_unc'
       character(len=:),allocatable :: sfcdata   !='fv3_sfcdata'
       character(len=:),allocatable :: phydata   !='fv3_phydata'
       character(len=:),allocatable :: couplerres!='coupler.res'
@@ -62,12 +63,12 @@ module gsi_rfv3io_tten_mod
 contains
 
   subroutine fv3regfilename_init(this,grid_spec_input,ak_bk_input,dynvars_input,&
-                      tracers_input,sfcdata_input,phydata_input,couplerres_input)
+                      tracers_input,tracers_unc_input,sfcdata_input,phydata_input,couplerres_input)
   implicit None
   class(type_fv3regfilenameg),intent(inout):: this
 
   character(*),optional :: grid_spec_input,ak_bk_input,dynvars_input, &
-                      tracers_input,sfcdata_input,phydata_input,couplerres_input
+                      tracers_input,tracers_unc_input,sfcdata_input,phydata_input,couplerres_input
 
   if(present(grid_spec_input))then
     this%grid_spec=grid_spec_input
@@ -91,6 +92,12 @@ contains
     this%tracers=tracers_input
   else
     this%tracers='fv3_tracer'
+  endif
+
+  if(present(tracers_unc_input))then
+    this%tracers_unc=tracers_unc_input
+  else
+    this%tracers_unc='fv3_tracer_unc'
   endif
 
   if(present(sfcdata_input))then

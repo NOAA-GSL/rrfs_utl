@@ -44,7 +44,7 @@ module namelist_mod
                             cld_bld_coverage,cld_clr_coverage,&
                             i_cloud_q_innovation,i_ens_mean,DTsTmax,&
                             i_T_Q_adjust,l_saturate_bkCloud,l_rtma3d,i_precip_vertical_check,&
-                            l_qnr_from_qr,n0_rain
+                            l_qnr_from_qr,n0_rain,l_cld_uncertainty
 
 
   implicit none
@@ -71,7 +71,7 @@ module namelist_mod
                                 cld_bld_coverage,cld_clr_coverage,&
                                 i_cloud_q_innovation,i_ens_mean,DTsTmax, &
                                 i_T_Q_adjust,l_saturate_bkCloud,l_rtma3d,i_precip_vertical_check,&
-                                l_qnr_from_qr,n0_rain
+                                l_qnr_from_qr,n0_rain,l_cld_uncertainty
 
     integer :: ios
     integer :: iyear,imonth,iday,ihour,iminute,isecond
