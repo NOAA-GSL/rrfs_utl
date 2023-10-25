@@ -184,6 +184,8 @@ module rapidrefresh_cldsurf_mod
 !      n0_rain         - intercept parameter (m**-4) for raindrop size distribution
 !      r_cloudfrac_threshold  - real, threshold of 1st guess cloud to do cloud building
 !                           = 0.45 default
+!      l_cld_uncertainty   -  flag (logical) to generate file of cloud hydrometeor uncertainty
+!                         .false. = do not generate file (default)
 !
 ! attributes:
 !   language: f90
@@ -258,6 +260,7 @@ module rapidrefresh_cldsurf_mod
   public :: l_qnr_from_qr
   public :: n0_rain
   public :: r_cloudfrac_threshold
+  public :: l_cld_uncertainty
 
   logical l_hydrometeor_bkio
   real(r_kind)  dfi_radar_latent_heat_time_period
@@ -319,6 +322,7 @@ module rapidrefresh_cldsurf_mod
   logical              l_qnr_from_qr
   real(r_kind)         n0_rain
   real(r_kind)         r_cloudfrac_threshold
+  logical              l_cld_uncertainty
 
 contains
 
@@ -430,6 +434,7 @@ contains
     l_qnr_from_qr = .false.
     n0_rain = 100000000.0_r_kind          ! in m**-4; default value assumes smaller drops than in M-P distribution
     r_cloudfrac_threshold = 0.45_r_kind               ! threshold for 1st guess cloud fraction to use cloud building
+    l_cld_uncertainty = .false.                       ! flag to generate hydrometeor uncertainty file (default FALSE)
 
     return
   end subroutine init_rapidrefresh_cldsurf
