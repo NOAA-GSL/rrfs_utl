@@ -7,15 +7,16 @@ set(CMAKE_Fortran_COMPILER ifort)
 # Set compiler flags
 set(FFLAGS "-fopenmp")
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${FFLAGS}")
+set(CFLAGS "-std=c99")
 
 # Add the source file
 add_library(raymond MODULE raymond.f)
 
-# Link any necessary libraries
-target_link_libraries(raymond PRIVATE iomp5)
-
 # Set the output name of the module
 set_target_properties(raymond PROPERTIES OUTPUT_NAME remap)
+
+# Link any necessary libraries
+target_link_libraries(raymond PRIVATE iomp5)
 
 # Specify the build directory for f2py
 set(F2PY_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -33,3 +34,16 @@ execute_process(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     RESULT_VARIABLE F2PY_RESULT
 )
+
+# Generate a list of files matching the pattern
+file(GLOB RAYMOND_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*cpython*.so")
+
+# Install each file individually
+foreach(FILE ${RAYMOND_FILES})
+    get_filename_component(FILENAME ${FILE} NAME)
+    install(
+        FILES ${FILE}
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RENAME ${FILENAME}
+    )
+endforeach()

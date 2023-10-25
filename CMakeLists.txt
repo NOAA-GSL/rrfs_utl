@@ -76,4 +76,5 @@ add_subdirectory(FV3_ensmean_recenter)
 add_subdirectory(bufrsnd)
 add_subdirectory(rtma_minmaxtrh)
 add_subdirectory(pm)
+add_subdirectory(blending)
 

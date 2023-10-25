@@ -34,3 +34,16 @@ execute_process(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     RESULT_VARIABLE F2PY_RESULT
 )
+
+# Generate a list of files matching the pattern
+file(GLOB REMAP_DWINDS_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*cpython*.so")
+
+# Install each file individually
+foreach(FILE ${REMAP_DWINDS_FILES})
+    get_filename_component(FILENAME ${FILE} NAME)
+    install(
+        FILES ${FILE}
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RENAME ${FILENAME}
+    )
+endforeach()

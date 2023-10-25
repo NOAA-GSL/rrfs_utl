@@ -34,3 +34,16 @@ execute_process(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     RESULT_VARIABLE F2PY_RESULT
 )
+
+# Generate a list of files matching the pattern
+file(GLOB CHGRES_WINDS_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*cpython*.so")
+
+# Install each file individually
+foreach(FILE ${CHGRES_WINDS_FILES})
+    get_filename_component(FILENAME ${FILE} NAME)
+    install(
+        FILES ${FILE}
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RENAME ${FILENAME}
+    )
+endforeach()
