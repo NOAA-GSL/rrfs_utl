@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 project(chgres_winds)
 
-#set(CFLAGS "-std=c99")
 # Find the path to libiomp5.so
 find_library(LIBIOMP5_PATH NAMES libiomp5.so)
 set(FCODE ${CMAKE_CURRENT_SOURCE_DIR}/chgres_winds.f90)
@@ -13,4 +12,6 @@ execute_process(
     RESULT_VARIABLE F2PY_RESULT
 )
 
-install(SCRIPT "installSO.CMake") 
+#install chgres_winds.so
+file(GLOB_RECURSE SOFILE "${CMAKE_CURRENT_BINARY_DIR}/*chgres_winds*.so")
+install(FILES ${SOFILE} DESTINATION ${CMAKE_INSTALL_LIBDIR} RENAME chgres_winds.so)

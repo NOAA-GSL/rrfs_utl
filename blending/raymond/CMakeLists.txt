@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 project(raymond)
 
-#set(CFLAGS "-std=c99")
 set(FCODE ${CMAKE_CURRENT_SOURCE_DIR}/raymond.f)
 
 # Compile the Fortran code using f2py
@@ -11,4 +10,6 @@ execute_process(
     RESULT_VARIABLE F2PY_RESULT
 )
 
-install(SCRIPT "installSO.CMake")
+#install raymond.so
+file(GLOB_RECURSE SOFILE "${CMAKE_CURRENT_BINARY_DIR}/*raymond*.so")
+install(FILES ${SOFILE} DESTINATION ${CMAKE_INSTALL_LIBDIR} RENAME raymond.so)
