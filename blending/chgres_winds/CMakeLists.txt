@@ -14,4 +14,4 @@ execute_process(
 
 #install chgres_winds.so
 file(GLOB_RECURSE SOFILE "${CMAKE_CURRENT_BINARY_DIR}/*chgres_winds*.so")
-install(FILES ${SOFILE} DESTINATION ${CMAKE_INSTALL_LIBDIR} RENAME chgres_winds.so)
+install(FILES ${SOFILE} DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME chgres_winds.so)

@@ -14,4 +14,4 @@ execute_process(
 
 #install remap_dwinds.so
 file(GLOB_RECURSE SOFILE "${CMAKE_CURRENT_BINARY_DIR}/*remap_dwinds*.so")
-install(FILES ${SOFILE} DESTINATION ${CMAKE_INSTALL_LIBDIR} RENAME remap_dwinds.so)
+install(FILES ${SOFILE} DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME remap_dwinds.so)

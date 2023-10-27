@@ -12,4 +12,4 @@ execute_process(
 
 #install raymond.so
 file(GLOB_RECURSE SOFILE "${CMAKE_CURRENT_BINARY_DIR}/*raymond*.so")
-install(FILES ${SOFILE} DESTINATION ${CMAKE_INSTALL_LIBDIR} RENAME raymond.so)
+install(FILES ${SOFILE} DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME raymond.so)
