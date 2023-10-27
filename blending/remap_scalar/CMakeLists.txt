@@ -14,4 +14,4 @@ execute_process(
 
 #install remap_scalar.so
 file(GLOB_RECURSE SOFILE "${CMAKE_CURRENT_BINARY_DIR}/*remap_scalar*.so")
-install(FILES ${SOFILE} DESTINATION ${CMAKE_INSTALL_LIBDIR} RENAME remap_scalar.so)
+install(FILES ${SOFILE} DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME remap_scalar.so)
