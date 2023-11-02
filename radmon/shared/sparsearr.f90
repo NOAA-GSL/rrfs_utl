@@ -24,7 +24,7 @@ module sparsearr
 !
 !$$$
 
-use kinds, only: r_single, r_kind, i_kind
+use kinds_radmon, only: r_single, r_kind, i_kind
 implicit none
 private
 

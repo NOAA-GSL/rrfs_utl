@@ -4,7 +4,7 @@
 
 program bcor
   use read_diag
-  use kinds, only : i_kind
+  use kinds_radmon, only : i_kind
 
   implicit none
   integer ntype,mregion,surf_nregion,max_surf_region

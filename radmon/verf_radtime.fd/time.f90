@@ -13,7 +13,7 @@ program time
   use bad_penalty
   use bad_chan
   use valid 
-  use kinds, only: i_kind
+  use kinds_radmon, only: i_kind
 
   implicit none
   integer ntype,mregion,surf_nregion,max_surf_region

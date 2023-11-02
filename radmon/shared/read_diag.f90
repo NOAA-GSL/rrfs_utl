@@ -36,7 +36,7 @@
 
 module read_diag
 
-  use kinds, only:  i_kind,r_single,r_kind
+  use kinds_radmon, only:  i_kind,r_single,r_kind
   use sparsearr, only: sparr, sparr2, readarray, assignment(=), delete
   use nc_diag_read_mod, only: nc_diag_read_get_var,  nc_diag_read_get_global_attr
   use nc_diag_read_mod, only: nc_diag_read_get_dim

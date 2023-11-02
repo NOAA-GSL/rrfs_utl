@@ -1,7 +1,7 @@
 program bcoef
 
   use read_diag
-  use kinds, only: r_kind,i_kind,r_quad
+  use kinds_radmon, only: r_kind,i_kind,r_quad
 
   implicit none
   integer ntype,maxpred

@@ -6,7 +6,6 @@ list(APPEND SRCS
 
 add_executable(radmon_bcoef.x ${SRCS})
 
-#include_directories( /scratch1/BMC/wrfruc/mhu/rrfs/v0.7.1/ufs-srweather-app/include )
 target_link_libraries(radmon_bcoef.x PRIVATE ${PROJECT_NAME}::radmonlib)
 target_link_libraries(radmon_bcoef.x PRIVATE NetCDF::NetCDF_Fortran)
 target_link_libraries(radmon_bcoef.x PRIVATE ncdiag::ncdiag_serial)
