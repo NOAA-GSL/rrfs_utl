@@ -9,7 +9,6 @@ add_library(radmonlib STATIC ${SRCS})
 add_library(${PROJECT_NAME}::radmonlib ALIAS radmonlib)
 
 target_compile_definitions(radmonlib PRIVATE "_REAL8_")
-#target_link_libraries(radmonlib PUBLIC ${PROJECT_NAME}::ncio)
 target_link_libraries(radmonlib PRIVATE NetCDF::NetCDF_Fortran)
 target_link_libraries(radmonlib PRIVATE ncdiag::ncdiag_serial)
 set_target_properties(radmonlib PROPERTIES Fortran_MODULE_DIRECTORY "${module_dir}")
