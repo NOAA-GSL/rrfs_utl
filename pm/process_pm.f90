@@ -5,9 +5,9 @@ program pmbufr
  integer, parameter :: mxmn=35, mxlv=255, maxcnt=5000, pm_limit=-15
  integer :: ireadmg,ireadsb,idate,nmsg,ntb,nsubset,nlvl
  integer :: i,j,k,NARG,iret_hdr,iret_ob,interval
- integer :: dhr,iret_hdr1,iret_ob1,cnt
+ integer :: dhr,iret_hdr1,iret_ob1,cnt,ios
  integer :: unit_table,unit_out,unit_site,unit_var,nt,pm_len
-
+ integer(8) :: z_sid
  character(80):: hdstr='SID XOB YOB DHR TYP T29 SQN PROCN RPT CAT TYPO TSIG'
  character(80):: obstr='TPHR QCIND COPOPM'
  character(8) :: subset,c_sid
@@ -100,6 +100,13 @@ program pmbufr
 
     str=adjustl(sta_id(j))
     c_sid=str(2:9)
+    read(c_sid,'(z8)',iostat=ios) z_sid
+    if (ios/=0) then 
+      c_sid="9999999"
+      read(c_sid,'(z8)',iostat=ios) z_sid
+      if (ios/=0) write (*,'(a,a25)') 'wrong station_id ', str
+    end if  
+    
     hdr(1)=rstation_id; hdr(2)=lon; hdr(3)=lat; hdr(4)=0.0_8; hdr(5)=102; hdr(10)=6 ! Single level report
 
 
@@ -109,15 +116,15 @@ program pmbufr
     if (pm > 0.0) then
       obs(2,nlvl)=0.0_8
       obs(3,nlvl)=pm*1e-9_8  ! "UG/M3" to KG/M3
-      write(*,'(a25,i7,a12,3f10.2,f15.12)') 'goodObs: pm>0',j,c_sid,lat,lon,obs(2,nlvl),obs(3,nlvl)
+      write(*,'(a25,i7,3x,2a14,3f10.2,f15.12)') 'goodObs: pm>0',j,str,c_sid,lat,lon,obs(2,nlvl),obs(3,nlvl)
     else if (pm > pm_limit) then
       obs(2,nlvl)=0.0_8
       obs(3,nlvl)=0.0_8
-      write(*,'(a25,i7,a12,3f10.2,f15.12)') 'limitObs: -15<pm<0',j,c_sid,lat,lon,obs(2,nlvl),obs(3,nlvl)
+      write(*,'(a25,i7,3x,2a14,3f10.2,f15.12)') 'limitObs: -15<pm<0',j,str,c_sid,lat,lon,obs(2,nlvl),obs(3,nlvl)
     else
       obs(2,nlvl)=bmiss
       obs(3,nlvl)=bmiss
-      write(*,'(a25,i7,a12,3f10.2,f15.12)') 'badObs: pm<-15',j,c_sid,lat,lon,obs(2,nlvl),obs(3,nlvl)
+      write(*,'(a25,i7,3x,2a14,3f10.2,f15.12)') 'badObs: pm<-15',j,str,c_sid,lat,lon,obs(2,nlvl),obs(3,nlvl)
     endif
 
     ! only encode hdr and obs, no err and qc since these are not defined in pm.bufrtable 
