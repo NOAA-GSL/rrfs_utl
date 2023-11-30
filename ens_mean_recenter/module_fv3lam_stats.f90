@@ -78,7 +78,7 @@ contains
     class(ncfile_stat) :: this
 !
     integer :: i,n1,n2
-    character(len=200) :: varlistlocal
+    character(len=500) :: varlistlocal
 !
     this%numfiles=numfiles
     this%numvar=0
