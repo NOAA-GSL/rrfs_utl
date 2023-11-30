@@ -43,12 +43,11 @@ PROGRAM ens_mean_recenter
 ! namelist
   integer, parameter    :: max_num_file = 10
   integer, parameter    :: filename_len=200
-  integer, parameter    :: varlist_len=500
   integer :: fv3_io_layout_y
   character(len=filename_len)  :: filebase
   character(len=filename_len)  :: filetail(max_num_file)
   integer                      :: numvar(max_num_file)
-  character(len=varlist_len)  :: varlist(max_num_file)
+  character(len=500)  :: varlist(max_num_file)
   integer    :: ens_size
   logical    :: l_write_mean             ! if write ensmeble mean
   logical    :: l_recenter               ! if recenter
