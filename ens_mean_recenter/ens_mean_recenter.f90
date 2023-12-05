@@ -77,7 +77,6 @@ PROGRAM ens_mean_recenter
   real(8),allocatable :: tmpd3r8(:,:,:)
 
   real(8),allocatable :: d3r8_mean(:,:,:)
-  real(4),allocatable :: d3r8_pert(:,:,:,:)
   real(4),allocatable :: d4r4(:,:,:,:)
 
   integer :: startloc(3)
@@ -305,12 +304,9 @@ PROGRAM ens_mean_recenter
         endif
 
      if(mype==0) write(*,*) 'calculate ensemble perturbations and add it to base state'
-     allocate(d3r8_pert(mype_nx,mype_ny,mype_lbegin:mype_lend,ens_size))
-     d3r8_pert=0.0_8
      do iens=1,ens_size
         do ilev=mype_lbegin,mype_lend
-           d3r8_pert(:,:,ilev,iens)=d4r4(:,:,ilev,iens)-d3r8_mean(:,:,ilev)
-           d4r4(:,:,ilev,iens)=d4r4(:,:,ilev,0)+d3r8_pert(:,:,ilev,iens)
+           d4r4(:,:,ilev,iens)=d4r4(:,:,ilev,iens)-d3r8_mean(:,:,ilev)+d4r4(:,:,ilev,0)
            if(l_positive) d4r4(:,:,ilev,iens)=max(d4r4(:,:,ilev,iens), 0.0)
         enddo
      enddo
@@ -352,7 +348,6 @@ PROGRAM ens_mean_recenter
 
 ! release memory
      deallocate(d3r8_mean)
-     deallocate(d3r8_pert)
      deallocate(d4r4)
 
      if(mype_vartype==5) then
