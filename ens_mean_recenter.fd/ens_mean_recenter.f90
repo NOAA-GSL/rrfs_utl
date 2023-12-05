@@ -51,11 +51,10 @@ PROGRAM ens_mean_recenter
   integer    :: ens_size
   logical    :: l_write_mean             ! if write ensmeble mean
   logical    :: l_recenter               ! if recenter
-  real       :: beta
 
   namelist/setup/ ens_size,fv3_io_layout_y,l_write_mean,l_recenter, &
                   filebase,filetail,&
-                  numvar,varlist,beta
+                  numvar,varlist
 
   character (len=filename_len)   :: directory                 ! General filename stub.
   character (len=filename_len)   :: filename                  ! General filename stub.
@@ -110,7 +109,6 @@ PROGRAM ens_mean_recenter
   filebase='fv3sar_tile1'
   l_write_mean=.true.
   l_recenter=.false.
-  beta=1.0
 
   inquire(file='namelist.ens', EXIST=ifexist )
   if(ifexist) then
@@ -293,24 +291,25 @@ PROGRAM ens_mean_recenter
 ! recenter  
 !
      if(l_recenter) then
-! get delta 
+! get ensemble perturbations and then add it to the base state
         l_positive=.false.
         if( trim(mype_varname)=="ref_f3d" .or. trim(mype_varname)=="sphum" .or.  &
            trim(mype_varname)=="liq_wat" .or. trim(mype_varname)=="snowwat" .or. & 
            trim(mype_varname)=="rainwat" .or. trim(mype_varname)=="ice_wat" .or.&
+           trim(mype_varname)=="o3mr" .or. trim(mype_varname)=="q2m" .or.&
+           trim(mype_varname)=="smois" .or. trim(mype_varname)=="water_nc" .or.&
+           trim(mype_varname)=="rain_nc" .or. trim(mype_varname)=="ice_nc" .or.&
            trim(mype_varname)=="graupel" )then
            l_positive=.true.
         endif
 
+     if(mype==0) write(*,*) 'calculate ensemble perturbations and add it to base state'
+     do iens=1,ens_size
         do ilev=mype_lbegin,mype_lend
-           d3r8_mean(:,:,ilev)=d4r4(:,:,ilev,0)-d3r8_mean(:,:,ilev)
+           d4r4(:,:,ilev,iens)=d4r4(:,:,ilev,iens)-d3r8_mean(:,:,ilev)+d4r4(:,:,ilev,0)
+           if(l_positive) d4r4(:,:,ilev,iens)=max(d4r4(:,:,ilev,iens), 0.0)
         enddo
-        do iens=1,ens_size
-           do ilev=mype_lbegin,mype_lend
-              d4r4(:,:,ilev,iens)=d4r4(:,:,ilev,iens)+d3r8_mean(:,:,ilev)
-              if(l_positive) d4r4(:,:,ilev,iens)=max(d4r4(:,:,ilev,iens), 0.0)
-           enddo
-        enddo
+     enddo
 !
 !  write to each member
 !
