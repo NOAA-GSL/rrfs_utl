@@ -994,24 +994,71 @@ program cloudanalysis
 
      end if 
 
-  elseif(l_precip_clear_only) then !only clear for HRRRE
-     do k=1,nsig
-        do j=1,lat2
-           do i=1,lon2
-              if( ref_mos_3d(i,j,k) <= zero .and. ref_mos_3d(i,j,k) > -100.0_r_kind ) then
-                 rain_3d(i,j,k) = zero
-                 nrain_3d(i,j,k) = zero
-                 snow_3d(i,j,k) = zero
-                 graupel_3d(i,j,k) = zero
-              else 
+! The "l_precip_clear_only" option is used when the nonvar cloud analysis follows "direct" EnVar or EnKF assimilation of
+! radar-reflectivity observations.  In this case, we typically trust the hydrometeor analysis from the reflectivity data
+! assimilation and use the nonvar cloud analysis mainly for clearing spurious hydrometeors.
+! The RRFSv1 is often deficient with snowfall in the 0-1 h forecast.  Therefore, hydrometeor building in cold conditions
+! has been added (as of 28 November 2023) to help improve this situation.
+  elseif(l_precip_clear_only) then
+     qrlimit=3.0_r_kind*0.001_r_kind
+     do j=1,lat2
+        do i=1,lon2
+           refmax=-999.0_r_kind
+           imaxlvl_ref=0
+           do k=1,nsig
+              if(ref_mos_3d(i,j,k) > refmax) then
+                 imaxlvl_ref=k
+                 refmax=ref_mos_3d(i,j,k)
+              endif
+              rain_3d(i,j,k)=max(rain_3d(i,j,k)*0.001_r_kind,zero)
+              snow_3d(i,j,k)=max(snow_3d(i,j,k)*0.001_r_kind,zero)
+           enddo
+
+           tsfc=t_bk(i,j,1)*(p_bk(i,j,1)/h1000)**rd_over_cp - 273.15_r_kind
+
+           if( (refmax > 0) .and. (imaxlvl_ref > 0) .and. (imaxlvl_ref < nsig) .and. (tsfc < r_cleanSnow_WarmTs_threshold) ) then
+              ! add snow on cold sfc
+              do k=1,nsig
+                 snowtemp=snow_3d(i,j,k)
                  rain_3d(i,j,k) = ges_qr(i,j,k)
                  nrain_3d(i,j,k)= ges_qnr(i,j,k)
                  snow_3d(i,j,k) = ges_qs(i,j,k)
                  graupel_3d(i,j,k) = ges_qg(i,j,k)
-              endif
-           enddo
+                 if(ref_mos_3d(i,j,k) > zero ) then
+                    snowtemp = MIN(max(snowtemp,ges_qs(i,j,k)),qrlimit)
+                    snowadd = max(snowtemp - snow_3d(i,j,k),zero)
+                    snow_3d(i,j,k) = snowtemp
+                    raintemp=rain_3d(i,j,k) + graupel_3d(i,j,k)
+                    if(raintemp > snowadd ) then
+                       if(raintemp > 1.0e-6_r_kind) then
+                          ratio2=1.0_r_kind - snowadd/raintemp
+                          rain_3d(i,j,k) = rain_3d(i,j,k) * ratio2
+                          graupel_3d(i,j,k) = graupel_3d(i,j,k) * ratio2
+                       endif
+                    else
+                       rain_3d(i,j,k) = 0.0_r_kind
+                       graupel_3d(i,j,k) = 0.0_r_kind
+                    endif
+                 endif
+              enddo
+           else
+              do k=1,nsig
+                 if( ref_mos_3d(i,j,k) <= zero .and. ref_mos_3d(i,j,k) > -100.0_r_kind ) then
+                    rain_3d(i,j,k) = zero
+                    nrain_3d(i,j,k) = zero
+                    snow_3d(i,j,k) = zero
+                    graupel_3d(i,j,k) = zero
+                 else 
+                    rain_3d(i,j,k) = ges_qr(i,j,k)
+                    nrain_3d(i,j,k)= ges_qnr(i,j,k)
+                    snow_3d(i,j,k) = ges_qs(i,j,k)
+                    graupel_3d(i,j,k) = ges_qg(i,j,k)
+                 endif
+              enddo
+           endif
         enddo
      enddo
+
   else  ! hydrometeor anlysis for RAP forecast
      qrlimit=3.0_r_kind*0.001_r_kind
      qrlimit_lightpcp=1.0_r_kind*0.001_r_kind
