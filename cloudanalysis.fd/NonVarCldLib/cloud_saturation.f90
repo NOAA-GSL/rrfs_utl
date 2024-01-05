@@ -267,7 +267,10 @@ function ruc_saturation(Temp,pressure)
 !
 ! PROGRAM HISTORY LOG:
 !    2011-11-28  Hu  Initial 
-!
+!    2024-01-05  Hu  Use funtion RSLF and RSIF from fv3 model
+!                 (module_mp_thompson.F90) to caculate 
+!                 the liquid saturation vapor mixingt ratio and
+!                 the ice saturation vapor mixing ratio
 !
 !   input argument list:
 !     pressure    - background pressure  (hPa)
@@ -291,37 +294,43 @@ function ruc_saturation(Temp,pressure)
 !
 !_____________________________________________________________________
 
-  use constants, only: rd_over_cp, h1000,one,zero
+  use constants, only: one,zero
   use kinds, only: r_single,i_kind, r_kind
 !
     implicit none
     real(r_single) :: ruc_saturation
+    real           :: RSLF,RSIF
 
     REAL(r_kind),  intent(in) :: Temp       ! temperature in K
     real(r_single),intent(in) :: pressure   ! pressure  (hpa)
+    real :: temp4,press4
 
-    real(r_kind) ::  es0_p
-    parameter (es0_p=6.1121_r_kind)     ! saturation vapor pressure (mb)
-    real(r_kind) SVP1,SVP2,SVP3
-    data SVP1,SVP2,SVP3/es0_p,17.67_r_kind,29.65_r_kind/
+!ruc    real(r_kind) ::  es0_p
+!ruc    parameter (es0_p=6.1121_r_kind)     ! saturation vapor pressure (mb)
+!ruc    real(r_kind) SVP1,SVP2,SVP3
+!ruc    data SVP1,SVP2,SVP3/es0_p,17.67_r_kind,29.65_r_kind/
 
     real(r_kind) :: temp_qvis1, temp_qvis2
     data temp_qvis1, temp_qvis2 /268.15_r_kind, 263.15_r_kind/
 
-    REAL(r_kind) :: evs, qvs1, eis, qvi1, watwgt
+!ruc    REAL(r_kind) :: evs, qvs1, eis, qvi1, watwgt
+    REAL(r_kind) :: qvs1, qvi1, watwgt
 !
-
+     temp4=Temp            ! convert to real
+     press4=pressure*100.0 ! covert to Pa
 !
 ! evs, eis in mb
 !   For this part, must use the water/ice saturation as f(temperature)
-        evs = svp1*exp(SVP2*(Temp-273.15_r_kind)/(Temp-SVP3))
-        qvs1 = 0.62198_r_kind*evs/(pressure-evs)  ! qvs1 is mixing ratio kg/kg
+!ruc        evs = svp1*exp(SVP2*(Temp-273.15_r_kind)/(Temp-SVP3))
+!ruc        qvs1 = 0.62198_r_kind*evs/(pressure-evs)  ! qvs1 is mixing ratio kg/kg
+        qvs1 = RSLF(press4,temp4)
                                                      !  so no need next line
 !      qvs1 = qvs1/(1.0-qvs1)
 !   Get ice saturation and weighted ice/water saturation ready to go
 !    for ensuring cloud saturation below.
-        eis = svp1 *exp(22.514_r_kind - 6.15e3_r_kind/Temp)
-        qvi1 = 0.62198_r_kind*eis/(pressure-eis)  ! qvi1 is mixing ratio kg/kg,
+!ruc        eis = svp1 *exp(22.514_r_kind - 6.15e3_r_kind/Temp)
+!ruc        qvi1 = 0.62198_r_kind*eis/(pressure-eis)  ! qvi1 is mixing ratio kg/kg,
+        qvi1 = RSIF(press4,temp4)
                                                      ! so no need next line
 !      qvi1 = qvi1/(1.0-qvi1)
 !      watwgt = max(0.,min(1.,(Temp-233.15)/(263.15-233.15)))
@@ -333,3 +342,72 @@ function ruc_saturation(Temp,pressure)
         ruc_saturation= (watwgt*qvs1 + (one-watwgt)*qvi1)  !  kg/kg
 !
 end function ruc_saturation
+
+!+---+-----------------------------------------------------------------+
+!>\ingroup aathompson
+!! THIS FUNCTION CALCULATES THE LIQUID SATURATION VAPOR MIXING RATIO AS
+!! A FUNCTION OF TEMPERATURE AND PRESSURE
+      REAL FUNCTION RSLF(P,T)
+
+      IMPLICIT NONE
+      REAL, INTENT(IN):: P, T
+      REAL:: ESL,X
+      REAL, PARAMETER:: C0= .611583699E03
+      REAL, PARAMETER:: C1= .444606896E02
+      REAL, PARAMETER:: C2= .143177157E01
+      REAL, PARAMETER:: C3= .264224321E-1
+      REAL, PARAMETER:: C4= .299291081E-3
+      REAL, PARAMETER:: C5= .203154182E-5
+      REAL, PARAMETER:: C6= .702620698E-8
+      REAL, PARAMETER:: C7= .379534310E-11
+      REAL, PARAMETER:: C8=-.321582393E-13
+
+      X=MAX(-80.,T-273.16)
+
+!      ESL=612.2*EXP(17.67*X/(T-29.65))
+      ESL=C0+X*(C1+X*(C2+X*(C3+X*(C4+X*(C5+X*(C6+X*(C7+X*C8)))))))
+      ESL=MIN(ESL, P*0.15)        ! Even with P=1050mb and T=55C, the sat. vap.
+!                                   pres only contributes to ~15% of total pres.
+      RSLF=.622*ESL/max(1.e-4,(P-ESL))
+
+!    ALTERNATIVE
+!  ; Source: Murphy and Koop, Review of the vapour pressure of ice and
+!             supercooled water for atmospheric applications, Q. J. R.
+!             Meteorol. Soc (2005), 131, pp. 1539-1565.
+!    ESL = EXP(54.842763 - 6763.22 / T - 4.210 * ALOG(T) + 0.000367 * T
+!        + TANH(0.0415 * (T - 218.8)) * (53.878 - 1331.22
+!        / T - 9.44523 * ALOG(T) + 0.014025 * T))
+
+      END FUNCTION RSLF
+!+---+-----------------------------------------------------------------+
+!>\ingroup aathompson
+!! THIS FUNCTION CALCULATES THE ICE SATURATION VAPOR MIXING RATIO AS A
+!! FUNCTION OF TEMPERATURE AND PRESSURE
+      REAL FUNCTION RSIF(P,T)
+
+      IMPLICIT NONE
+      REAL, INTENT(IN):: P, T
+      REAL:: ESI,X
+      REAL, PARAMETER:: C0= .609868993E03
+      REAL, PARAMETER:: C1= .499320233E02
+      REAL, PARAMETER:: C2= .184672631E01
+      REAL, PARAMETER:: C3= .402737184E-1
+      REAL, PARAMETER:: C4= .565392987E-3
+      REAL, PARAMETER:: C5= .521693933E-5
+      REAL, PARAMETER:: C6= .307839583E-7
+      REAL, PARAMETER:: C7= .105785160E-9
+      REAL, PARAMETER:: C8= .161444444E-12
+
+      X=MAX(-80.,T-273.16)
+      ESI=C0+X*(C1+X*(C2+X*(C3+X*(C4+X*(C5+X*(C6+X*(C7+X*C8)))))))
+      ESI=MIN(ESI, P*0.15)
+      RSIF=.622*ESI/max(1.e-4,(P-ESI))
+
+!    ALTERNATIVE
+!  ; Source: Murphy and Koop, Review of the vapour pressure of ice and
+!             supercooled water for atmospheric applications, Q. J. R.
+!             Meteorol. Soc (2005), 131, pp. 1539-1565.
+!     ESI = EXP(9.550426 - 5723.265/T + 3.53068*ALOG(T) - 0.00728332*T)
+
+      END FUNCTION RSIF
+
