@@ -303,7 +303,7 @@ function ruc_saturation(Temp,pressure)
 
     REAL(r_kind),  intent(in) :: Temp       ! temperature in K
     real(r_single),intent(in) :: pressure   ! pressure  (hpa)
-    real :: temp4,press4
+    real :: pressure_pa,temp_real
 
 !ruc    real(r_kind) ::  es0_p
 !ruc    parameter (es0_p=6.1121_r_kind)     ! saturation vapor pressure (mb)
@@ -316,35 +316,35 @@ function ruc_saturation(Temp,pressure)
 !ruc    REAL(r_kind) :: evs, qvs1, eis, qvi1, watwgt
     REAL(r_kind) :: qvs1, qvi1, watwgt
 !
-     temp4=Temp            ! convert to real
-     press4=pressure*100.0 ! covert to Pa
+    temp_real=Temp
+    pressure_pa=pressure*100.0 ! covert to Pa
 !
 ! evs, eis in mb
 !   For this part, must use the water/ice saturation as f(temperature)
 !ruc        evs = svp1*exp(SVP2*(Temp-273.15_r_kind)/(Temp-SVP3))
 !ruc        qvs1 = 0.62198_r_kind*evs/(pressure-evs)  ! qvs1 is mixing ratio kg/kg
-        qvs1 = RSLF(press4,temp4)
+    qvs1 = RSLF(pressure_pa,temp_real)
                                                      !  so no need next line
 !      qvs1 = qvs1/(1.0-qvs1)
 !   Get ice saturation and weighted ice/water saturation ready to go
 !    for ensuring cloud saturation below.
 !ruc        eis = svp1 *exp(22.514_r_kind - 6.15e3_r_kind/Temp)
 !ruc        qvi1 = 0.62198_r_kind*eis/(pressure-eis)  ! qvi1 is mixing ratio kg/kg,
-        qvi1 = RSIF(press4,temp4)
+    qvi1 = RSIF(pressure_pa,temp_real)
                                                      ! so no need next line
 !      qvi1 = qvi1/(1.0-qvi1)
 !      watwgt = max(0.,min(1.,(Temp-233.15)/(263.15-233.15)))
 !      watwgt = max(zero,min(one,(Temp-251.15_r_kind)/&
 !                        (263.15_r_kind-251.15_r_kind)))
 ! ph - 2/7/2012 - use ice mixing ratio only for temp < 263.15
-        watwgt = max(zero,min(one,(Temp-temp_qvis2)/&
+    watwgt = max(zero,min(one,(Temp-temp_qvis2)/&
                               (temp_qvis1-temp_qvis2)))
-        ruc_saturation= (watwgt*qvs1 + (one-watwgt)*qvi1)  !  kg/kg
+    ruc_saturation= (watwgt*qvs1 + (one-watwgt)*qvi1)  !  kg/kg
 !
 end function ruc_saturation
 
 !+---+-----------------------------------------------------------------+
-!>\ingroup aathompson
+!! from aathompson
 !! THIS FUNCTION CALCULATES THE LIQUID SATURATION VAPOR MIXING RATIO AS
 !! A FUNCTION OF TEMPERATURE AND PRESSURE
       REAL FUNCTION RSLF(P,T)
@@ -380,7 +380,7 @@ end function ruc_saturation
 
       END FUNCTION RSLF
 !+---+-----------------------------------------------------------------+
-!>\ingroup aathompson
+!! from aathompson
 !! THIS FUNCTION CALCULATES THE ICE SATURATION VAPOR MIXING RATIO AS A
 !! FUNCTION OF TEMPERATURE AND PRESSURE
       REAL FUNCTION RSIF(P,T)
