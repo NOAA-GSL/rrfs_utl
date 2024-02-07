@@ -109,10 +109,10 @@
         do i=is,ie ! 1:3950
            if(j==js) then
               pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j  )+psd(i,j  ))
-           elseif(j==je+1) then
-              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j-1)+psd(i,j-1))
-           else
+           elseif(j<je+1) then
               pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j-1)+psd(i,j  ))
+           else
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j-1)+psd(i,j-1))
            endif
         enddo
      enddo
@@ -120,9 +120,11 @@
      do k=1,npz+1 ! 1:66
         do i=is,ie ! 1:3950
            if(j==1) then
-              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j  )+Atm_ps(i,j))
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j  )+Atm_ps(i,j  ))
+           elseif(j<je+1) then
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j-1)+Atm_ps(i,j  ))
            else
-              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j-1)+Atm_ps(i,j))
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j-1)+Atm_ps(i,j-1))
            endif
         enddo
      enddo
@@ -143,19 +145,21 @@
         do i=is,ie+1
            if(i==1) then
               pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i  ,j)+psd(i  ,j))
-           elseif(i==ie+1) then
-              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i-1,j)+psd(i-1,j))
-           else
+           elseif(i<ie+1) then
               pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i-1,j)+psd(i  ,j))
+           else
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i-1,j)+psd(i-1,j))
            endif
         enddo
      enddo
      do k=1,npz+1 ! 1:66
         do i=is,ie+1 ! 1:3951
            if(i==1) then
-              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j)+Atm_ps(i,j))
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i  ,j)+Atm_ps(i  ,j))
+           elseif(i<ie+1) then
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i-1,j)+Atm_ps(i  ,j))
            else
-              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i-1,j)+Atm_ps(i,j))
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i-1,j)+Atm_ps(i-1,j))
            endif
         enddo
      enddo
