@@ -1,7 +1,7 @@
  subroutine main(km, npz, ak0, bk0, Atm_ak, Atm_bk, psc, ud, vd, is, ie, js, je, Atm_u, Atm_v, Atm_ps)
  use ISO_FORTRAN_ENV
  use omp_lib
- use, intrinsic :: ieee_arithmetic
+ !use, intrinsic :: ieee_arithmetic
  implicit none
  integer, parameter :: r8_kind = selected_real_kind(15) ! 15 decimal digits
  integer,                          intent(IN)    ::  is       ! 1
@@ -29,84 +29,24 @@
  integer :: i,j,k,itoa
  logical :: no_boundary
 
- real (kind=8) :: NaN
- NaN=IEEE_VALUE(NaN, IEEE_SIGNALING_NAN)
-
- write(6,'("Info: ",6I6)'),is,ie,js,je,npz,km
- Atm_ptop = NaN
- psd = NaN
- qn1 = NaN
- pe0 = NaN
- pe1 = NaN
-
  itoa = km - npz + 1
  Atm_ptop = Atm_ak(1)
 
- write(6,'("Info: psc ",2I6)'),size(psc,1), size(psc,2)
  psd = psc
-
- if(any(isnan(psd))) then
-   write(6,'("Warning: Found some NaNs in psc array before 5000 loop")')
-   do j=js,je+1
-     do i=is,ie
-       if(isnan(psd(i,j))) write(6,'("Error: Found NaN in psd at ",2I6)'),i,j
-     enddo
-   enddo
- endif
-
  !psd = Atm_ps
-
- if(any(isnan(ak0))) then
-   write(6,'("Warning: Found some NaNs in ak0 array before 5000 loop")')
- endif
- if(any(isnan(bk0))) then
-   write(6,'("Warning: Found some NaNs in bk0 array before 5000 loop")')
- endif
- if(any(isnan(psc))) then
-   write(6,'("Warning: Found some NaNs in psc array before 5000 loop")')
- endif
- if(any(isnan(Atm_ak))) then
-   write(6,'("Warning: Found some NaNs in Atm_ak array before 5000 loop")')
- endif
- if(any(isnan(Atm_bk))) then
-   write(6,'("Warning: Found some NaNs in Atm_bk array before 5000 loop")')
- endif
-
- if(any(isnan(Atm_ps))) then
-   write(6,'("Warning: Found some NaNs in Atm_ps array before 5000 loop")')
- endif
-
- if(any(isnan(ud))) then
-   write(6,'("Warning: Found some NaNs in ud array before 5000 loop")')
- endif
- if(any(isnan(vd))) then
-   write(6,'("Warning: Found some NaNs in vd array before 5000 loop")')
- endif
-
- if(any(isnan(Atm_u))) then
-   write(6,'("Warning: Found some NaNs in Atm_u array before 5000 loop")')
- endif
-
- if(any(isnan(Atm_v))) then
-   write(6,'("Warning: Found some NaNs in Atm_v array before 5000 loop")')
- endif
-
- write(6,'("Info: ak ",2I6)'),size(ak0), size(Atm_ak) ! 67    66
- write(6,'("Info: bk ",2I6)'),size(bk0), size(Atm_bk) ! 67    66
-
 
 !$OMP parallel do default(none) &
 !$OMP                          shared(is,ie,js,je,npz,km,ak0,bk0,psc,psd,ud,vd,Atm_ak, &
 !$OMP                                 Atm_bk,Atm_u,Atm_v,Atm_ps,Atm_ptop) &
 !$OMP                          private(pe1,pe0,qn1)
 
-  do 5000 j=js,je+1 ! 1:2701
+  do 5000 j=js,je+1
 !------
 ! map u
 !------
      !pressure at layer edges (from model top to bottom surface) in the original vertical coordinate
-     do k=1,km+1 ! 1:67
-        do i=is,ie ! 1:3950
+     do k=1,km+1
+        do i=is,ie
            if(j==js) then
               pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j  )+psd(i,j  ))
            elseif(j<je+1) then
@@ -117,8 +57,8 @@
         enddo
      enddo
      !pressure at layer edges (from model top to bottom surface) in the new vertical coordinate
-     do k=1,npz+1 ! 1:66
-        do i=is,ie ! 1:3950
+     do k=1,npz+1
+        do i=is,ie
            if(j==1) then
               pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j  )+Atm_ps(i,j  ))
            elseif(j<je+1) then
@@ -130,8 +70,8 @@
      enddo
      call mappm(km, pe0(is:ie,1:km+1), ud(is:ie,j,1:km), npz, pe1(is:ie,1:npz+1),   &
                 qn1(is:ie,1:npz), is,ie, -1, 8, Atm_ptop)
-     do k=1,npz ! 1:65
-        do i=is,ie ! 1:3950
+     do k=1,npz
+        do i=is,ie
            Atm_u(i,j,k) = qn1(i,k)
         enddo
      enddo
@@ -139,7 +79,7 @@
 !------
 ! map v
 !------
-     if ( j/=(je+1) ) then ! 1:2700
+     if ( j/=(je+1) ) then
 
      do k=1,km+1
         do i=is,ie+1
@@ -152,8 +92,8 @@
            endif
         enddo
      enddo
-     do k=1,npz+1 ! 1:66
-        do i=is,ie+1 ! 1:3951
+     do k=1,npz+1
+        do i=is,ie+1
            if(i==1) then
               pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i  ,j)+Atm_ps(i  ,j))
            elseif(i<ie+1) then
@@ -165,8 +105,8 @@
      enddo
      call mappm(km, pe0(is:ie+1,1:km+1), vd(is:ie+1,j,1:km), npz, pe1(is:ie+1,1:npz+1),  &
                 qn1(is:ie+1,1:npz), is,ie+1, -1, 8, Atm_ptop)
-     do k=1,npz ! 1:65
-        do i=is,ie+1 ! 1:3951
+     do k=1,npz
+        do i=is,ie+1
            Atm_v(i,j,k) = qn1(i,k)
         enddo
      enddo
@@ -174,28 +114,6 @@
      endif
 
    5000 continue
-
-  if(any(isnan(Atm_u))) then
-    write(6,'("Warning: Found some NaNs in Atm_u array after 5000 loop",3I6)'),size(Atm_u,1),size(Atm_u,2),size(Atm_u,3)
-    do k=1,npz !size(Atm_u,3)
-      do j=js,je+1
-        do i=is,ie
-          if(isnan(Atm_u(i,j,k))) write(6,'("Error: Found NaN in Atm_u at ",3I6)'),i,j,k
-        enddo
-      enddo
-    enddo
-  endif
-
-  if(any(isnan(Atm_v))) then
-    write(6,'("Warning: Found some NaNs in Atm_v array after 5000 loop",3I6)'),size(Atm_v,1),size(Atm_v,2),size(Atm_v,3)
-    do k=1,npz !size(Atm_v,3)
-      do j=js,je
-        do i=is,ie+1
-          if(isnan(Atm_u(i,j,k))) write(6,'("Error: Found NaN in Atm_v at ",3I6)'),i,j,k
-        enddo
-      enddo
-    enddo
-  endif
 
  end subroutine main
 
