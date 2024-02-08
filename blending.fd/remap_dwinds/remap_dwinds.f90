@@ -4,24 +4,27 @@
  !use, intrinsic :: ieee_arithmetic
  implicit none
  integer, parameter :: r8_kind = selected_real_kind(15) ! 15 decimal digits
- integer,                          intent(IN)    ::  is, ie, js, je
- integer,                          intent(IN)    ::  km       ! 128
- integer,                          intent(IN)    ::  npz      ! 127
- real(kind=8), dimension(:),       intent(IN)    ::  ak0      ! (129,)
- real(kind=8), dimension(:),       intent(IN)    ::  bk0      ! (129,)
- real(kind=8), dimension(:,:),     intent(IN)    ::  psc      ! (768, 768)
- real(kind=8), dimension(:,:),     intent(IN)    ::  Atm_ps   !
- real(kind=8), dimension(:,:,:),   intent(IN)    ::  ud
- real(kind=8), dimension(:,:,:),   intent(IN)    ::  vd
- real(kind=8), dimension(:),       intent(IN)    ::  Atm_ak   ! (128,)
- real(kind=8), dimension(:),       intent(IN)    ::  Atm_bk   ! (128,)
- real(kind=8), dimension(:,:,:),   intent(INOUT) ::  Atm_u    !
- real(kind=8), dimension(:,:,:),   intent(INOUT) ::  Atm_v    !
- real(kind=8)                                    ::  Atm_ptop
- real(kind=8), dimension(is:ie,js:je)            ::  psd
- real(kind=8), dimension(is:ie+1,1:npz)          ::  qn1
- real(kind=8), dimension(is:ie+1,1:km+1)         ::  pe0
- real(kind=8), dimension(is:ie+1,1:npz+1)        ::  pe1
+ integer,                          intent(IN)    ::  is       ! 1
+ integer,                          intent(IN)    ::  ie       ! 3950
+ integer,                          intent(IN)    ::  js       ! 1
+ integer,                          intent(IN)    ::  je       ! 2700
+ integer,                          intent(IN)    ::  km       ! 66
+ integer,                          intent(IN)    ::  npz      ! 65
+ real(kind=8), dimension(:),       intent(IN)    ::  ak0      !(67)
+ real(kind=8), dimension(:),       intent(IN)    ::  bk0      !(67)
+ real(kind=8), dimension(:,:),     intent(IN)    ::  psc      !(3950, 2700)
+ real(kind=8), dimension(:,:),     intent(IN)    ::  Atm_ps   !(3950, 2700)
+ real(kind=8), dimension(:,:,:),   intent(IN)    ::  ud       !(3950, 2701, 66)
+ real(kind=8), dimension(:,:,:),   intent(IN)    ::  vd       !(3951, 2700, 66)
+ real(kind=8), dimension(:),       intent(IN)    ::  Atm_ak   !(66)
+ real(kind=8), dimension(:),       intent(IN)    ::  Atm_bk   !(66)
+ real(kind=8), dimension(:,:,:),   intent(INOUT) ::  Atm_u    !(3950, 2701, 65)
+ real(kind=8), dimension(:,:,:),   intent(INOUT) ::  Atm_v    !(3951, 2700, 65)
+ real(kind=8)                                    ::  Atm_ptop !
+ real(kind=8), dimension(is:ie,js:je)            ::  psd      !(3950, 2700)
+ real(kind=8), dimension(is:ie+1,1:npz)          ::  qn1      !(3951, 65)
+ real(kind=8), dimension(is:ie+1,1:km+1)         ::  pe0      !(3951, 67)
+ real(kind=8), dimension(is:ie+1,1:npz+1)        ::  pe1      !(3951, 66)
 
  integer :: i,j,k,itoa
  logical :: no_boundary
@@ -44,10 +47,12 @@
      !pressure at layer edges (from model top to bottom surface) in the original vertical coordinate
      do k=1,km+1
         do i=is,ie
-           if(j==1) then
-           pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j)+psd(i,j))
+           if(j==js) then
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j  )+psd(i,j  ))
+           elseif(j<je+1) then
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j-1)+psd(i,j  ))
            else
-           pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j-1)+psd(i,j))
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j-1)+psd(i,j-1))
            endif
         enddo
      enddo
@@ -55,9 +60,11 @@
      do k=1,npz+1
         do i=is,ie
            if(j==1) then
-           pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j)+Atm_ps(i,j))
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j  )+Atm_ps(i,j  ))
+           elseif(j<je+1) then
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j-1)+Atm_ps(i,j  ))
            else
-           pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j-1)+Atm_ps(i,j))
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j-1)+Atm_ps(i,j-1))
            endif
         enddo
      enddo
@@ -77,18 +84,22 @@
      do k=1,km+1
         do i=is,ie+1
            if(i==1) then
-           pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j)+psd(i,j))
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i  ,j)+psd(i  ,j))
+           elseif(i<ie+1) then
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i-1,j)+psd(i  ,j))
            else
-           pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i-1,j)+psd(i,j))
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i-1,j)+psd(i-1,j))
            endif
         enddo
      enddo
      do k=1,npz+1
         do i=is,ie+1
            if(i==1) then
-           pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j)+Atm_ps(i,j))
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i  ,j)+Atm_ps(i  ,j))
+           elseif(i<ie+1) then
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i-1,j)+Atm_ps(i  ,j))
            else
-           pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i-1,j)+Atm_ps(i,j))
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i-1,j)+Atm_ps(i-1,j))
            endif
         enddo
      enddo
@@ -101,7 +112,6 @@
      enddo
 
      endif
-
 
    5000 continue
 
