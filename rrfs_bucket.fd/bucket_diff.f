@@ -7,7 +7,6 @@
 
         USE GRIB_MOD
 
-
         real, allocatable :: pdiff(:,:)
 
         integer :: ihrs1, ihrs2, reset_flag
@@ -31,6 +30,7 @@
         read(5,FMT='(A)') min(2)
         read(5,FMT='(I1)') reset_flag
         read(5,*) IM, JM
+        read(5,FMT='(A)') dom
 
         allocate(pdiff(im,jm))
 
@@ -38,22 +38,24 @@
 
 	n=index(dirname,' ')-1
 	m=index(filename,' ')-1
+        k=index(dom,' ')-1
 
 	do I=2,2
 	
         if (min(1) .eq. '00') then
 	file1= dirname(1:n)//'/'//filename(1:m)
-     +					//HRS(I-1)//'.conus.grib2'
+     +					//HRS(I-1)//'.'//dom(1:k)//'.grib2'
         else
 	file1= dirname(1:n)//'/'//filename(1:m)
-     +					//HRS(I-1)//'-'//MIN(I-1)//'-00.conus.grib2'
+     +   //HRS(I-1)//'-'//MIN(I-1)//'-00.'//dom(1:k)//'.grib2'
         endif
 
         if (min(2) .eq. '00') then
-	file2= dirname(1:n)//'/'//filename(1:m)//HRS(I)//'.conus.grib2'
+        file2=  dirname(1:n)//'/'//filename(1:m)//HRS(I)//'.'//
+     +           dom(1:k)//'.grib2'
         else
 	file2= dirname(1:n)//'/'//filename(1:m)
-     +					//HRS(I)//'-'//MIN(I)//'-00.conus.grib2'
+     +  	//HRS(I)//'-'//MIN(I)//'-00.'//dom(1:k)//'.grib2'
         endif
 
 	read(HRS(I-1), '(I2)' ) ihrs1
@@ -77,12 +79,6 @@
 	write(0,*) 'file1: ', file1(1:mm)
 	write(0,*) 'file2: ', file2(1:nn)
 	write(0,*) 'testout: ', testout(1:mmm)
-
-!	if (mod(ihrs1,3) .eq. 0 .and. reset_flag .eq. 1) then
-!	reset_flag=1
-!	else
-!	reset_flag=0
-!	endif
 
         write(0,*) 'call calc_pdiff with reset_flag: ', reset_flag
         write(0,*) 'ihrs1, imin1: ', ihrs1, imin1

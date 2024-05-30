@@ -1,4 +1,4 @@
-list(APPEND src_bucket)
+list(APPEND src_bucket
   bucket_diff.f)
 
 add_executable(rrfs_bucket.exe ${src_bucket})
