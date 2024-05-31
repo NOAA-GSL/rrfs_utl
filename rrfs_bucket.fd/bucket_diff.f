@@ -16,7 +16,7 @@
 	character(len=255):: file1,file2,testout
 	character(len=150):: dirname
 	character(len=150):: filename
-	character(len=10):: cycname
+        character(len=10):: cycname,dom
 	character(len=1):: reflag
 
 	read(5,FMT='(A)') dirname
@@ -69,7 +69,9 @@
 	interv=15
 
 	if (interv .eq. 15) then
-	  testout= dirname(1:n)//'/PCP15MIN'//HRS(I)//MIN(I)//'.tm00'
+          testout=
+     +   dirname(1:n)//'/PCP15MIN_'//dom(1:k)//'_'//
+     +                            HRS(I)//MIN(I)//'.grib2'
 	endif
 
 	mm=index(file1,' ')-1
