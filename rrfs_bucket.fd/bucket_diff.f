@@ -38,19 +38,19 @@
 	I=2
 	
         if (min(1) .eq. '00') then
-          file1= dirname(1:n)//'/'//filename(1:m)
-     	         //HRS(I-1)//'.'//dom(1:k)//'.grib2'
+          file1= dirname(1:n)//'/'//filename(1:m)//
+     +	         HRS(I-1)//'.'//dom(1:k)//'.grib2'
         else
-          file1= dirname(1:n)//'/'//filename(1:m)
-     +           //HRS(I-1)//'-'//MIN(I-1)//'-00.'//dom(1:k)//'.grib2'
+          file1= dirname(1:n)//'/'//filename(1:m)//
+     +           HRS(I-1)//'-'//MIN(I-1)//'-00.'//dom(1:k)//'.grib2'
         endif
 
         if (min(2) .eq. '00') then
-          file2=  dirname(1:n)//'/'//filename(1:m)//HRS(I)//'.'//
-     +            dom(1:k)//'.grib2'
+          file2= dirname(1:n)//'/'//filename(1:m)//HRS(I)//'.'//
+     +           dom(1:k)//'.grib2'
         else
-	  file2= dirname(1:n)//'/'//filename(1:m)
-     +           //HRS(I)//'-'//MIN(I)//'-00.'//dom(1:k)//'.grib2'
+	  file2= dirname(1:n)//'/'//filename(1:m)//
+     +           HRS(I)//'-'//MIN(I)//'-00.'//dom(1:k)//'.grib2'
         endif
 
 	read(HRS(I-1), '(I2)' ) ihrs1
