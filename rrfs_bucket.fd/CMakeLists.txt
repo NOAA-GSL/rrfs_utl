@@ -8,7 +8,6 @@ target_link_libraries(rrfs_bucket.exe PRIVATE ${PROJECT_NAME}::ncio
                                             PRIVATE g2tmpl::g2tmpl
                                             PRIVATE g2::g2_4
                                             PRIVATE bacio::bacio_4
-					    PRIVATE NetCDF::NetCDF_Fortran
                                             PRIVATE MPI::MPI_Fortran
                                             PRIVATE MPI::MPI_C)
 
