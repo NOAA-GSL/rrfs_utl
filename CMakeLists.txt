@@ -48,6 +48,7 @@ list(APPEND SUBLIST "MOSAIC")
 list(APPEND SUBLIST "PM")
 list(APPEND SUBLIST "RADMON")
 list(APPEND SUBLIST "REF2TTEN")
+list(APPEND SUBLIST "RRFS_BUCKET")
 list(APPEND SUBLIST "RTMA_MINMAXTRH")
 list(APPEND SUBLIST "RTMA_ESG_CONVERSION")
 list(APPEND SUBLIST "UPDATE_BC")
@@ -82,6 +83,7 @@ find_package(wrf_io REQUIRED)
 
 # Other dependencies
 find_package(ncdiag REQUIRED)
+find_package(mgbf REQUIRED)
 find_package(gsi REQUIRED)
 
 add_subdirectory(baselib/regional_esg_grid.fd)
