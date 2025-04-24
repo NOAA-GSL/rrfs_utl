@@ -20,7 +20,8 @@ program use_raphrrr_sfc
   character*80 :: rrfsfile
   character*80 :: rrfsfile_read
   logical :: do_lake_surgery
-  namelist/setup/ rapfile,hrrrfile,hrrr_akfile,rrfsfile,do_lake_surgery
+  logical :: update_snow
+  namelist/setup/ rapfile,hrrrfile,hrrr_akfile,rrfsfile,do_lake_surgery,update_snow
 !
 ! MPI variables
   integer :: npe, mype, mypeLocal,ierror
@@ -62,6 +63,7 @@ program use_raphrrr_sfc
      hrrr_akfile='missing'
      rrfsfile='missing'
      do_lake_surgery=.false.
+     update_snow=.false.
      open(15, file='use_raphrrr_sfc.namelist')
         read(15,setup)
      close(15)
@@ -197,9 +199,12 @@ program use_raphrrr_sfc
         if(do_lake_surgery) &
            call sfc%build_lakeindex(map,rlon2d_rrfs,rlat2d_rrfs,lakemask_rrfs,lakemask_raphrrr)
         call sfc%set_varname()
-        call sfc%use_sfc(raphrrrfile,rrfsfile,rrfsfile_read)
-        if(do_lake_surgery) &
+        call sfc%use_sfc(raphrrrfile,rrfsfile,rrfsfile_read,update_snow)
+        if(do_lake_surgery) then
+           write(*,*) "cp sfc_data.nc sfc_data.nc_read"
+           call system('cp sfc_data.nc sfc_data.nc_read')
            call sfc%use_lake(raphrrrfile,rrfsfile,rrfsfile_read)
+        endif
 
         if(n==2) call sfc%remove_snow(raphrrrfile,rrfsfile,rlat2d_rrfs)
         call sfc%close()
