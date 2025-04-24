@@ -131,11 +131,14 @@ contains
 ! SNOW WATER EQUIVALENT: 2D float
     this%var_rap(9)="SNOW"
     this%var_rrfs(9)="weasdl"  ! double 
+!    this%var_rrfs(9)="weasdi"  ! double 
 !    this%var_rrfs(9)="sheleg"  ! double 
 
 ! PHYSICAL SNOW DEPTH: 2D float
     this%var_rap(10)="SNOWH"
     this%var_rrfs(10)="snodl"   !double
+!    this%var_rrfs(10)="snodi"   !double
+!    this%var_rrfs(10)="snwdph"   !double
 
 ! FLAG INDICATING SNOW COVERAGE (1 FOR SNOW COVER): 2D float
 ! sncovr over land and sncovr_ice over sea ice
@@ -228,7 +231,7 @@ contains
     this%var_rap_lake(17)="T_GRND2D"
     this%var_rrfs_lake(17)="tsea"
     this%var_rap_lake(18)="T_GRND2D"
-    this%var_rrfs_lake(18)="T_snow"
+    this%var_rrfs_lake(18)="tsnow_land"
     this%var_rap_lake(19)="T_GRND2D"
     this%var_rrfs_lake(19)="tsfc"
     this%var_rap_lake(20)="T_GRND2D"
@@ -377,7 +380,7 @@ contains
 
   end subroutine use_lake
 
-  subroutine use_sfc(this,rapfile,rrfsfile,rrfsfile_read)
+  subroutine use_sfc(this,rapfile,rrfsfile,rrfsfile_read,update_snow)
 !                .      .    .                                       .
 ! subprogram:   build_mapindex
 !   prgmmr:
@@ -397,6 +400,7 @@ contains
     character*80,intent(in) :: rapfile
     character*80,intent(in) :: rrfsfile
     character*80,intent(in) :: rrfsfile_read
+    logical ,intent(in) :: update_snow 
 
     class(use_surface) :: this
     type(ncio)     :: raphrrr,rrfs,rrfsr
@@ -433,7 +437,12 @@ contains
        write(*,*) "=============================================="
        write(*,'(I4,4a)') k," Working to replace rrfs variable ",trim(thisvar_rrfs), &
                   " from RAP/HRRR ",trim(thisvar_rap)
-       if(k>=9) cycle
+       if(update_snow) then
+           if(k>=12) cycle
+       else
+           if(k>=9) cycle
+       endif
+       if(k==5) cycle
        if(k <= this%nvar3d) then
           allocate(tmp3d4b(nx_rap,ny_rap,nz_rrfs))
           call raphrrr%get_var(trim(thisvar_rap),nx_rap,ny_rap,nz_rrfs,tmp3d4b)
@@ -476,6 +485,10 @@ contains
        else
           allocate(tmp2d4b(nx_rap,ny_rap))
           call raphrrr%get_var(trim(thisvar_rap),nx_rap,ny_rap,tmp2d4b)
+          if(trim(thisvar_rrfs) == "snodl") then
+             write(*,*) "change unit from m to mm"
+             tmp2d4b=tmp2d4b*1000.0
+          endif
 
           allocate(tmp2d4br(nx_rrfs,ny_rrfs))
           call rrfsr%get_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
@@ -505,9 +518,21 @@ contains
           endif
           deallocate(tmp2d4b)
 
+          if(trim(thisvar_rrfs) == "weasdl") then
+              tmp2d4br=min(tmp2d4br,8000.0)
+          endif
+          if(trim(thisvar_rrfs) == "snodl") then
+              tmp2d4br=min(tmp2d4br,20000.0)
+          endif
           call rrfs%replace_var(trim(thisvar_rrfs),nx_rrfs,ny_rrfs,tmp2d4br)
           if(trim(thisvar_rrfs) == "weasdl") then
             call rrfs%replace_var("sheleg",nx_rrfs,ny_rrfs,tmp2d4br)
+            call rrfs%replace_var("weasdi",nx_rrfs,ny_rrfs,tmp2d4br)
+          elseif(trim(thisvar_rrfs) == "snodl") then
+            call rrfs%replace_var("snodi",nx_rrfs,ny_rrfs,tmp2d4br)
+            call rrfs%replace_var("snwdph",nx_rrfs,ny_rrfs,tmp2d4br)
+          elseif(trim(thisvar_rrfs) == "sncovr") then
+            call rrfs%replace_var("sncovr_ice",nx_rrfs,ny_rrfs,tmp2d4br)
           elseif(trim(thisvar_rrfs) == "qwv_surf_land") then
             call rrfs%replace_var("qwv_surf_ice",nx_rrfs,ny_rrfs,tmp2d4br)
           elseif(trim(thisvar_rrfs) == "clw_surf_land") then
