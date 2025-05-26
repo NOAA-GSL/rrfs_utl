@@ -27,6 +27,12 @@ PROGRAM pre_blending
   use remap_scalar_mod
   use remap_dwinds_mod
 
+  use general_sub2grid_simple_mod, only: general_sub2grid_create_info
+  use general_sub2grid_simple_mod, only: general_sub2grid_destroy_info
+  use general_sub2grid_simple_mod, only: general_grid2sub
+  use general_sub2grid_simple_mod, only: general_sub2grid
+  use general_sub2grid_simple_mod, only: sub2grid_info
+
 
 !  use netcdf, only: nf90_open,nf90_close,nf90_noerr
 !  use netcdf, only: nf90_put_var
@@ -38,6 +44,7 @@ PROGRAM pre_blending
 ! 
   type(ncfile_stat) :: ncfs_all
   type(mpi_io_arrange) :: mpiioarg
+  type(sub2grid_info) :: s
 !
 ! MPI variables
   integer :: npe, mype, ierror
@@ -48,10 +55,10 @@ PROGRAM pre_blending
 ! namelist
 !
   integer, parameter    :: filename_len=100
-  integer             :: numvar(1)
-  character(len=200)  :: varlist(1)
+  integer             :: numvar(2)
+  character(len=200)  :: varlist(2)
 
-  character (len=filename_len)   :: filecold(1)
+  character (len=filename_len)   :: filecold(2)
   character (len=filename_len)   :: akbk,akbk_cold
 
   logical :: ifexist
@@ -63,6 +70,10 @@ PROGRAM pre_blending
   integer :: mype_vartype
   integer :: mype_nx,mype_ny
   integer :: mype_lbegin,mype_lend
+
+  integer :: lon2, lat2, nsig
+  integer :: mype_istart,mype_jstart
+
 !
 ! array for wind
  real(kind=8),allocatable, dimension(:,:,:)     :: u_s,v_s     !
@@ -82,11 +93,20 @@ PROGRAM pre_blending
  real(kind=8),allocatable, dimension(:,:,:)     ::  Atm_u    !(3950, 2701, 65)
  real(kind=8),allocatable, dimension(:,:,:)     ::  Atm_v    !(3951, 2700, 65)
 
+ real(kind=8), allocatable :: ps_local(:,:), zh_local(:,:,:)
+ real(kind=8), allocatable :: omga_local(:,:,:), delp_local(:,:,:)
+ real(kind=8), allocatable :: t_local(:,:,:), qa_local(:,:,:,:)
+ real(kind=8), allocatable :: Atm_phis_local(:,:)
+
+ real(kind=8), allocatable :: Atm_delp(:,:,:)
+ real(kind=8), allocatable :: Atm_pt(:,:,:), Atm_q(:,:,:,:)
+
  real,allocatable, dimension(:,:)     ::  d2r4
  real,allocatable, dimension(:,:,:)   ::  d3r4
+ real,allocatable, dimension(:,:,:)   ::  sub_vars
 
 !
-  integer :: i,j,k,iret,ilev,ierr
+  integer :: n,i,j,k,iret,ilev,ierr
   integer :: grid_cdfid,cdfid
 ! dimensions
   integer :: nlev, nlat, nlon, nlatp, nlonp, nlevp
@@ -95,6 +115,9 @@ PROGRAM pre_blending
 ! Variable IDs and I/O arrays
   integer :: varid, dimids(4), start(4), count(4)
   integer :: nlevid
+  integer :: ntotalcore,num_fields
+  integer,allocatable :: kbegin(:),kend(:)
+  character(len=20),allocatable :: varname(:)
 
 !
 !**********************************************************************
@@ -159,18 +182,11 @@ PROGRAM pre_blending
   call MPI_Bcast(bk0, nlevp, MPI_DOUBLE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(Atm_ak, nlev, MPI_DOUBLE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(Atm_bk, nlev, MPI_DOUBLE, 0, MPI_COMM_WORLD, ierr)
-!  if(mype==10) then
-!     write(*,*) ak0
-!     write(*,*) bk0
-!     write(*,*) Atm_ak
-!     write(*,*) Atm_bk
-!  endif
 !
-!  get namelist
 !
   numvar(1)=1
   varlist(1)='u_s' ! v_s u_w v_w'
-
+!
 !
   allocate(gridx(nlon,nlat))
   allocate(gridy(nlon,nlat))
@@ -206,7 +222,7 @@ PROGRAM pre_blending
   call MPI_Bcast(psc, nlon*nlat, MPI_DOUBLE , 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(gridx, nlon*nlat, MPI_DOUBLE , 1, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(gridy, nlon*nlat, MPI_DOUBLE , 2, MPI_COMM_WORLD, ierr)
-  if(mype==10) then
+  if(mype==3) then
      write(*,*) 'psc=',maxval(psc),minval(psc)
      write(*,*) 'gridx=',maxval(gridx),minval(gridx)
      write(*,*) 'gridy=',maxval(gridy),minval(gridy)
@@ -298,6 +314,7 @@ PROGRAM pre_blending
         v_w=d3r4
      !   write(6,'(a10,2f12.6)') trim(adjustl(local_varname)),maxval(v_w(:,:,:)),minval(v_w(:,:,:))
 
+        if(mype==0)  write(*,*) " chgres winds "
         ud_local = 0.0
         vd_local = 0.0
         call chgres_winds_main(gridx, gridy, u_s, v_s, u_w, v_w, ud_local, vd_local)
@@ -337,7 +354,7 @@ PROGRAM pre_blending
 ! wind vertical remap
 !
            write(*,*) " vertical remap the wind"
-           call remap_dwinds_main(nlev, nlevp, ak0, bk0, Atm_ak, Atm_bk, psc, ud, vd, &
+           call remap_dwinds_main(nlev, nlev-1, ak0, bk0, Atm_ak, Atm_bk, psc, ud, vd, &
                            1, nlon, 1, nlat, Atm_u, Atm_v, Atm_ps)
 !
            deallocate(ud)
@@ -377,20 +394,27 @@ PROGRAM pre_blending
           dimids(1:3) = [dimid_lonp, dimid_lat, nlevid]
           call check(nf90_def_var(cdfid, "v_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
 
+        ! t_cold2fv3 (nlev, lat, lon)
+          dimids(1:3) = [dimid_lon, dimid_lat, nlevid]
+          call check(nf90_def_var(cdfid, "t_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
+
+        ! delp_cold2fv3 (nlev, lat, lon)
+          call check(nf90_def_var(cdfid, "delp_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
+
+        ! sphum_cold2fv3 (nlev, lat, lon)
+          call check(nf90_def_var(cdfid, "sphum_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
+
           call check(nf90_enddef(cdfid))
 !
-write(*,*) 'cehck 5'
            ! Write u_cold2fv3
           call check(nf90_inq_varid(cdfid, "u_cold2fv3", varid))
           start = [1, 1, 1, 0]
           count = [nlon, nlatp, nlev-1, 0]
           allocate(d3r4(nlon, nlatp, nlev-1))
           d3r4=Atm_u
-write(*,*) 'cehck 6'
           call check(nf90_put_var(cdfid, varid, d3r4, start=start(1:3), count=count(1:3)))
           deallocate(d3r4)
 !
-write(*,*) 'cehck 7'
            ! Write v_cold2fv3
           call check(nf90_inq_varid(cdfid, "v_cold2fv3", varid))
           start = [1, 1, 1, 0]
@@ -400,10 +424,12 @@ write(*,*) 'cehck 7'
           call check(nf90_put_var(cdfid, varid, d3r4, start=start(1:3), count=count(1:3)))
           deallocate(d3r4)
 
+          iret=nf90_close(cdfid)
+     endif
+
+     if(mype==0) then
           deallocate(Atm_u)
           deallocate(Atm_v)
-
-          iret=nf90_close(cdfid)
      endif
 !
 ! release memory
@@ -416,8 +442,278 @@ write(*,*) 'cehck 7'
   if (MPI_COMM_NULL /= new_comm) then
      call MPI_Comm_free(new_comm,iret)
   endif
+!
+!-------------------------------------------------------------------
+! now working on scalars 
+!-------------------------------------------------------------------
+!
+!
+  numvar(1)=6
+  numvar(2)=1
+  varlist(1)='ps o3mr delp t sphum zh'
+  varlist(2)='orog_filt'
+  filecold(2)='C3463_oro_data.tile7.halo0.nc'
+  if(mype==0) then
+!
+! find dimension of each field
+!
+     call ncfs_all%init(2,filecold, numvar, varlist)
+     call ncfs_all%fill_dims()
+!
+!  distibute variables to each core
+!
+     call mpiioarg%init(npe)
+     call mpiioarg%arrange(ncfs_all)
+     ntotalcore=mpiioarg%ntotalcore
+     num_fields=ncfs_all%num_totalvl
+     nsig=nlev
 
+     call ncfs_all%close()
+  endif
 
+  call MPI_Scatter(mpiioarg%fileid, 1, mpi_integer, mype_fileid, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
+  call MPI_Scatter(mpiioarg%varname, 20, mpi_character, mype_varname, 20, mpi_character, 0, MPI_COMM_WORLD,ierror)
+  call MPI_Scatter(mpiioarg%vartype, 1, mpi_integer, mype_vartype, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
+  call MPI_Scatter(mpiioarg%nx, 1, mpi_integer, mype_nx, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
+  call MPI_Scatter(mpiioarg%ny, 1, mpi_integer, mype_ny, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
+  call MPI_Scatter(mpiioarg%lvlbegin, 1, mpi_integer, mype_lbegin, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
+  call MPI_Scatter(mpiioarg%lvlend, 1, mpi_integer, mype_lend, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
+!
+  call MPI_Bcast(ntotalcore, 1, mpi_integer, 0, mpi_comm_world, ierror)
+  call MPI_Bcast(num_fields, 1, mpi_integer, 0, mpi_comm_world, ierror)
+  call MPI_Bcast(nsig, 1, mpi_integer, 0, mpi_comm_world, ierror)
+  allocate(kbegin(ntotalcore))
+  allocate(kend(ntotalcore))
+  allocate(varname(ntotalcore))
+  if(mype==0) then
+     kbegin=mpiioarg%lvlbegin
+     kend=mpiioarg%lvlend
+     varname=mpiioarg%varname
+  endif
+  call MPI_Bcast(kbegin, ntotalcore, mpi_integer, 0, mpi_comm_world, ierror)
+  call MPI_Bcast(kend, ntotalcore, mpi_integer, 0, mpi_comm_world, ierror)
+  call MPI_Bcast(varname, ntotalcore*20, mpi_character, 0, mpi_comm_world, ierror)
+
+  if(mype==0) call mpiioarg%close()
+  call mpi_barrier(MPI_COMM_WORLD,ierror)
+
+! Create sub-communicator to handle each file
+  key=mype+1
+  if(mype_fileid > 0 .and. mype_fileid <= 2) then
+     color = mype_fileid
+  else
+     color = MPI_UNDEFINED
+  endif
+
+  call MPI_Comm_split(mpi_comm_world,color,key,new_comm,ierror)
+  if ( ierror /= 0 ) then
+     write(6,'(a,i5)')'***ERROR*** after mpi_comm_create with iret = ',ierror
+     call mpi_abort(mpi_comm_world,101,ierror)
+  endif
+!
+! read 2D field from each file using sub communicator
+!
+  allocate(d3r4(mype_nx,mype_ny,mype_lbegin:mype_lend))
+  if (MPI_COMM_NULL /= new_comm) then
+
+     iret=nf90_open(trim(filecold(mype_fileid)),nf90_nowrite,ncioid,comm=new_comm,info=MPI_INFO_NULL)
+     if(iret/=nf90_noerr) then
+           write(6,*)' problem opening ', trim(filecold(1)), ' Status =',iret
+           write(6,*)  nf90_strerror(iret)
+           call flush(6)
+           stop 333
+     endif
+
+     call mype_read(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
+     write(6,'(a10,2f12.6)') trim(adjustl(mype_varname)),maxval(d3r4(:,:,:)),minval(d3r4(:,:,:))
+
+  endif
+
+  if (MPI_COMM_NULL /= new_comm) then
+     call MPI_Comm_free(new_comm,iret)
+  endif
+
+  call mpi_barrier(MPI_COMM_WORLD,ierror)
+  if(mype==0) write(6,*)"======================================================================="
+
+  call general_sub2grid_create_info(s,mype,ntotalcore,mype_nx,mype_ny,nsig,num_fields,kbegin,kend)
+
+  mype_istart=s%istart(mype+1)
+  mype_jstart=s%jstart(mype+1)
+
+  allocate(sub_vars(s%lat2,s%lon2,s%num_fields))
+  call general_grid2sub(s,d3r4,sub_vars)
+  deallocate(d3r4)
+
+  lon2=s%lon2
+  lat2=s%lat2
+  nsig=s%nsig
+
+  allocate(ps_local(lon2,lat2))
+  allocate(delp_local(lon2,lat2,nsig))
+  allocate(zh_local(lon2,lat2,nsig+1))
+  allocate(omga_local(lon2,lat2,nsig))
+  allocate(t_local(lon2,lat2,nsig))
+  allocate(qa_local(lon2,lat2,nsig,1))
+  allocate(Atm_phis_local(lon2,lat2))
+
+  write(*,*) mype,lon2,lat2,nsig,mype_istart,mype_jstart
+  call mpi_barrier(MPI_COMM_WORLD,ierror)
+  i=0
+  do n=1,ntotalcore
+     do ilev=kbegin(n),kend(n)
+        i=i+1
+        if(trim(varname(n))=="ps") ps_local(:,:)=sub_vars(:,:,i)
+        if(trim(varname(n))=="orog_filt") Atm_phis_local(:,:)=sub_vars(:,:,i)*9.80665
+
+        k=ilev
+        if(trim(varname(n))=="o3mr") omga_local(:,:,k)=sub_vars(:,:,i)
+        if(trim(varname(n))=="delp") delp_local(:,:,k)=sub_vars(:,:,i)
+        if(trim(varname(n))=="t") t_local(:,:,k)=sub_vars(:,:,i)
+        if(trim(varname(n))=="sphum") qa_local(:,:,k,1)=sub_vars(:,:,i)
+        if(trim(varname(n))=="zh") zh_local(:,:,k)=sub_vars(:,:,i)
+     enddo
+  enddo
+
+  call mpi_barrier(MPI_COMM_WORLD,ierror)
+  deallocate(sub_vars)
+  if(mype==0) then
+    write(*,*) "ps=",maxval(ps_local),minval(ps_local)
+    write(*,*) "orog_filt=",maxval(Atm_phis_local),minval(Atm_phis_local)
+    do k=1,nsig
+      write(*,*) "w=",k,maxval(omga_local(:,:,k)),minval(omga_local(:,:,k))
+    enddo
+    do k=1,nsig
+      write(*,*) "delp=",k,maxval(delp_local(:,:,k)),minval(delp_local(:,:,k))
+    enddo
+    do k=1,nsig
+      write(*,*) "t=",k,maxval(t_local(:,:,k)),minval(t_local(:,:,k))
+    enddo
+    do k=1,nsig
+      write(*,*) "sphum=",k,maxval(qa_local(:,:,k,1)),minval(qa_local(:,:,k,1))
+    enddo
+    do k=1,nsig+1
+      write(*,*) "zh=",k,maxval(zh_local(:,:,k)),minval(zh_local(:,:,k))
+    enddo
+  endif
+
+  allocate(Atm_ps(lon2,lat2))
+  allocate(Atm_delp(lon2,lat2,nsig-1))
+  allocate(Atm_pt(lon2,lat2,nsig-1))
+  allocate(Atm_q(lon2,lat2,nsig-1,1))
+
+  ak0(1)=1.0
+  call remap_scalar_main(nlev, nlev-1, 1, ak0, bk0, Atm_ak, Atm_bk, ps_local, qa_local, &
+                           zh_local, omga_local, t_local, 1, lon2, 1, lat2, &
+                           Atm_pt, Atm_q, Atm_delp, Atm_phis_local, Atm_ps)
+
+  do k=1,nsig-1
+     qa_local(:,:,k,1)=Atm_q(:,:,k,1)
+     t_local(:,:,k)=Atm_pt(:,:,k)
+     delp_local(:,:,k)=Atm_delp(:,:,k)
+  enddo
+
+  if(mype==0) then
+    do k=1,nsig-1
+      write(*,*) "pt=",k,maxval(Atm_pt(:,:,k)),minval(Atm_pt(:,:,k))
+    enddo
+    do k=1,nsig-1
+      write(*,*) "q=",k,maxval(Atm_q(:,:,k,1)),minval(Atm_q(:,:,k,1))
+    enddo
+    do k=1,nsig-1
+      write(*,*) "delp=",k,maxval(Atm_delp(:,:,k)),minval(Atm_delp(:,:,k))
+    enddo
+  endif
+  deallocate(Atm_ps)
+  deallocate(Atm_delp)
+  deallocate(Atm_pt)
+  deallocate(Atm_q)
+!
+!
+!
+  allocate(sub_vars(lat2,lon2,s%num_fields))
+  sub_vars=0.0
+
+  i=0
+  do n=1,ntotalcore
+     do ilev=kbegin(n),kend(n)
+        i=i+1
+        k=ilev
+        if(k<nsig) then
+           if(trim(varname(n))=="delp") sub_vars(:,:,i)=delp_local(:,:,k)
+           if(trim(varname(n))=="t") sub_vars(:,:,i)=t_local(:,:,k)
+           if(trim(varname(n))=="sphum") sub_vars(:,:,i)=qa_local(:,:,k,1)
+        endif
+     enddo
+  enddo
+!
+!  release memory
+!
+  deallocate(Atm_phis_local)
+  deallocate(qa_local)
+  deallocate(t_local)
+  deallocate(omga_local)
+  deallocate(zh_local)
+  deallocate(delp_local)
+  deallocate(ps_local)
+!
+! distribute from sub to full grid
+!
+  call mpi_barrier(MPI_COMM_WORLD,ierror)
+  allocate(d3r4(mype_nx,mype_ny,mype_lbegin:mype_lend))
+  call general_sub2grid(s,sub_vars,d3r4)
+  deallocate(sub_vars)
+
+  write(6,'(a10,2i10,2f15.7)') trim(adjustl(mype_varname)),mype_lbegin,mype_lend,maxval(d3r4(:,:,:)),minval(d3r4(:,:,:))
+  call general_sub2grid_destroy_info(s)
+
+!
+!  write to the file
+!
+! Create sub-communicator to handle each file
+  key=mype+1
+  if(mype_fileid > 0 .and. mype_fileid <= 1 ) then
+     if(trim(adjustl(mype_varname))=="delp" .or. &
+        trim(adjustl(mype_varname))=="t" .or. &
+        trim(adjustl(mype_varname))=="sphum") then
+        color = mype_fileid
+     else
+        color = MPI_UNDEFINED
+     endif
+  else
+     color = MPI_UNDEFINED
+  endif
+
+  call MPI_Comm_split(mpi_comm_world,color,key,new_comm,ierror)
+  if ( ierror /= 0 ) then
+     write(6,'(a,i5)')'***ERROR*** after mpi_comm_create with iret = ',ierror
+     call mpi_abort(mpi_comm_world,101,ierror)
+  endif
+!
+! read 2D field from each file using sub communicator
+!
+  if (MPI_COMM_NULL /= new_comm) then
+
+        iret=nf90_open(trim(filecold(1)),nf90_write,ncioid,comm=new_comm,info=MPI_INFO_NULL)
+        if(iret/=nf90_noerr) then
+            write(6,*)' problem opening ', trim(filecold(1)), ', Status =',iret
+            write(6,*)  nf90_strerror(iret)
+            call flush(6)
+            stop(444)
+        endif
+
+        call mype_write(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
+
+        iret=nf90_close(ncioid)
+
+  endif
+
+  if (MPI_COMM_NULL /= new_comm) then
+     call MPI_Comm_free(new_comm,iret)
+  endif
+
+  deallocate(d3r4)
+  
   call mpi_barrier(MPI_COMM_WORLD,ierror)
   if(mype==0)  write(6,*) "=== RRFS PRE_BLENDING SUCCESS ==="
   call MPI_FINALIZE(ierror)
@@ -492,3 +788,72 @@ SUBROUTINE mype_read(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,m
      endif
 
 END SUBROUTINE mype_read
+
+SUBROUTINE mype_write(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
+
+  use netcdf, only: nf90_noerr
+  use netcdf, only: nf90_put_var,nf90_inq_varid
+!
+  integer,intent(in) :: ncioid
+!
+! MPI distribution array
+  character(len=20),intent(in) :: mype_varname
+  integer,intent(in) :: mype_vartype
+  integer,intent(in) :: mype_nx,mype_ny
+  integer,intent(in) :: mype_lbegin,mype_lend
+  real(4),intent(inout) :: d3r4(mype_nx,mype_ny,mype_lbegin:mype_lend)
+!
+! array
+  real(4),allocatable :: tmpd3r4(:,:,:)
+  real(8),allocatable :: tmpd3r8(:,:,:)
+
+  integer :: startloc(3)
+  integer :: countloc(3)
+  integer :: var_id
+  integer :: ilev
+  character(len=20) :: local_varname
+!
+!
+     if(mype_vartype==5) then
+        allocate(tmpd3r4(mype_nx,mype_ny,1))
+     elseif(mype_vartype==6) then
+        allocate(tmpd3r8(mype_nx,mype_ny,1))
+     else
+        write(6,*) 'Warning, unknown datatype'
+     endif
+!
+!
+!
+        do ilev=mype_lbegin,mype_lend
+           write(6,'(a,a20,I5,2f15.6)') 'writing =',trim(adjustl(mype_varname)), &
+                   ilev,maxval(d3r4(:,:,ilev)),minval(d3r4(:,:,ilev))
+
+           startloc=(/1,1,ilev/)
+           countloc=(/mype_nx,mype_ny,1/)
+
+           if(trim(adjustl(mype_varname))=="delp") local_varname="delp_cold2fv3"
+           if(trim(adjustl(mype_varname))=="t") local_varname="t_cold2fv3"
+           if(trim(adjustl(mype_varname))=="sphum") local_varname="sphum_cold2fv3"
+           iret=nf90_inq_varid(ncioid,trim(adjustl(local_varname)),var_id)
+           if(ilev < nsig) then
+              if(mype_vartype==5) then
+                 tmpd3r4(:,:,1)=d3r4(:,:,ilev)
+                 iret=nf90_put_var(ncioid,var_id,tmpd3r4,start=startloc,count=countloc)
+              elseif(mype_vartype==6) then
+                 tmpd3r8(:,:,1)=d3r4(:,:,ilev)
+                 iret=nf90_put_var(ncioid,var_id,tmpd3r8,start=startloc,count=countloc)
+              endif
+           endif
+        enddo  ! ilev
+
+! release memory
+
+     if(mype_vartype==5) then
+        deallocate(tmpd3r4)
+     elseif(mype_vartype==6) then
+        deallocate(tmpd3r8)
+     else
+        write(6,*) 'Warning, unknown datatype'
+     endif
+
+END SUBROUTINE mype_write
