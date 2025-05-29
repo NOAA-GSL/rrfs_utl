@@ -107,16 +107,17 @@ PROGRAM pre_blending
 
 !
   integer :: n,i,j,k,iret,ilev,ierr
-  integer :: grid_cdfid,cdfid
+  integer :: grid_cdfid,cdfid,oldMode
 ! dimensions
   integer :: nlev, nlat, nlon, nlatp, nlonp, nlevp
   integer :: dimid_lev, dimid_lat, dimid_lon, dimid_latp, dimid_lonp, dimid_nlev
   integer :: local_nx,local_ny
 ! Variable IDs and I/O arrays
-  integer :: varid, dimids(4), start(4), count(4)
+  integer :: varid, dimids(4), start(4), count(4), chunksizes(4)
   integer :: nlevid
   integer :: ntotalcore,num_fields
   integer,allocatable :: kbegin(:),kend(:)
+  logical :: create_new_file
   character(len=20),allocatable :: varname(:)
 
 !
@@ -296,12 +297,10 @@ PROGRAM pre_blending
         local_varname="u_s"
         call mype_read(ncioid,local_nx,local_ny,mype_lbegin,mype_lend,mype_vartype,local_varname,d3r4)
         u_s=d3r4
-     !   write(6,'(a10,2f12.6)') trim(adjustl(local_varname)),maxval(u_s(:,:,:)),minval(u_s(:,:,:))
         local_varname="v_s"
         call mype_read(ncioid,local_nx,local_ny,mype_lbegin,mype_lend,mype_vartype,local_varname,d3r4)
         v_s=d3r4
         deallocate(d3r4)
-     !   write(6,'(a10,2f12.6)') trim(adjustl(local_varname)),maxval(v_s(:,:,:)),minval(v_s(:,:,:))
 
         local_nx=nlonp
         local_ny=nlat
@@ -309,19 +308,15 @@ PROGRAM pre_blending
         local_varname="u_w"
         call mype_read(ncioid,local_nx,local_ny,mype_lbegin,mype_lend,mype_vartype,local_varname,d3r4)
         u_w=d3r4
-     !   write(6,'(a10,2f12.6)') trim(adjustl(local_varname)),maxval(u_w(:,:,:)),minval(u_w(:,:,:))
         local_varname="v_w"
         call mype_read(ncioid,local_nx,local_ny,mype_lbegin,mype_lend,mype_vartype,local_varname,d3r4)
         v_w=d3r4
         deallocate(d3r4)
-     !   write(6,'(a10,2f12.6)') trim(adjustl(local_varname)),maxval(v_w(:,:,:)),minval(v_w(:,:,:))
 
         if(mype==0)  write(*,*) " chgres winds "
         ud_local = 0.0
         vd_local = 0.0
         call chgres_winds_main(gridx, gridy, u_s, v_s, u_w, v_w, ud_local, vd_local)
-!        write(6,'(a10,I10,2f12.6)') 'ud_local ',mype,maxval(ud_local(:,:,:)),minval(ud_local(:,:,:))
-!        write(6,'(a10,I10,2f12.6)') 'vd_local ',mype,maxval(vd_local(:,:,:)),minval(vd_local(:,:,:))
 
         deallocate(u_s)
         deallocate(v_s)
@@ -385,7 +380,7 @@ PROGRAM pre_blending
 !          call check(nf90_inq_dimid(cdfid, "latp", dimid_latp))
 !          call check(nf90_inq_dimid(cdfid, "lonp", dimid_lonp))
 
-          call check(nf90_create("cold2warm.nc",IOR(nf90_netcdf4, nf90_mpiio) , ncid=cdfid))
+          call check(nf90_create("cold2warm_uv.nc",IOR(nf90_netcdf4, nf90_clobber), ncid=cdfid))
           call check(nf90_redef(cdfid))
 !
 ! define nlev, and u and v
@@ -396,21 +391,15 @@ PROGRAM pre_blending
           call check( nf90_def_dim(cdfid, "nlev", nlev-1, nlevid))
         ! u_cold2fv3 (nlev, latp, lon)
           dimids(1:3) = [dimid_lon, dimid_latp, nlevid]
+          chunksizes(1:4) = [nlon, nlatp, 1, 1]
           call check(nf90_def_var(cdfid, "u_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
+        !  call check(nf90_def_var_chunking(cdfid, varid, NF90_CHUNKED, chunksizes))
 
         ! v_cold2fv3 (nlev, lat, lonp)
           dimids(1:3) = [dimid_lonp, dimid_lat, nlevid]
+          chunksizes(1:4) = [nlonp, nlat, 1, 1]
           call check(nf90_def_var(cdfid, "v_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
-
-        ! t_cold2fv3 (nlev, lat, lon)
-          dimids(1:3) = [dimid_lon, dimid_lat, nlevid]
-          call check(nf90_def_var(cdfid, "t_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
-
-        ! delp_cold2fv3 (nlev, lat, lon)
-          call check(nf90_def_var(cdfid, "delp_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
-
-        ! sphum_cold2fv3 (nlev, lat, lon)
-          call check(nf90_def_var(cdfid, "sphum_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
+        !  call check(nf90_def_var_chunking(cdfid, varid, NF90_CHUNKED, chunksizes))
 
           call check(nf90_enddef(cdfid))
 !
@@ -450,6 +439,9 @@ PROGRAM pre_blending
   if (MPI_COMM_NULL /= new_comm) then
      call MPI_Comm_free(new_comm,iret)
   endif
+
+  if(mype==0) write(*,*) "done with wind remap"
+  call mpi_barrier(MPI_COMM_WORLD,ierror)
 !
 !-------------------------------------------------------------------
 ! now working on scalars 
@@ -541,8 +533,8 @@ PROGRAM pre_blending
      call MPI_Comm_free(new_comm,iret)
   endif
 
+  if(mype==0) write(6,*)"all scalers are read in====="
   call mpi_barrier(MPI_COMM_WORLD,ierror)
-  if(mype==0) write(6,*)"======================================================================="
 
   call general_sub2grid_create_info(s,mype,ntotalcore,mype_nx,mype_ny,nsig,num_fields,kbegin,kend)
 
@@ -675,13 +667,15 @@ PROGRAM pre_blending
   call general_sub2grid(s,sub_vars,d3r4)
   deallocate(sub_vars)
 
-  write(6,'(a10,2i10,2f15.7)') trim(adjustl(mype_varname)),mype_lbegin,mype_lend,maxval(d3r4(:,:,:)),minval(d3r4(:,:,:))
   call general_sub2grid_destroy_info(s)
+!  write(6,'(a10,2i10,2f15.7)') trim(adjustl(mype_varname)),mype_lbegin,mype_lend,maxval(d3r4(:,:,:)),minval(d3r4(:,:,:))
 
+  call mpi_barrier(MPI_COMM_WORLD,ierror)
 !
 !  write to the file
 !
 ! Create sub-communicator to handle each file
+  create_new_file=.false.
   key=mype+1
   if(mype_fileid > 0 .and. mype_fileid <= 1 ) then
      if(trim(adjustl(mype_varname))=="delp" .or. &
@@ -705,18 +699,53 @@ PROGRAM pre_blending
 !
   if (MPI_COMM_NULL /= new_comm) then
 
-        iret=nf90_open(trim(filecold(1)),nf90_write,ncioid,comm=new_comm,info=MPI_INFO_NULL)
-        !iret=nf90_open("cold2warm.nc",nf90_write,ncioid,comm=new_comm,info=MPI_INFO_NULL)
+     if(create_new_file) then
+        call check(nf90_create("cold2warm_tqp.nc",IOR(nf90_netcdf4, nf90_clobber), &
+                               comm=new_comm, info=MPI_INFO_NULL, ncid=cdfid))
         if(iret/=nf90_noerr) then
-            write(6,*)' problem opening ', trim(filecold(1)), ', Status =',iret
+            write(6,*)' problem creating cold2warm_tqp.nc ', ', Status =',iret
             write(6,*)  nf90_strerror(iret)
             call flush(6)
             stop(444)
         endif
 
-        call mype_write(ncioid,nsig,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
+        call check(nf90_set_fill(cdfid, NF90_NOFILL, oldMode))
 
-        iret=nf90_close(ncioid)
+        call check(nf90_redef(cdfid))
+          call check( nf90_def_dim(cdfid, "lat",  nlat,   dimid_lat))
+          call check( nf90_def_dim(cdfid, "lon",  nlon,   dimid_lon))
+          call check( nf90_def_dim(cdfid, "nlev", nlev-1, nlevid))
+        ! t_cold2fv3 (nlev, lat, lon)
+          dimids(1:3) = [dimid_lon, dimid_lat, nlevid]
+          chunksizes(1:4) = [nlon, nlat, 1, 1]
+          call check(nf90_def_var(cdfid, "t_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
+          call check(nf90_def_var_chunking(cdfid, varid, NF90_CHUNKED, chunksizes(1:3)))
+          call check(nf90_var_par_access(cdfid, varid, NF90_COLLECTIVE))
+
+        ! delp_cold2fv3 (nlev, lat, lon)
+          call check(nf90_def_var(cdfid, "delp_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
+          call check(nf90_def_var_chunking(cdfid, varid, NF90_CHUNKED, chunksizes(1:3)))
+          call check(nf90_var_par_access(cdfid, varid, NF90_COLLECTIVE))
+
+        ! sphum_cold2fv3 (nlev, lat, lon)
+          call check(nf90_def_var(cdfid, "sphum_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
+          call check(nf90_def_var_chunking(cdfid, varid, NF90_CHUNKED, chunksizes(1:3)))
+          call check(nf90_var_par_access(cdfid, varid, NF90_COLLECTIVE))
+
+        call check(nf90_enddef(cdfid))
+        call mype_write(cdfid,nsig,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
+        call check(nf90_close(cdfid))
+     else
+        iret=nf90_open("cold2warm_tqp.nc",nf90_write,cdfid,comm=new_comm,info=MPI_INFO_NULL)
+        if(iret/=nf90_noerr) then
+            write(6,*)' problem opening cold2warm_tqp.nc', ' Status =',iret
+            write(6,*)  nf90_strerror(iret)
+            call flush(6)
+            stop(444)
+        endif
+        call mype_write2(cdfid,nsig,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
+        call check(nf90_close(cdfid))
+     endif
 
   endif
 
@@ -787,7 +816,6 @@ SUBROUTINE mype_read(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,m
            iret=nf90_get_var(ncioid,var_id,tmpd3r8,start=startloc,count=countloc)
            d3r4(:,:,ilev)=tmpd3r8(:,:,1)
         endif
-     !   write(6,'(a10,I5,2f12.6)') trim(adjustl(mype_varname)),ilev,maxval(d3r4(:,:,ilev)),minval(d3r4(:,:,ilev))
      enddo  ! ilev
 ! release memory
 
@@ -825,40 +853,114 @@ SUBROUTINE mype_write(ncioid,nsig,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_var
   integer :: var_id
   integer :: ilev
   character(len=20) :: local_varname
+
+  logical :: if_write
+  integer :: i,j,nlevel
+!
+!
+     if_write=.true.
+!
+     if(trim(adjustl(mype_varname))=="delp") local_varname="delp_cold2fv3"
+     if(trim(adjustl(mype_varname))=="t") local_varname="t_cold2fv3"
+     if(trim(adjustl(mype_varname))=="sphum") local_varname="sphum_cold2fv3"
+
+     ilev=mype_lbegin
+     nlevel=mype_lend-mype_lbegin+1
+
+     if(mype_lend==nsig) then
+       if( nlevel == 1)  then
+          nlevel=0
+          if_write=.false.
+       else
+          nlevel=nlevel-1
+       endif
+     endif
+         
+     if(if_write) then
+
+        startloc=(/1,1,ilev/)
+        countloc=(/mype_nx,mype_ny,nlevel/)
+
+!        write(6,'(a,a20,I5,2f15.6,7I5)') 'writing =',trim(adjustl(mype_varname)), &
+!                   mype_vartype,maxval(d3r4(:,:,ilev:ilev+nlevel-1)),minval(d3r4(:,:,ilev:ilev+nlevel-1)),&
+!                   nlevel,mype_lbegin,mype_lend,ilev,ilev+nlevel-1,mype_nx,mype_ny
+        iret=nf90_inq_varid(ncioid,trim(adjustl(local_varname)),var_id)
+        if(mype_vartype==5) then
+           allocate(tmpd3r4(mype_nx,mype_ny,nleve1))
+           tmpd3r4(:,:,1:nleve1)=d3r4(:,:,ilev:ilev+nlevel-1)
+           iret=nf90_put_var(ncioid,var_id,values=tmpd3r4,start=startloc,count=countloc)
+           deallocate(tmpd3r4)
+        elseif(mype_vartype==6) then
+           allocate(tmpd3r8(mype_nx,mype_ny,nleve1))
+           tmpd3r8(:,:,1:nlevel)=d3r4(:,:,ilev:ilev+nlevel-1)
+           iret=nf90_put_var(ncioid,var_id,values=tmpd3r8,start=startloc,count=countloc)
+           deallocate(tmpd3r8)
+        else
+           write(6,*) 'Warning, unknown datatype'
+        endif
+        write(*,*) "finished==",trim(adjustl(local_varname)),ilev
+
+     endif
+
+END SUBROUTINE mype_write
+
+SUBROUTINE mype_write2(ncioid,nsig,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
+
+  use netcdf, only: nf90_noerr
+  use netcdf, only: nf90_put_var,nf90_inq_varid
+!
+  integer,intent(in) :: ncioid
+!
+! MPI distribution array
+  character(len=20),intent(in) :: mype_varname
+  integer,intent(in) :: mype_vartype
+  integer,intent(in) :: mype_nx,mype_ny
+  integer,intent(in) :: mype_lbegin,mype_lend
+  real(4),intent(in) :: d3r4(mype_nx,mype_ny,mype_lbegin:mype_lend)
+  integer,intent(in) :: nsig
+!
+! array
+  real(4),allocatable :: tmpd3r4(:,:,:,:)
+  real(8),allocatable :: tmpd3r8(:,:,:,:)
+
+  integer :: startloc(4)
+  integer :: countloc(4)
+  integer :: var_id
+  integer :: ilev
+  character(len=20) :: local_varname
 !
 !
      if(mype_vartype==5) then
-        allocate(tmpd3r4(mype_nx,mype_ny,1))
+        allocate(tmpd3r4(mype_nx,mype_ny,1,1))
      elseif(mype_vartype==6) then
-        allocate(tmpd3r8(mype_nx,mype_ny,1))
+        allocate(tmpd3r8(mype_nx,mype_ny,1,1))
      else
         write(6,*) 'Warning, unknown datatype'
      endif
 !
 !
 !
-        do ilev=mype_lbegin,mype_lend
+     do ilev=mype_lbegin,mype_lend
 
-           startloc=(/1,1,ilev/)
-           countloc=(/mype_nx,mype_ny,1/)
+        startloc=(/1,1,ilev,1/)
+        countloc=(/mype_nx,mype_ny,1,1/)
 
-!           if(trim(adjustl(mype_varname))=="delp") local_varname="delp_cold2fv3"
-!           if(trim(adjustl(mype_varname))=="t") local_varname="t_cold2fv3"
-!           if(trim(adjustl(mype_varname))=="sphum") local_varname="sphum_cold2fv3"
-!           iret=nf90_inq_varid(ncioid,trim(adjustl(local_varname)),var_id)
-           iret=nf90_inq_varid(ncioid,trim(adjustl(mype_varname)),var_id)
-           if(ilev < nsig) then
-              write(6,'(a,a20,I5,2f15.6,I5)') 'writing =',trim(adjustl(mype_varname)), &
-                   ilev,maxval(d3r4(:,:,ilev)),minval(d3r4(:,:,ilev)),nsig
-              if(mype_vartype==5) then
-                 tmpd3r4(:,:,1)=d3r4(:,:,ilev)
-                 iret=nf90_put_var(ncioid,var_id,tmpd3r4,start=startloc,count=countloc)
-              elseif(mype_vartype==6) then
-                 tmpd3r8(:,:,1)=d3r4(:,:,ilev)
-                 iret=nf90_put_var(ncioid,var_id,tmpd3r8,start=startloc,count=countloc)
-              endif
+        if(trim(adjustl(mype_varname))=="delp") local_varname="delp_cold2fv3"
+        if(trim(adjustl(mype_varname))=="t") local_varname="t_cold2fv3"
+        if(trim(adjustl(mype_varname))=="sphum") local_varname="sphum_cold2fv3"
+        iret=nf90_inq_varid(ncioid,trim(adjustl(local_varname)),var_id)
+        if(ilev < nsig) then
+!           write(6,'(a,a20,I5,2f15.6)') 'writing =',trim(adjustl(mype_varname)), &
+!                ilev,maxval(d3r4(:,:,ilev)),minval(d3r4(:,:,ilev))
+           if(mype_vartype==5) then
+              tmpd3r4(:,:,1,1)=d3r4(:,:,ilev)
+              iret=nf90_put_var(ncioid,var_id,tmpd3r4,start=startloc,count=countloc)
+           elseif(mype_vartype==6) then
+              tmpd3r8(:,:,1,1)=d3r4(:,:,ilev)
+              iret=nf90_put_var(ncioid,var_id,tmpd3r8,start=startloc,count=countloc)
            endif
-        enddo  ! ilev
+        endif
+     enddo  ! ilev
 
 ! release memory
 
@@ -870,7 +972,8 @@ SUBROUTINE mype_write(ncioid,nsig,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_var
         write(6,*) 'Warning, unknown datatype'
      endif
 
-END SUBROUTINE mype_write
+END SUBROUTINE mype_write2
+
 
 subroutine reorg(lon,lat,fin,fout)
   implicit none
