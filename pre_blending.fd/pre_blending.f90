@@ -282,8 +282,6 @@ PROGRAM pre_blending
            stop 333
      endif
 
-     allocate(d3r4(mype_nx,mype_ny,mype_lbegin:mype_lend))
-
      if(trim(mype_varname)=='u_s')then
         allocate(u_s(nlon,nlatp,mype_lbegin:mype_lend))
         allocate(v_s(nlon,nlatp,mype_lbegin:mype_lend))
@@ -294,6 +292,7 @@ PROGRAM pre_blending
 
         local_nx=nlon
         local_ny=nlatp
+        allocate(d3r4(local_nx,local_ny,mype_lbegin:mype_lend))
         local_varname="u_s"
         call mype_read(ncioid,local_nx,local_ny,mype_lbegin,mype_lend,mype_vartype,local_varname,d3r4)
         u_s=d3r4
@@ -301,10 +300,12 @@ PROGRAM pre_blending
         local_varname="v_s"
         call mype_read(ncioid,local_nx,local_ny,mype_lbegin,mype_lend,mype_vartype,local_varname,d3r4)
         v_s=d3r4
+        deallocate(d3r4)
      !   write(6,'(a10,2f12.6)') trim(adjustl(local_varname)),maxval(v_s(:,:,:)),minval(v_s(:,:,:))
 
         local_nx=nlonp
         local_ny=nlat
+        allocate(d3r4(local_nx,local_ny,mype_lbegin:mype_lend))
         local_varname="u_w"
         call mype_read(ncioid,local_nx,local_ny,mype_lbegin,mype_lend,mype_vartype,local_varname,d3r4)
         u_w=d3r4
@@ -312,6 +313,7 @@ PROGRAM pre_blending
         local_varname="v_w"
         call mype_read(ncioid,local_nx,local_ny,mype_lbegin,mype_lend,mype_vartype,local_varname,d3r4)
         v_w=d3r4
+        deallocate(d3r4)
      !   write(6,'(a10,2f12.6)') trim(adjustl(local_varname)),maxval(v_w(:,:,:)),minval(v_w(:,:,:))
 
         if(mype==0)  write(*,*) " chgres winds "
@@ -343,7 +345,7 @@ PROGRAM pre_blending
               write(*,*) "ud=",k,maxval(ud(:,:,k)),minval(ud(:,:,k))
            enddo
            do k=1,nlev
-              write(*,*) "ud=",k,maxval(vd(:,:,k)),minval(vd(:,:,k))
+              write(*,*) "vd=",k,maxval(vd(:,:,k)),minval(vd(:,:,k))
            enddo
 !
            allocate(Atm_ps(nlon,nlat))
@@ -362,29 +364,35 @@ PROGRAM pre_blending
            deallocate(Atm_ps)
         endif
      else
+        allocate(d3r4(mype_nx,mype_ny,mype_lbegin:mype_lend))
         call mype_read(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
+        deallocate(d3r4)
      endif
 
-     deallocate(d3r4)
      iret=nf90_close(ncioid)
 !
      if(mype==0) then
-          do k=1,nlev
+          do k=1,nlev-1
               write(*,*) "Atm_u=",k,maxval(Atm_u(:,:,k)),minval(Atm_u(:,:,k))
           enddo
-          do k=1,nlev
+          do k=1,nlev-1
               write(*,*) "Atm_v=",k,maxval(Atm_v(:,:,k)),minval(Atm_v(:,:,k))
           enddo
 
-          call check(nf90_open(trim(filecold(1)),IOR(NF90_WRITE, NF90_MPIIO), cdfid))
+!          call check(nf90_open(trim(filecold(1)),IOR(NF90_WRITE, NF90_MPIIO), cdfid))
+!          call check(nf90_inq_dimid(cdfid, "lat", dimid_lat))
+!          call check(nf90_inq_dimid(cdfid, "lon", dimid_lon))
+!          call check(nf90_inq_dimid(cdfid, "latp", dimid_latp))
+!          call check(nf90_inq_dimid(cdfid, "lonp", dimid_lonp))
 
-          call check(nf90_inq_dimid(cdfid, "lat", dimid_lat))
-          call check(nf90_inq_dimid(cdfid, "lon", dimid_lon))
-          call check(nf90_inq_dimid(cdfid, "latp", dimid_latp))
-          call check(nf90_inq_dimid(cdfid, "lonp", dimid_lonp))
+          call check(nf90_create("cold2warm.nc",IOR(nf90_netcdf4, nf90_mpiio) , ncid=cdfid))
           call check(nf90_redef(cdfid))
 !
 ! define nlev, and u and v
+          call check( nf90_def_dim(cdfid, "lat",  nlat,   dimid_lat))
+          call check( nf90_def_dim(cdfid, "lon",  nlon,   dimid_lon))
+          call check( nf90_def_dim(cdfid, "latp", nlatp,  dimid_latp))
+          call check( nf90_def_dim(cdfid, "lonp", nlonp,  dimid_lonp))
           call check( nf90_def_dim(cdfid, "nlev", nlev-1, nlevid))
         ! u_cold2fv3 (nlev, latp, lon)
           dimids(1:3) = [dimid_lon, dimid_latp, nlevid]
@@ -563,15 +571,18 @@ PROGRAM pre_blending
   do n=1,ntotalcore
      do ilev=kbegin(n),kend(n)
         i=i+1
-        if(trim(varname(n))=="ps") ps_local(:,:)=sub_vars(:,:,i)
-        if(trim(varname(n))=="orog_filt") Atm_phis_local(:,:)=sub_vars(:,:,i)*9.80665
+        if(trim(varname(n))=="ps") call reorg(lon2,lat2,sub_vars(:,:,i),ps_local(:,:))
+        if(trim(varname(n))=="orog_filt") then
+            call reorg(lon2,lat2,sub_vars(:,:,i),Atm_phis_local(:,:))
+            Atm_phis_local(:,:)=Atm_phis_local(:,:)*9.80665
+        endif
 
         k=ilev
-        if(trim(varname(n))=="o3mr") omga_local(:,:,k)=sub_vars(:,:,i)
-        if(trim(varname(n))=="delp") delp_local(:,:,k)=sub_vars(:,:,i)
-        if(trim(varname(n))=="t") t_local(:,:,k)=sub_vars(:,:,i)
-        if(trim(varname(n))=="sphum") qa_local(:,:,k,1)=sub_vars(:,:,i)
-        if(trim(varname(n))=="zh") zh_local(:,:,k)=sub_vars(:,:,i)
+        if(trim(varname(n))=="o3mr") call reorg(lon2,lat2,sub_vars(:,:,i),omga_local(:,:,k))
+        if(trim(varname(n))=="delp") call reorg(lon2,lat2,sub_vars(:,:,i),delp_local(:,:,k))
+        if(trim(varname(n))=="t") call reorg(lon2,lat2,sub_vars(:,:,i),t_local(:,:,k))
+        if(trim(varname(n))=="sphum") call reorg(lon2,lat2,sub_vars(:,:,i),qa_local(:,:,k,1))
+        if(trim(varname(n))=="zh") call reorg(lon2,lat2,sub_vars(:,:,i),zh_local(:,:,k))
      enddo
   enddo
 
@@ -640,9 +651,9 @@ PROGRAM pre_blending
         i=i+1
         k=ilev
         if(k<nsig) then
-           if(trim(varname(n))=="delp") sub_vars(:,:,i)=delp_local(:,:,k)
-           if(trim(varname(n))=="t") sub_vars(:,:,i)=t_local(:,:,k)
-           if(trim(varname(n))=="sphum") sub_vars(:,:,i)=qa_local(:,:,k,1)
+           if(trim(varname(n))=="delp") call reorg_ad(lon2,lat2,sub_vars(:,:,i),delp_local(:,:,k))
+           if(trim(varname(n))=="t") call reorg_ad(lon2,lat2,sub_vars(:,:,i),t_local(:,:,k))
+           if(trim(varname(n))=="sphum") call reorg_ad(lon2,lat2,sub_vars(:,:,i),qa_local(:,:,k,1))
         endif
      enddo
   enddo
@@ -695,6 +706,7 @@ PROGRAM pre_blending
   if (MPI_COMM_NULL /= new_comm) then
 
         iret=nf90_open(trim(filecold(1)),nf90_write,ncioid,comm=new_comm,info=MPI_INFO_NULL)
+        !iret=nf90_open("cold2warm.nc",nf90_write,ncioid,comm=new_comm,info=MPI_INFO_NULL)
         if(iret/=nf90_noerr) then
             write(6,*)' problem opening ', trim(filecold(1)), ', Status =',iret
             write(6,*)  nf90_strerror(iret)
@@ -702,7 +714,7 @@ PROGRAM pre_blending
             stop(444)
         endif
 
-        call mype_write(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
+        call mype_write(ncioid,nsig,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
 
         iret=nf90_close(ncioid)
 
@@ -789,7 +801,7 @@ SUBROUTINE mype_read(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,m
 
 END SUBROUTINE mype_read
 
-SUBROUTINE mype_write(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
+SUBROUTINE mype_write(ncioid,nsig,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
 
   use netcdf, only: nf90_noerr
   use netcdf, only: nf90_put_var,nf90_inq_varid
@@ -802,6 +814,7 @@ SUBROUTINE mype_write(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,
   integer,intent(in) :: mype_nx,mype_ny
   integer,intent(in) :: mype_lbegin,mype_lend
   real(4),intent(inout) :: d3r4(mype_nx,mype_ny,mype_lbegin:mype_lend)
+  integer,intent(in) :: nsig
 !
 ! array
   real(4),allocatable :: tmpd3r4(:,:,:)
@@ -825,17 +838,18 @@ SUBROUTINE mype_write(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,
 !
 !
         do ilev=mype_lbegin,mype_lend
-           write(6,'(a,a20,I5,2f15.6)') 'writing =',trim(adjustl(mype_varname)), &
-                   ilev,maxval(d3r4(:,:,ilev)),minval(d3r4(:,:,ilev))
 
            startloc=(/1,1,ilev/)
            countloc=(/mype_nx,mype_ny,1/)
 
-           if(trim(adjustl(mype_varname))=="delp") local_varname="delp_cold2fv3"
-           if(trim(adjustl(mype_varname))=="t") local_varname="t_cold2fv3"
-           if(trim(adjustl(mype_varname))=="sphum") local_varname="sphum_cold2fv3"
-           iret=nf90_inq_varid(ncioid,trim(adjustl(local_varname)),var_id)
+!           if(trim(adjustl(mype_varname))=="delp") local_varname="delp_cold2fv3"
+!           if(trim(adjustl(mype_varname))=="t") local_varname="t_cold2fv3"
+!           if(trim(adjustl(mype_varname))=="sphum") local_varname="sphum_cold2fv3"
+!           iret=nf90_inq_varid(ncioid,trim(adjustl(local_varname)),var_id)
+           iret=nf90_inq_varid(ncioid,trim(adjustl(mype_varname)),var_id)
            if(ilev < nsig) then
+              write(6,'(a,a20,I5,2f15.6,I5)') 'writing =',trim(adjustl(mype_varname)), &
+                   ilev,maxval(d3r4(:,:,ilev)),minval(d3r4(:,:,ilev)),nsig
               if(mype_vartype==5) then
                  tmpd3r4(:,:,1)=d3r4(:,:,ilev)
                  iret=nf90_put_var(ncioid,var_id,tmpd3r4,start=startloc,count=countloc)
@@ -857,3 +871,34 @@ SUBROUTINE mype_write(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,
      endif
 
 END SUBROUTINE mype_write
+
+subroutine reorg(lon,lat,fin,fout)
+  implicit none
+  integer, intent(in) :: lon,lat
+  real,intent(in) :: fin(lat,lon)
+  real(8),intent(inout) :: fout(lon,lat)
+  integer :: i,j
+
+  do i=1,lon
+     do j=1,lat
+        fout(i,j)=fin(j,i)
+     enddo
+  enddo
+
+end subroutine reorg
+
+subroutine reorg_ad(lon,lat,fin,fout)
+  implicit none
+  integer, intent(in) :: lon,lat
+  real,intent(inout) :: fin(lat,lon)
+  real(8),intent(in) :: fout(lon,lat)
+  integer :: i,j
+
+  do i=1,lon
+     do j=1,lat
+        fin(j,i)=fout(i,j)
+     enddo
+  enddo
+
+end subroutine reorg_ad
+
