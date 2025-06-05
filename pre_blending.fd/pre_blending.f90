@@ -154,12 +154,7 @@ PROGRAM pre_blending
      akbk_cold="gfs_ctrl.nc"
      call check(nf90_open(trim(akbk_cold), NF90_NOWRITE, grid_cdfid))
      allocate(ak0(nlevp), bk0(nlevp))
-!     allocate(vcoord(nlevp,2))
      call check(nf90_inq_varid(grid_cdfid, "vcoord", varid))
-!     call check(nf90_get_var(grid_cdfid, varid, vcoord))
-!     ak0=vcoord(:,1)
-!     bk0=vcoord(:,2)
-!     deallocate(vcoord)
      start(1:2) = [1, 1]
      count(1:2) = [nlevp,1]
      call check(nf90_get_var(grid_cdfid, varid, ak0, start=start(1:2), count=count(1:2)))
@@ -175,6 +170,11 @@ PROGRAM pre_blending
      call check(nf90_inq_varid(grid_cdfid, "bk", varid))
      call check(nf90_get_var(grid_cdfid, varid, Atm_bk))
      call check(nf90_close(grid_cdfid))
+
+     Atm_ak(:)=ak0(2:nlevp)
+     Atm_bk(:)=bk0(2:nlevp)
+     ak0(1)=1.000000000000000E-009_8
+     bk0(1)=1.000000000000000E-009_8
   else
      allocate(ak0(nlevp), bk0(nlevp))
      allocate(Atm_ak(nlev), Atm_bk(nlev))
@@ -605,7 +605,6 @@ PROGRAM pre_blending
   allocate(Atm_pt(lon2,lat2,nsig-1))
   allocate(Atm_q(lon2,lat2,nsig-1,1))
 
-  ak0(1)=1.0
   call remap_scalar_main(nlev, nlev-1, 1, ak0, bk0, Atm_ak, Atm_bk, ps_local, qa_local, &
                            zh_local, omga_local, t_local, 1, lon2, 1, lat2, &
                            Atm_pt, Atm_q, Atm_delp, Atm_phis_local, Atm_ps)
