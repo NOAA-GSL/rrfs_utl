@@ -73,6 +73,7 @@ module remap_dwinds_mod
      enddo
      call mappm(km, pe0(is:ie,1:km+1), ud(is:ie,j,1:km), npz, pe1(is:ie,1:npz+1),   &
                 qn1(is:ie,1:npz), is,ie, -1, 8, Atm_ptop)
+
      do k=1,npz
         do i=is,ie
            Atm_u(i,j,k) = qn1(i,k)
@@ -184,10 +185,10 @@ endif
          k0 = 1
       do 555 k=1,kn
 
-         if(pe2(i,k) .le. pe1(i,1)) then
+         if(abs(pe2(i,k)-pe1(i,1))<1.0e-8 .or. (pe2(i,k) .lt. pe1(i,1))) then
 ! above old ptop
             q2(i,k) = q1(i,1)
-         elseif(pe2(i,k) .ge. pe1(i,km+1)) then
+         elseif(abs(pe2(i,k)-pe1(i,km+1))<1.0e-8 .or. (pe2(i,k) .gt. pe1(i,km+1))) then
 ! Entire grid below old ps
 !#ifdef NGGPS_SUBMITTED
 if(NGGPS_SUBMITTED) then
@@ -201,11 +202,13 @@ endif
 
          do 45 L=k0,km
 ! locate the top edge at pe2(i,k)
-         if( pe2(i,k) .ge. pe1(i,L) .and.        &
-             pe2(i,k) .le. pe1(i,L+1)    ) then
+         if( abs(pe2(i,k)-pe1(i,L)) <1.0e-8 .or. &
+             (pe2(i,k) .gt. pe1(i,L) .and.        &
+              pe2(i,k) .lt. (pe1(i,L+1)-1.0e-9))    ) then
              k0 = L
              PL = (pe2(i,k)-pe1(i,L)) / dp1(i,L)
-             if(pe2(i,k+1) .le. pe1(i,L+1)) then
+             if(abs(pe2(i,k+1)-pe1(i,L+1))<1.0e-8 .or. &
+                   (pe2(i,k+1) .lt. pe1(i,L+1)) ) then
 
 ! entire new grid is within the original grid
                PR = (pe2(i,k+1)-pe1(i,L)) / dp1(i,L)
@@ -228,7 +231,7 @@ endif
 
 111      continue
          do 55 L=k1,km
-         if( pe2(i,k+1) .gt. pe1(i,L+1) ) then
+         if( pe2(i,k+1) .gt. (pe1(i,L+1)+1.0e-9)) then
 
 ! Whole layer..
 

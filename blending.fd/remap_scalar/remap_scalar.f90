@@ -102,7 +102,8 @@
            pn(k) = 2.*pn(km+1) - pn(l)
         enddo
         do k=km+k2-1, 2, -1
-           if( Atm_phis(i,j).le.gz(k) .and. Atm_phis(i,j).ge.gz(k+1) ) then
+           if( abs(Atm_phis(i,j)-gz(k+1)) <1.0e-8 .or. & 
+                  (Atm_phis(i,j).lt.gz(k) .and. Atm_phis(i,j).gt.gz(k+1)) ) then
               pst = pn(k) + (pn(k+1)-pn(k))*(gz(k)-Atm_phis(i,j))/(gz(k)-gz(k+1))
               go to 123
            endif
@@ -114,7 +115,8 @@
  ! ------------------
         pst = log(500.e2)
         do k=km+k2-1, 2, -1
-           if( pst.le.pn(k+1) .and. pst.ge.pn(k) ) then
+           if( abs(pst-pn(k)) < 1.0e-8 .or. &
+                  (pst.lt.pn(k+1) .and. pst.gt.pn(k)) ) then
               z500(i,j) = (gz(k+1) + (gz(k)-gz(k+1))*(pn(k+1)-pst)/(pn(k+1)-pn(k)))/grav
               go to 124
            endif
@@ -400,10 +402,10 @@ endif
          k0 = 1
       do 555 k=1,kn
 
-         if(pe2(i,k) .le. pe1(i,1)) then
+         if(abs(pe2(i,k)-pe1(i,1))<1.0e-8 .or. (pe2(i,k) .lt. pe1(i,1))) then
 ! above old ptop
             q2(i,k) = q1(i,1)
-         elseif(pe2(i,k) .ge. pe1(i,km+1)) then
+         elseif( abs(pe2(i,k)-pe1(i,km+1))<1.0e-8 .or. (pe2(i,k) .gt. pe1(i,km+1))) then
 ! Entire grid below old ps
 !#ifdef NGGPS_SUBMITTED
 if(NGGPS_SUBMITTED) then
@@ -417,11 +419,13 @@ endif
 
          do 45 L=k0,km
 ! locate the top edge at pe2(i,k)
-         if( pe2(i,k) .ge. pe1(i,L) .and.        &
-             pe2(i,k) .le. pe1(i,L+1)    ) then
+         if( abs(pe2(i,k)-pe1(i,L)) < 1.0e-8 .or. &
+                 (pe2(i,k) .gt. pe1(i,L) .and.        &
+                  pe2(i,k) .lt. pe1(i,L+1))    ) then
              k0 = L
              PL = (pe2(i,k)-pe1(i,L)) / dp1(i,L)
-             if(pe2(i,k+1) .le. pe1(i,L+1)) then
+             if(abs(pe2(i,k+1)-pe1(i,L+1)) < 1.0e-8 .or. &
+                   (pe2(i,k+1) .lt. pe1(i,L+1))) then
 
 ! entire new grid is within the original grid
                PR = (pe2(i,k+1)-pe1(i,L)) / dp1(i,L)
@@ -444,7 +448,7 @@ endif
 
 111      continue
          do 55 L=k1,km
-         if( pe2(i,k+1) .gt. pe1(i,L+1) ) then
+         if( pe2(i,k+1) .gt. (pe1(i,L+1)+1.0e-9) ) then
 
 ! Whole layer..
 
@@ -1375,7 +1379,7 @@ endif
 ! LOCAL VARIABLES:
    logical:: zfix(im)
    real(kind=8)::  dm(km)
-   integer i, k, ic !, k1
+   integer i, k, ic , k1
    real(kind=8) qup, qly, dup, dq, sum0, sum1, fac
    logical :: DEV_GFS_PHYS=.true.
 
