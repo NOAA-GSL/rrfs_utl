@@ -106,7 +106,7 @@ module remap_scalar_mod
         enddo
         do k=km+k2-1, 2, -1
            if( abs(Atm_phis(i,j)-gz(k+1)) <1.0e-8 .or. & 
-                  (Atm_phis(i,j).lt.gz(k) .and. Atm_phis(i,j).gt.gz(k+1)) ) then
+                  (Atm_phis(i,j).lt.(gz(k)-1.0e-9) .and. Atm_phis(i,j).gt.gz(k+1)) ) then
               pst = pn(k) + (pn(k+1)-pn(k))*(gz(k)-Atm_phis(i,j))/(gz(k)-gz(k+1))
               go to 123
            endif
@@ -118,8 +118,8 @@ module remap_scalar_mod
  ! ------------------
         pst = log(500.e2)
         do k=km+k2-1, 2, -1
-           if( abs(pst-pn(k)) < 1.0e-8 .or. &
-                  (pst.lt.pn(k+1) .and. pst.gt.pn(k)) ) then
+           if( abs(pst-pn(k+1)) < 1.0e-8 .or. &
+                  (pst.lt.pn(k+1) .and. pst.gt.(pn(k)+1.0e-9)) ) then
               z500(i,j) = (gz(k+1) + (gz(k)-gz(k+1))*(pn(k+1)-pst)/(pn(k+1)-pn(k)))/grav
               go to 124
            endif
