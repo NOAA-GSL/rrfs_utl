@@ -451,10 +451,10 @@ PROGRAM pre_blending
   if (MPI_COMM_NULL /= new_comm) then
 
      if(create_new_file) then
-        call check(nf90_create("cold2warm_tqp.nc",IOR(nf90_netcdf4, nf90_clobber), &
+        call check(nf90_create("cold2warm_all.nc",IOR(nf90_netcdf4, nf90_clobber), &
                                comm=new_comm, info=MPI_INFO_NULL, ncid=cdfid))
         if(iret/=nf90_noerr) then
-            write(6,*)' problem creating cold2warm_tqp.nc ', ', Status =',iret
+            write(6,*)' problem creating cold2warm_all.nc ', ', Status =',iret
             write(6,*)  nf90_strerror(iret)
             call flush(6)
             stop(444)
@@ -487,9 +487,9 @@ PROGRAM pre_blending
         call mype_write(cdfid,nsig,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
         call check(nf90_close(cdfid))
      else
-        iret=nf90_open("cold2warm_tqp.nc",nf90_write,cdfid,comm=new_comm,info=MPI_INFO_NULL)
+        iret=nf90_open("cold2warm_all.nc",nf90_write,cdfid,comm=new_comm,info=MPI_INFO_NULL)
         if(iret/=nf90_noerr) then
-            write(6,*)' problem opening cold2warm_tqp.nc', ' Status =',iret
+            write(6,*)' problem opening cold2warm_all.nc', ' Status =',iret
             write(6,*)  nf90_strerror(iret)
             call flush(6)
             stop(444)
@@ -705,15 +705,19 @@ PROGRAM pre_blending
 !          call check(nf90_inq_dimid(cdfid, "latp", dimid_latp))
 !          call check(nf90_inq_dimid(cdfid, "lonp", dimid_lonp))
 
-          call check(nf90_create("cold2warm_uv.nc",IOR(nf90_netcdf4, nf90_clobber), ncid=cdfid))
+!          call check(nf90_create("cold2warm_uv.nc",IOR(nf90_netcdf4, nf90_clobber), ncid=cdfid))
+          call check(nf90_open("cold2warm_all.nc",nf90_write,cdfid))
+          call check(nf90_inq_dimid(cdfid, "lat", dimid_lat))
+          call check(nf90_inq_dimid(cdfid, "lon", dimid_lon))
+          call check(nf90_inq_dimid(cdfid, "nlev",nlevid))
           call check(nf90_redef(cdfid))
 !
 ! define nlev, and u and v
-          call check( nf90_def_dim(cdfid, "lat",  nlat,   dimid_lat))
-          call check( nf90_def_dim(cdfid, "lon",  nlon,   dimid_lon))
+!          call check( nf90_def_dim(cdfid, "lat",  nlat,   dimid_lat))
+!          call check( nf90_def_dim(cdfid, "lon",  nlon,   dimid_lon))
           call check( nf90_def_dim(cdfid, "latp", nlatp,  dimid_latp))
           call check( nf90_def_dim(cdfid, "lonp", nlonp,  dimid_lonp))
-          call check( nf90_def_dim(cdfid, "nlev", nlev-1, nlevid))
+!          call check( nf90_def_dim(cdfid, "nlev", nlev-1, nlevid))
         ! u_cold2fv3 (nlev, latp, lon)
           dimids(1:3) = [dimid_lon, dimid_latp, nlevid]
           chunksizes(1:4) = [nlon, nlatp, 1, 1]
