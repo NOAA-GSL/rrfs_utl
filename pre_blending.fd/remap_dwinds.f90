@@ -1,342 +1,125 @@
- subroutine main(km, npz, ncnst, ak0, bk0, Atm_ak, Atm_bk, psc, qa, zh, omga, t_in, &
-                 is, ie, js, je, Atm_pt, Atm_q, Atm_delp, Atm_phis, Atm_ps)
+module remap_dwinds_mod
+    implicit none
+    contains
+    subroutine remap_dwinds_main(km, npz, ak0, bk0, Atm_ak, Atm_bk, psc, ud, vd, is, ie, js, je, Atm_u, Atm_v, Atm_ps)
  use ISO_FORTRAN_ENV
  use omp_lib
  !use, intrinsic :: ieee_arithmetic
  implicit none
  integer, parameter :: r8_kind = selected_real_kind(15) ! 15 decimal digits
- integer,                          intent(IN)    ::  is, ie, js, je
- integer,                          intent(IN)    ::  km       ! 128
- integer,                          intent(IN)    ::  npz      ! 127
- integer,                          intent(IN)    ::  ncnst    !   7
- real(kind=8), dimension(:),       intent(IN)    ::  ak0      ! (129,)
- real(kind=8), dimension(:),       intent(IN)    ::  bk0      ! (129,)
- real(kind=8), dimension(:,:),     intent(IN)    ::  psc      ! (768, 768)
- real(kind=8), dimension(:,:,:),   intent(IN)    ::  zh       ! (768, 768, 129)
- real(kind=8), dimension(:,:,:),   intent(IN)    ::  omga     ! (768, 768, 128)
- real(kind=8), dimension(:,:,:),   intent(IN)    ::  t_in     ! (768, 768, 128)
- real(kind=8), dimension(:,:,:,:), intent(IN)    ::  qa       ! (768, 768, 128, 7)
- real(kind=8), dimension(:),       intent(IN)    ::  Atm_ak   ! (128,)
- real(kind=8), dimension(:),       intent(IN)    ::  Atm_bk   ! (128,)
- real(kind=8), dimension(:,:),     intent(IN)    ::  Atm_phis ! (768, 768)
- real(kind=8), dimension(:,:),     intent(INOUT) ::  Atm_ps   ! (768, 768)
- real(kind=8), dimension(:,:,:),   intent(INOUT) ::  Atm_delp ! (768, 768, 127)
- real(kind=8), dimension(:,:,:),   intent(INOUT) ::  Atm_pt   ! (768, 768, 127)
- real(kind=8), dimension(:,:,:,:), intent(INOUT) ::  Atm_q    ! (768, 768, 128, 7)
- real(kind=8)                                    ::  Atm_ptop
- real(kind=8)                                    ::  pst
- real(kind=8), dimension(2*km+1)                 ::  pn,gz
- real(kind=8), dimension(npz+1)                  ::  gz_fv
- real(kind=8), dimension(is:ie,js:je,npz)        ::  Atm_delz
- real(kind=8), dimension(is:ie,js:je,npz)        ::  Atm_w
- real(kind=8), dimension(is:ie,npz+1,js:je)      ::  Atm_peln
- !real(kind=8), dimension(:,:),     intent(IN)    ::  Atm_phis ! (768, 768)
- real(kind=8), dimension(is:ie,npz)              ::  dp2
- real(kind=8), dimension(is:ie,npz)              ::  qn1
- real(kind=8), dimension(is:ie,km+1)             ::  pe0
- real(kind=8), dimension(is:ie,npz+1)            ::  pe1
- real(kind=8), dimension(is:ie,km+1)             ::  pn0
- real(kind=8), dimension(is:ie,npz+1)            ::  pn1
- real(kind=8), dimension(is:ie,km)               ::  qp
- real(kind=8), dimension(is:ie,js:je)            ::  z500
+ integer,                          intent(IN)    ::  is       ! 1
+ integer,                          intent(IN)    ::  ie       ! 3950
+ integer,                          intent(IN)    ::  js       ! 1
+ integer,                          intent(IN)    ::  je       ! 2700
+ integer,                          intent(IN)    ::  km       ! 66
+ integer,                          intent(IN)    ::  npz      ! 65
+ real(kind=8), dimension(:),       intent(IN)    ::  ak0      !(67)
+ real(kind=8), dimension(:),       intent(IN)    ::  bk0      !(67)
+ real(kind=8), dimension(:,:),     intent(IN)    ::  psc      !(3950, 2700)
+ real(kind=8), dimension(:,:),     intent(IN)    ::  Atm_ps   !(3950, 2700)
+ real(kind=8), dimension(:,:,:),   intent(IN)    ::  ud       !(3950, 2701, 66)
+ real(kind=8), dimension(:,:,:),   intent(IN)    ::  vd       !(3951, 2700, 66)
+ real(kind=8), dimension(:),       intent(IN)    ::  Atm_ak   !(66)
+ real(kind=8), dimension(:),       intent(IN)    ::  Atm_bk   !(66)
+ real(kind=8), dimension(:,:,:),   intent(INOUT) ::  Atm_u    !(3950, 2701, 65)
+ real(kind=8), dimension(:,:,:),   intent(INOUT) ::  Atm_v    !(3951, 2700, 65)
+ real(kind=8)                                    ::  Atm_ptop !
+ real(kind=8), dimension(is:ie,js:je)            ::  psd      !(3950, 2700)
+ real(kind=8), dimension(is:ie+1,1:npz)          ::  qn1      !(3951, 65)
+ real(kind=8), dimension(is:ie+1,1:km+1)         ::  pe0      !(3951, 67)
+ real(kind=8), dimension(is:ie+1,1:npz+1)        ::  pe1      !(3951, 66)
 
- integer :: sphum,liq_wat,o3mr,ice_wat,rainwat,snowwat,graupel
- integer :: i,j,k,iq
- integer :: k2,l,itoa,m
- integer :: nwat = 6
- logical :: data_source_fv3gfs = .true.
- logical :: hydrostatic = .true.
- logical :: nggps_ic = .true.
- logical :: ncep_ic = .false.
- logical :: USE_ISOTHERMO=.false.
+ integer :: i,j,k,itoa
+ logical :: no_boundary
 
-!Constants
- !real(kind=8), parameter:: grav= 9.80616   !< acceleration due to gravity (m/s2)
- real(kind=8), parameter:: grav  =9.80665_r8_kind   !< acceleration due to gravity (m/s2)
- real(kind=8), parameter:: rdgas = 287.05_r8_kind    !< gfs: gas constant for dry air
- real(kind=8), parameter :: rvgas = 461.5_r8_kind
- real(kind=8), parameter:: zvir =  rvgas/rdgas - 1.0_r8_kind
-
-
- k2 = max(10, km/2)
  itoa = km - npz + 1
  Atm_ptop = Atm_ak(1)
 
- ! This is the order in my python code
- sphum   = 1
- liq_wat = 2
- o3mr    = 3
- ice_wat = 4
- rainwat = 5
- snowwat = 6
- graupel = 7
+ psd = psc
+ !psd = Atm_ps
 
 !$OMP parallel do default(none) &
-!$OMP             shared(ncnst,npz,is,ie,js,je,km,k2,ak0,bk0,psc,zh,omga,qa,z500,t_in, &
-!$OMP                    sphum,liq_wat,ice_wat,rainwat,snowwat,graupel, &
-!$OMP                    Atm_phis,Atm_ak,Atm_bk,Atm_ptop, &
-!$OMP                    Atm_ps,Atm_delp,Atm_w,Atm_q, &
-!$OMP                    Atm_pt,Atm_peln,Atm_delz, &
-!$OMP                    data_source_fv3gfs,hydrostatic,nwat,ncep_ic,nggps_ic,USE_ISOTHERMO) &
-!$OMP             private(l,m,pst,pn,gz,pe0,pn0,pe1,pn1,dp2,qp,qn1,gz_fv)
+!$OMP                          shared(is,ie,js,je,npz,km,ak0,bk0,psc,psd,ud,vd,Atm_ak, &
+!$OMP                                 Atm_bk,Atm_u,Atm_v,Atm_ps,Atm_ptop) &
+!$OMP                          private(pe1,pe0,qn1)
 
-
-  do 5000 j=js,je
+  do 5000 j=js,je+1
+!------
+! map u
+!------
+     !pressure at layer edges (from model top to bottom surface) in the original vertical coordinate
      do k=1,km+1
         do i=is,ie
-           pe0(i,k) = ak0(k) + bk0(k)*psc(i,j)
-           pn0(i,k) = log(pe0(i,k))
-        enddo
-     enddo
-
-     iloop: do i=is,ie !i-loop start
-        do k=1,km+1
-           pn(k) = pn0(i,k)
-           gz(k) = zh(i,j,k)*grav
-        enddo
-! Use log-p for interpolation/extrapolation
-! mirror image method:
-        do k=km+2, km+k2
-               l = 2*(km+1) - k
-           gz(k) = 2.*gz(km+1) - gz(l)
-           pn(k) = 2.*pn(km+1) - pn(l)
-        enddo
-        do k=km+k2-1, 2, -1
-           if( abs(Atm_phis(i,j)-gz(k+1)) <1.0e-8 .or. & 
-                  (Atm_phis(i,j).lt.(gz(k)-1.0e-9) .and. Atm_phis(i,j).gt.gz(k+1)) ) then
-              pst = pn(k) + (pn(k+1)-pn(k))*(gz(k)-Atm_phis(i,j))/(gz(k)-gz(k+1))
-              go to 123
+           if(j==js) then
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j  )+psd(i,j  ))
+           elseif(j<je+1) then
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j-1)+psd(i,j  ))
+           else
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i,j-1)+psd(i,j-1))
            endif
         enddo
-123     Atm_ps(i,j) = exp(pst)
-
- ! ------------------
- ! Find 500-mb height
- ! ------------------
-        pst = log(500.e2)
-        do k=km+k2-1, 2, -1
-           if( abs(pst-pn(k+1)) < 1.0e-8 .or. &
-                  (pst.lt.pn(k+1) .and. pst.gt.(pn(k)+1.0e-9)) ) then
-              z500(i,j) = (gz(k+1) + (gz(k)-gz(k+1))*(pn(k+1)-pst)/(pn(k+1)-pn(k)))/grav
-              go to 124
-           endif
-        enddo
-124     continue
-     enddo iloop  ! i-loop
-
-     do i=is,ie
-        pe1(i,1) = Atm_ak(1)
-        pn1(i,1) = log(pe1(i,1))
      enddo
-     do k=2,npz+1
+     !pressure at layer edges (from model top to bottom surface) in the new vertical coordinate
+     do k=1,npz+1
         do i=is,ie
-           pe1(i,k) = Atm_ak(k) + Atm_bk(k)*Atm_ps(i,j)
-           pn1(i,k) = log(pe1(i,k))
+           if(j==1) then
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j  )+Atm_ps(i,j  ))
+           elseif(j<je+1) then
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j-1)+Atm_ps(i,j  ))
+           else
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i,j-1)+Atm_ps(i,j-1))
+           endif
         enddo
      enddo
+     call mappm(km, pe0(is:ie,1:km+1), ud(is:ie,j,1:km), npz, pe1(is:ie,1:npz+1),   &
+                qn1(is:ie,1:npz), is,ie, -1, 8, Atm_ptop)
 
-! * Compute delp
      do k=1,npz
         do i=is,ie
-           dp2(i,k) = pe1(i,k+1) - pe1(i,k)
-           Atm_delp(i,j,k) = dp2(i,k)
+           Atm_u(i,j,k) = qn1(i,k)
         enddo
      enddo
 
-! map tracers
-     tracers: do iq=1,1 !ncnst
-        if (floor(qa(is,j,1,iq)) > -999) then !skip missing scalars
-           do k=1,km
-              do i=is,ie
-                 qp(i,k) = qa(i,j,k,iq)
-              enddo
-           enddo
-           call mappm(km, pe0, qp, npz, pe1,  qn1, is,ie, 0, 8, Atm_ptop)
-           if ( iq==sphum ) then
-              call fillq(ie-is+1, npz, 1, qn1, dp2)
+!------
+! map v
+!------
+     if ( j/=(je+1) ) then
+
+     do k=1,km+1
+        do i=is,ie+1
+           if(i==1) then
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i  ,j)+psd(i  ,j))
+           elseif(i<ie+1) then
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i-1,j)+psd(i  ,j))
            else
-              call fillz(ie-is+1, npz, 1, qn1, dp2)
+              pe0(i,k) = ak0(k) + bk0(k)*0.5*(psd(i-1,j)+psd(i-1,j))
            endif
-           do k=1,npz
-              do i=is,ie
-                 Atm_q(i,j,k,iq) = qn1(i,k)
-              enddo
-           enddo
-        endif
-     enddo tracers
-
-!---------------------------------------------------
-! Retrive temperature using  geopotential height from external data
-!---------------------------------------------------
-   iloop2: do i=is,ie
-! Make sure FV3 top is lower than GFS; can not do extrapolation above the top at this point
-      if ( pn1(i,1) .lt. pn0(i,1) ) then
-           write(*,*) 'pn1,pn0',pn1(i,1),pn0(i,1)
-           write(*,*) 'FV3 top higher than external data'
-           stop
-      endif
-
-      do k=1,km+1
-         pn(k) = pn0(i,k)
-         gz(k) = zh(i,j,k)*grav
-      enddo
-!-------------------------------------------------
-      do k=km+2, km+k2
-         l = 2*(km+1) - k
-         gz(k) = 2.*gz(km+1) - gz(l)
-         pn(k) = 2.*pn(km+1) - pn(l)
-      enddo
-!-------------------------------------------------
-
-      gz_fv(npz+1) = Atm_phis(i,j)
-
-      m = 1
-
-      do k=1,npz
-! Searching using FV3 log(pe): pn1
-!#ifdef USE_ISOTHERMO
-if(USE_ISOTHERMO) then
-         do l=m,km
-            if ( (pn1(i,k).le.pn(l+1)) .and. (pn1(i,k).ge.pn(l)) ) then
-                gz_fv(k) = gz(l) + (gz(l+1)-gz(l))*(pn1(i,k)-pn(l))/(pn(l+1)-pn(l))
-                goto 555
-            elseif ( pn1(i,k) .gt. pn(km+1) ) then
-! Isothermal under ground; linear in log-p extra-polation
-                gz_fv(k) = gz(km+1) + (gz_fv(npz+1)-gz(km+1))*(pn1(i,k)-pn(km+1))/(pn1(i,npz+1)-pn(km+1))
-                goto 555
-            endif
-         enddo
-else
-         do l=m,km+k2-1
-            if ( (pn1(i,k).le.pn(l+1)) .and. (pn1(i,k).ge.pn(l)) ) then
-                gz_fv(k) = gz(l) + (gz(l+1)-gz(l))*(pn1(i,k)-pn(l))/(pn(l+1)-pn(l))
-                goto 555
-            endif
-         enddo
-endif
-555   m = l
-      enddo
-
-      do k=1,npz+1
-         Atm_peln(i,k,j) = pn1(i,k)
-      enddo
-
-!----------------------------------------------------
-! Compute true temperature using hydrostatic balance
-!----------------------------------------------------
-      !if (.not. data_source_fv3gfs .or. .not. present(t_in)) then
-      !if (.not. data_source_fv3gfs ) then
-      if (data_source_fv3gfs) then
-        do k=1,npz
-           Atm_pt(i,j,k) = (gz_fv(k)-gz_fv(k+1))/( rdgas*(pn1(i,k+1)-pn1(i,k))*(1.+zvir*Atm_q(i,j,k,sphum)) )
         enddo
-!------------------------------
-! Remap input T logarithmically in p.
-!------------------------------
-      else
-        do k=1,km
-            qp(i,k) = t_in(i,j,k)
+     enddo
+     do k=1,npz+1
+        do i=is,ie+1
+           if(i==1) then
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i  ,j)+Atm_ps(i  ,j))
+           elseif(i<ie+1) then
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i-1,j)+Atm_ps(i  ,j))
+           else
+              pe1(i,k) = Atm_ak(k) + Atm_bk(k)*0.5*(Atm_ps(i-1,j)+Atm_ps(i-1,j))
+           endif
         enddo
-
-        call mappm(km, log(pe0), qp, npz, log(pe1), qn1, is,ie, 2, 4, Atm_ptop) ! pn0 and pn1 are higher-precision
-                                                                                ! and cannot be passed to mappm
-        do k=1,npz
-            Atm_pt(i,j,k) = qn1(i,k)
+     enddo
+     call mappm(km, pe0(is:ie+1,1:km+1), vd(is:ie+1,j,1:km), npz, pe1(is:ie+1,1:npz+1),  &
+                qn1(is:ie+1,1:npz), is,ie+1, -1, 8, Atm_ptop)
+     do k=1,npz
+        do i=is,ie+1
+           Atm_v(i,j,k) = qn1(i,k)
         enddo
-      endif
-      if ( .not. hydrostatic ) then
-         do k=1,npz
-            Atm_delz(i,j,k) = (gz_fv(k+1) - gz_fv(k)) / grav
-         enddo
-      endif
+     enddo
 
-   enddo  iloop2  ! i-loop
-
-!-----------------------------------------------------------------------
-! seperate cloud water and cloud ice from Jan-Huey Chen's HiRAM code
-! only use for NCEP IC and GFDL microphy
-!-----------------------------------------------------------------------
-   if (.not. data_source_fv3gfs) then
-      if ((nwat .eq. 3 .or. nwat .eq. 6) .and. (ncep_ic .or. nggps_ic)) then
-         do k=1,npz
-            do i=is,ie
-
-               qn1(i,k) = Atm_q(i,j,k,liq_wat)
-               !if (cld_amt .gt. 0) Atm_q(i,j,k,cld_amt) = 0.
-
-               if ( Atm_pt(i,j,k) > 273.16 ) then       ! > 0C all liq_wat
-                  Atm_q(i,j,k,liq_wat) = qn1(i,k)
-                  Atm_q(i,j,k,ice_wat) = 0.
-!#ifdef ORIG_CLOUDS_PART
-               else if ( Atm_pt(i,j,k) < 258.16 ) then  ! < -15C all ice_wat
-                  Atm_q(i,j,k,liq_wat) = 0.
-                  Atm_q(i,j,k,ice_wat) = qn1(i,k)
-               else                                     ! between -15~0C: linear interpolation
-                  Atm_q(i,j,k,liq_wat) = qn1(i,k)*((Atm_pt(i,j,k)-258.16)/15.)
-                  Atm_q(i,j,k,ice_wat) = qn1(i,k) - Atm_q(i,j,k,liq_wat)
-               endif
-!#else
-!               else if ( Atm_pt(i,j,k) < 233.16 ) then  ! < -40C all ice_wat  Atm_q(i,j,k,liq_wat) = 0.
-!                  Atm_q(i,j,k,ice_wat) = qn1(i,k)
-!               else
-!                  if ( k.eq.1 ) then  ! between [-40,0]: linear interpolation
-!                     Atm_q(i,j,k,liq_wat) = qn1(i,k)*((Atm_pt(i,j,k)-233.16)/40.)
-!                     Atm_q(i,j,k,ice_wat) = qn1(i,k) - Atm_q(i,j,k,liq_wat)
-!                  else
-!                     if (Atm_pt(i,j,k)<258.16 .and. Atm_q(i,j,k-1,ice_wat)>1.e-5 ) then
-!                        Atm_q(i,j,k,liq_wat) = 0.
-!                        Atm_q(i,j,k,ice_wat) = qn1(i,k)
-!                     else  ! between [-40,0]: linear interpolation
-!                        Atm_q(i,j,k,liq_wat) = qn1(i,k)*((Atm_pt(i,j,k)-233.16)/40.)
-!                        Atm_q(i,j,k,ice_wat) = qn1(i,k) - Atm_q(i,j,k,liq_wat)
-!                     endif
-!                  endif
-!               endif
-!
-!#endif
-               if (nwat .eq. 6) then ! no need to check for nwat=7 (hail) since only nwat=3,6 treated here
-                  Atm_q(i,j,k,rainwat) = 0.
-                  Atm_q(i,j,k,snowwat) = 0.
-                  Atm_q(i,j,k,graupel) = 0.
-                  call mp_auto_conversion(Atm_q(i,j,k,liq_wat), Atm_q(i,j,k,rainwat),  &
-                       Atm_q(i,j,k,ice_wat), Atm_q(i,j,k,snowwat) )
-               endif
-            enddo
-         enddo
-      endif
-  endif ! data source /= FV3GFS GAUSSIAN NEMSIO/NETCDF and GRIB2 FILE
-
-! For GFS spectral input, omega in pa/sec is stored as w in the input data so actual w(m/s) is calculated
-! For GFS nemsio input, omega is 0, so best not to use for input since boundary data will not exist for w
-! For FV3GFS NEMSIO input, w is already in m/s (but the code reads in as omga) and just needs to be remapped
-!-------------------------------------------------------------
-! map omega or w
-!------- ------------------------------------------------------
-   if ( (.not. hydrostatic) .and. (.not. ncep_ic) ) then
-      do k=1,km
-         do i=is,ie
-            qp(i,k) = omga(i,j,k)
-         enddo
-      enddo
-      call mappm(km, pe0, qp, npz, pe1, qn1, is,ie, -1, 4, Atm_ptop)
-    if (data_source_fv3gfs) then
-      do k=1,npz
-         do i=is,ie
-            Atm_w(i,j,k) = qn1(i,k)
-         enddo
-      enddo
-    else
-      do k=1,npz
-         do i=is,ie
-            Atm_w(i,j,k) = qn1(i,k)/Atm_delp(i,j,k)*Atm_delz(i,j,k)
-         enddo
-      enddo
      endif
-   endif
 
    5000 continue
 
- end subroutine main
+ end subroutine remap_dwinds_main
 
 !-------------------------------------------------------------------------------------------------
 !>@brief The subroutine 'mappm' is a general-purpose routine for remapping
@@ -405,7 +188,7 @@ endif
          if(abs(pe2(i,k)-pe1(i,1))<1.0e-8 .or. (pe2(i,k) .lt. pe1(i,1))) then
 ! above old ptop
             q2(i,k) = q1(i,1)
-         elseif( abs(pe2(i,k)-pe1(i,km+1))<1.0e-8 .or. (pe2(i,k) .gt. pe1(i,km+1))) then
+         elseif(abs(pe2(i,k)-pe1(i,km+1))<1.0e-8 .or. (pe2(i,k) .gt. pe1(i,km+1))) then
 ! Entire grid below old ps
 !#ifdef NGGPS_SUBMITTED
 if(NGGPS_SUBMITTED) then
@@ -419,13 +202,13 @@ endif
 
          do 45 L=k0,km
 ! locate the top edge at pe2(i,k)
-         if( abs(pe2(i,k)-pe1(i,L)) < 1.0e-8 .or. &
-                 (pe2(i,k) .gt. pe1(i,L) .and.        &
-                  pe2(i,k) .lt. pe1(i,L+1))    ) then
+         if( abs(pe2(i,k)-pe1(i,L)) <1.0e-8 .or. &
+             (pe2(i,k) .gt. pe1(i,L) .and.        &
+              pe2(i,k) .lt. (pe1(i,L+1)-1.0e-9))    ) then
              k0 = L
              PL = (pe2(i,k)-pe1(i,L)) / dp1(i,L)
-             if(abs(pe2(i,k+1)-pe1(i,L+1)) < 1.0e-8 .or. &
-                   (pe2(i,k+1) .lt. pe1(i,L+1))) then
+             if(abs(pe2(i,k+1)-pe1(i,L+1))<1.0e-8 .or. &
+                   (pe2(i,k+1) .lt. pe1(i,L+1)) ) then
 
 ! entire new grid is within the original grid
                PR = (pe2(i,k+1)-pe1(i,L)) / dp1(i,L)
@@ -448,7 +231,7 @@ endif
 
 111      continue
          do 55 L=k1,km
-         if( pe2(i,k+1) .gt. (pe1(i,L+1)+1.0e-9) ) then
+         if( pe2(i,k+1) .gt. (pe1(i,L+1)+1.0e-9)) then
 
 ! Whole layer..
 
@@ -1328,153 +1111,4 @@ endif
   endif
 
  end subroutine mp_auto_conversion
-
- subroutine fillq(im, km, nq, q, dp)
- use ISO_FORTRAN_ENV
- integer, parameter :: r8_kind = selected_real_kind(15) ! 15 decimal digits
-   integer,  intent(in):: im            !< No. of longitudes
-   integer,  intent(in):: km            !< No. of levels
-   integer,  intent(in):: nq            !< Total number of tracers
-   real(kind=8), intent(in)::  dp(im,km)       !< pressure thickness
-   real(kind=8), intent(inout) :: q(im,km,nq)  !< tracer mixing ratio
-! !LOCAL VARIABLES:
-   integer i, k, ic, k1
-
-   do ic=1,nq
-! Bottom up:
-      do k=km,2,-1
-         k1 = k-1
-         do i=1,im
-           if( q(i,k,ic) < 0. ) then
-               q(i,k1,ic) = q(i,k1,ic) + q(i,k,ic)*dp(i,k)/dp(i,k1)
-               q(i,k ,ic) = 0.
-           endif
-         enddo
-      enddo
-! Top down:
-      do k=1,km-1
-         k1 = k+1
-         do i=1,im
-            if( q(i,k,ic) < 0. ) then
-                q(i,k1,ic) = q(i,k1,ic) + q(i,k,ic)*dp(i,k)/dp(i,k1)
-                q(i,k ,ic) = 0.
-            endif
-         enddo
-      enddo
-
-   enddo
-
- end subroutine fillq
-
-!>@brief The subroutine 'fillz' is for mass-conservative filling of nonphysical negative values in the tracers. 
-!>@details This routine takes mass from adjacent cells in the same column to fill negatives, if possible.
- subroutine fillz(im, km, nq, q, dp)
- use ISO_FORTRAN_ENV
- integer, parameter :: r8_kind = selected_real_kind(15) ! 15 decimal digits
-   integer,  intent(in):: im                !< No. of longitudes
-   integer,  intent(in):: km                !< No. of levels
-   integer,  intent(in):: nq                !< Total number of tracers
-   real(kind=8), intent(in)::  dp(im,km)           !< pressure thickness
-   real(kind=8), intent(inout) :: q(im,km,nq)      !< tracer mixing ratio
-! LOCAL VARIABLES:
-   logical:: zfix(im)
-   real(kind=8)::  dm(km)
-   integer i, k, ic , k1
-   real(kind=8) qup, qly, dup, dq, sum0, sum1, fac
-   logical :: DEV_GFS_PHYS=.true.
-
-   do ic=1,nq
-!#ifdef DEV_GFS_PHYS
-if(DEV_GFS_PHYS) then
-! Bottom up:
-      do k=km,2,-1
-         k1 = k-1
-         do i=1,im
-           if( q(i,k,ic) < 0. ) then
-               q(i,k1,ic) = q(i,k1,ic) + q(i,k,ic)*dp(i,k)/dp(i,k1)
-               q(i,k ,ic) = 0.
-           endif
-         enddo
-      enddo
-! Top down:
-      do k=1,km-1
-         k1 = k+1
-         do i=1,im
-            if( q(i,k,ic) < 0. ) then
-                q(i,k1,ic) = q(i,k1,ic) + q(i,k,ic)*dp(i,k)/dp(i,k1)
-                q(i,k ,ic) = 0.
-            endif
-         enddo
-      enddo
-else
-! Top layer
-      do i=1,im
-         if( q(i,1,ic) < 0. ) then
-             q(i,2,ic) = q(i,2,ic) + q(i,1,ic)*dp(i,1)/dp(i,2)
-             q(i,1,ic) = 0.
-          endif
-      enddo
-
-! Interior
-      zfix(:) = .false.
-      do k=2,km-1
-         do i=1,im
-         if( q(i,k,ic) < 0. ) then
-             zfix(i) = .true.
-             if ( q(i,k-1,ic) > 0. ) then
-! Borrow from above
-                dq = min ( q(i,k-1,ic)*dp(i,k-1), -q(i,k,ic)*dp(i,k) ) 
-                q(i,k-1,ic) = q(i,k-1,ic) - dq/dp(i,k-1)
-                q(i,k  ,ic) = q(i,k  ,ic) + dq/dp(i,k  )
-             endif
-             if ( q(i,k,ic)<0.0 .and. q(i,k+1,ic)>0. ) then
-! Borrow from below:
-                dq = min ( q(i,k+1,ic)*dp(i,k+1), -q(i,k,ic)*dp(i,k) ) 
-                q(i,k+1,ic) = q(i,k+1,ic) - dq/dp(i,k+1)
-                q(i,k  ,ic) = q(i,k  ,ic) + dq/dp(i,k  )
-             endif
-          endif
-         enddo
-      enddo
- 
-! Bottom layer
-      k = km
-      do i=1,im
-         if( q(i,k,ic)<0. .and. q(i,k-1,ic)>0.) then
-             zfix(i) = .true.
-! Borrow from above
-             qup =  q(i,k-1,ic)*dp(i,k-1)
-             qly = -q(i,k  ,ic)*dp(i,k  )
-             dup =  min(qly, qup)
-             q(i,k-1,ic) = q(i,k-1,ic) - dup/dp(i,k-1) 
-             q(i,k,  ic) = q(i,k,  ic) + dup/dp(i,k  )
-          endif
-      enddo
-
-! Perform final check and non-local fix if needed
-      do i=1,im
-         if ( zfix(i) ) then
-
-           sum0 = 0.
-           do k=2,km
-              dm(k) = q(i,k,ic)*dp(i,k)
-              sum0 = sum0 + dm(k)
-           enddo
-
-           if ( sum0 > 0. ) then
-             sum1 = 0.
-             do k=2,km
-                sum1 = sum1 + max(0., dm(k))
-             enddo
-             fac = sum0 / sum1
-             do k=2,km
-                q(i,k,ic) = max(0., fac*dm(k)/dp(i,k))
-             enddo
-           endif
-
-         endif
-      enddo
-endif
-
-   enddo
- end subroutine fillz
+end module remap_dwinds_mod

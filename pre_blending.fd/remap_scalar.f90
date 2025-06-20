@@ -1,4 +1,7 @@
- subroutine main(km, npz, ncnst, ak0, bk0, Atm_ak, Atm_bk, psc, qa, zh, omga, t_in, &
+module remap_scalar_mod
+    implicit none
+    contains
+    subroutine remap_scalar_main(km, npz, ncnst, ak0, bk0, Atm_ak, Atm_bk, psc, qa, zh, omga, t_in, &
                  is, ie, js, je, Atm_pt, Atm_q, Atm_delp, Atm_phis, Atm_ps)
  use ISO_FORTRAN_ENV
  use omp_lib
@@ -336,7 +339,7 @@ endif
 
    5000 continue
 
- end subroutine main
+ end subroutine remap_scalar_main
 
 !-------------------------------------------------------------------------------------------------
 !>@brief The subroutine 'mappm' is a general-purpose routine for remapping
@@ -1478,3 +1481,4 @@ endif
 
    enddo
  end subroutine fillz
+end module remap_scalar_mod
