@@ -54,6 +54,8 @@ program fix_soil_vegetation_pct
   integer,parameter :: num_soil_cat=16
   real(r_single),allocatable :: soil_type_pct_source(:,:,:)
   real(r_single),allocatable :: soil_type_pct_target(:,:,:)
+  ! inland
+  real(r_single),allocatable :: inland_source(:,:)
 ! C3463.soil_type.tile7.halo0.nc
 ! soil_type_pct
 ! soil_type
@@ -136,7 +138,7 @@ program fix_soil_vegetation_pct
      l_fill_in=.true.
      l_consist=.true.
      update_halo4=.true.
-     update_halo3=.false.
+     update_halo3=.true.
 !
      rrfs_lam_source='missing'
      rrfs_lam_target='missing'
@@ -180,6 +182,7 @@ program fix_soil_vegetation_pct
      allocate(vegetation_type_pct_target(nx_rrfs,ny_rrfs,num_veg_cat))
      allocate(soil_type_pct_source(nx_rrfs,ny_rrfs,num_soil_cat))
      allocate(soil_type_pct_target(nx_rrfs,ny_rrfs,num_soil_cat))
+     allocate(inland_source(nx_rrfs,ny_rrfs))
 
      rrfsfile_source=trim(rrfs_lam_source)//"/"//gridid//'_oro_data.tile7.'//haloid//'.nc'
      call rrfs%open(trim(rrfsfile_source),"r",200)
@@ -193,6 +196,7 @@ program fix_soil_vegetation_pct
      vegetation_type_pct_target=vegetation_type_pct_source
      call rrfs%get_var("soil_type_pct",nx_rrfs,ny_rrfs,num_soil_cat,soil_type_pct_source)
      soil_type_pct_target=soil_type_pct_source
+     call rrfs%get_var("inland",nx_rrfs,ny_rrfs,inland_source)
      call rrfs%close()
 
      allocate(soil_type_source(nx_rrfs,ny_rrfs))
@@ -264,13 +268,29 @@ program fix_soil_vegetation_pct
 !
 !  convert 
 !
-       do j=1,ny_rrfs
-       do i=1,nx_rrfs
-          if( abs(rlat2d_rrfs(i,j)-60.64530)<0.01 .and. abs(rlon2d_rrfs(i,j)-285.0872) <0.01) then
-                  write(*,*) i,j,soil_type_source(i,j),vegetation_type_target(i,j)
-          endif
-       enddo
-       enddo
+!   check consitent of lake mask and land mask
+     do j=1,ny_rrfs
+     do i=1,nx_rrfs
+        if(inland_source(i,j) >0.99) then
+           if(rlon2d_rrfs(i,j) > 267.6764 .and. rlon2d_rrfs(i,j) < 283.9097 .and. &
+              rlat2d_rrfs(i,j) > 41.349211 .and. rlat2d_rrfs(i,j) <  49.0725 ) then
+           else
+             if( slmsk_source(i,j) > 0.99 .and. lakemask_rrfs(i,j) > 0.5) then
+                write(*,*) 'land and lake mismatch =',i,j,rlon2d_rrfs(i,j),rlat2d_rrfs(i,j),slmsk_source(i,j),lakemask_rrfs(i,j)
+             endif
+             if( slmsk_source(i,j) < 0.09 .and. lakemask_rrfs(i,j) < 0.5)  then
+                write(*,*) 'water and no lake mismatch=',i,j,rlon2d_rrfs(i,j),rlat2d_rrfs(i,j),slmsk_source(i,j),lakemask_rrfs(i,j)
+                write(*,*) land_frac_source(i,j),lake_depth_source(i,j)
+                write(*,'(30f5.2)') vegetation_type_pct_source(i,j,:)
+                write(*,'(30f5.2)') soil_type_pct_source(i,j,:)
+                ! change this part to lake. This dry lake will be fixed later in lake surgery
+                lakemask_rrfs(i,j)=1.0
+                lake_depth_target(i,j)=10.0
+             endif
+           endif
+        endif
+     enddo
+     enddo
      n_lake2land=0
      n_land2lake=0
      nsearch=10
@@ -352,7 +372,7 @@ program fix_soil_vegetation_pct
                 do jj=max(j-nsearch,1),min(j+nsearch,ny_rrfs)
                 do ii=max(i-nsearch,1),min(i+nsearch,nx_rrfs)
                   ndist=(jj-j)*(jj-j)+(ii-i)*(ii-i)
-                  if( lakemask_rrfs(ii,jj) < 0.5 .and. mindist > ndist ) then
+                  if( slmsk_source(ii,jj) > 0.9 .and. mindist > ndist ) then
                     if(substrate_temperature_source(ii,jj) > 100.0 ) then
                        vegenum=0
                        albdonum=0
@@ -379,10 +399,10 @@ program fix_soil_vegetation_pct
                  write(*,'(a,2I5,f5.1,a,2I5,f5.1)') "change water ",i,j,slmsk_source(i,j), &
                                                  " to land",iii,jjj,slmsk_source(iii,jjj)
                  if(abs(lakemask_rrfs(i,j))>0.001 .or. abs(lake_depth_target(i,j)) >0.001) then
-                         write(*,*) "warning no lake,",i,j,lakemask_rrfs(i,j),lake_depth_target(i,j)
+                         write(*,*) "warning lake,",i,j,lakemask_rrfs(i,j),lake_depth_target(i,j)
                  endif
                  if(abs(slmsk_target(i,j)-1.0)>0.001 .or. abs(land_frac_target(i,j)-1.0) >0.001) then
-                         write(*,*) "warning land,",i,j,slmsk_target(i,j),land_frac_target(i,j)
+                         write(*,*) "warning small land fraction,",i,j,slmsk_target(i,j),land_frac_target(i,j)
                  endif
                !      lakemask_rrfs(i,j)=0.0
                !      lake_depth_target(i,j)=0.0
@@ -404,10 +424,10 @@ program fix_soil_vegetation_pct
                  n_land2lake=n_land2lake+1
            
                  if(lakemask_rrfs(i,j) <0.749) then
-                         write(*,*) "warning lake,",i,j,lakemask_rrfs(i,j),lake_depth_target(i,j)
+                         write(*,*) "warning no lake,",i,j,lakemask_rrfs(i,j),lake_depth_target(i,j)
                  endif
                  if(abs(slmsk_target(i,j))>0.001 .or. land_frac_target(i,j) >0.501) then
-                        write(*,*) "warning water,",i,j,slmsk_target(i,j),land_frac_target(i,j)
+                        write(*,*) "warning large land fraction,",i,j,slmsk_target(i,j),land_frac_target(i,j)
                 endif
                !  slmsk_target(i,j)=0.0
                !  land_frac_target(i,j)=0.0
@@ -466,16 +486,16 @@ program fix_soil_vegetation_pct
 !
 !  update lake variables
 !
-!     rrfsfile_target=trim(rrfs_lam_target)//"/"//gridid//'_oro_data.tile7.'//haloid//'.nc'
-!     write(*,'(a,a)') 'open to write:',trim(rrfsfile_target)
-!     call rrfs%open(trim(rrfsfile_target),"w",200)
-!     call rrfs%replace_var("lake_frac",nx_rrfs,ny_rrfs,lakemask_rrfs)
-!     call rrfs%replace_var("lake_depth",nx_rrfs,ny_rrfs,lake_depth_target)
+     rrfsfile_target=trim(rrfs_lam_target)//"/"//gridid//'_oro_data.tile7.'//haloid//'.nc'
+     write(*,'(a,a)') 'open to write:',trim(rrfsfile_target)
+     call rrfs%open(trim(rrfsfile_target),"w",200)
+     call rrfs%replace_var("lake_frac",nx_rrfs,ny_rrfs,lakemask_rrfs)
+     call rrfs%replace_var("lake_depth",nx_rrfs,ny_rrfs,lake_depth_target)
 !     call rrfs%replace_var("slmsk",nx_rrfs,ny_rrfs,slmsk_target)
 !     call rrfs%replace_var("land_frac",nx_rrfs,ny_rrfs,land_frac_target)
-!!     call rrfs%replace_var("vegetation_type_pct",nx_rrfs,ny_rrfs,num_veg_cat,vegetation_type_pct_target)
-!!     call rrfs%replace_var("soil_type_pct",nx_rrfs,ny_rrfs,num_soil_cat,soil_type_pct_target)
-!     call rrfs%close()
+!     call rrfs%replace_var("vegetation_type_pct",nx_rrfs,ny_rrfs,num_veg_cat,vegetation_type_pct_target)
+!     call rrfs%replace_var("soil_type_pct",nx_rrfs,ny_rrfs,num_soil_cat,soil_type_pct_target)
+     call rrfs%close()
 
      rrfsfile_target=trim(rrfs_lam_target)//"/"//gridid//'.soil_type.tile7.'//haloid//'.nc'
      call rrfs%open(trim(rrfsfile_target),"w",200)
@@ -534,27 +554,27 @@ program fix_soil_vegetation_pct
         call rrfs%open(trim(rrfsfile_source),"r",200)
         call rrfs%get_var("lake_frac",nx_rrfs4,ny_rrfs4,lakemask_rrfs_source)
         call rrfs%get_var("lake_depth",nx_rrfs4,ny_rrfs4,lake_depth_source)
-        call rrfs%get_var("slmsk",nx_rrfs4,ny_rrfs4,slmsk_source)
-        call rrfs%get_var("land_frac",nx_rrfs4,ny_rrfs4,land_frac_source)
+!        call rrfs%get_var("slmsk",nx_rrfs4,ny_rrfs4,slmsk_source)
+!        call rrfs%get_var("land_frac",nx_rrfs4,ny_rrfs4,land_frac_source)
 !        call rrfs%get_var("vegetation_type_pct",nx_rrfs4,ny_rrfs4,num_veg_cat,vegetation_type_pct_source)
 !        call rrfs%get_var("soil_type_pct",nx_rrfs4,ny_rrfs4,num_soil_cat,soil_type_pct_source)
         call rrfs%close()
         lakemask_rrfs_source(5:nx_rrfs+4,5:ny_rrfs+4)=lakemask_rrfs(1:nx_rrfs,1:ny_rrfs)
         lake_depth_source(5:nx_rrfs+4,5:ny_rrfs+4)=lake_depth_target(1:nx_rrfs,1:ny_rrfs)
-        slmsk_source(5:nx_rrfs+4,5:ny_rrfs+4)=slmsk_target(1:nx_rrfs,1:ny_rrfs)
-        land_frac_source(5:nx_rrfs+4,5:ny_rrfs+4)=land_frac_target(1:nx_rrfs,1:ny_rrfs)
+!        slmsk_source(5:nx_rrfs+4,5:ny_rrfs+4)=slmsk_target(1:nx_rrfs,1:ny_rrfs)
+!        land_frac_source(5:nx_rrfs+4,5:ny_rrfs+4)=land_frac_target(1:nx_rrfs,1:ny_rrfs)
 !        vegetation_type_pct_source(5:nx_rrfs+4,5:ny_rrfs+4,:)=vegetation_type_pct_target(1:nx_rrfs,1:ny_rrfs,:)
 !        soil_type_pct_source(5:nx_rrfs+4,5:ny_rrfs+4,:)=soil_type_pct_target(1:nx_rrfs,1:ny_rrfs,:)
 
-!        rrfsfile_target=trim(rrfs_lam_target)//"/"//gridid//'_oro_data.tile7.'//haloid//'.nc'
-!        call rrfs%open(trim(rrfsfile_target),"w",200)
-!        call rrfs%replace_var("lake_frac",nx_rrfs4,ny_rrfs4,lakemask_rrfs_source)
-!        call rrfs%replace_var("lake_depth",nx_rrfs4,ny_rrfs4,lake_depth_source)
+        rrfsfile_target=trim(rrfs_lam_target)//"/"//gridid//'_oro_data.tile7.'//haloid//'.nc'
+        call rrfs%open(trim(rrfsfile_target),"w",200)
+        call rrfs%replace_var("lake_frac",nx_rrfs4,ny_rrfs4,lakemask_rrfs_source)
+        call rrfs%replace_var("lake_depth",nx_rrfs4,ny_rrfs4,lake_depth_source)
 !        call rrfs%replace_var("slmsk",nx_rrfs4,ny_rrfs4,slmsk_source)
 !        call rrfs%replace_var("land_frac",nx_rrfs4,ny_rrfs4,land_frac_source)
 !        call rrfs%replace_var("vegetation_type_pct",nx_rrfs4,ny_rrfs4,num_veg_cat,vegetation_type_pct_source)
 !        call rrfs%replace_var("soil_type_pct",nx_rrfs4,ny_rrfs4,num_soil_cat,soil_type_pct_source)
-!        call rrfs%close()
+        call rrfs%close()
 
         deallocate(lakemask_rrfs_source)
         deallocate(lake_depth_source)
@@ -693,20 +713,20 @@ program fix_soil_vegetation_pct
         call rrfs%open(trim(rrfsfile_source),"r",200)
         call rrfs%get_var("lake_frac",nx_rrfs4,ny_rrfs4,lakemask_rrfs_source)
         call rrfs%get_var("lake_depth",nx_rrfs4,ny_rrfs4,lake_depth_source)
-        call rrfs%get_var("slmsk",nx_rrfs4,ny_rrfs4,slmsk_source)
-        call rrfs%get_var("land_frac",nx_rrfs4,ny_rrfs4,land_frac_source)
+!        call rrfs%get_var("slmsk",nx_rrfs4,ny_rrfs4,slmsk_source)
+!        call rrfs%get_var("land_frac",nx_rrfs4,ny_rrfs4,land_frac_source)
         call rrfs%close()
         lakemask_rrfs_source(4:nx_rrfs+3,4:ny_rrfs+3)=lakemask_rrfs(1:nx_rrfs,1:ny_rrfs)
         lake_depth_source(4:nx_rrfs+3,4:ny_rrfs+3)=lake_depth_target(1:nx_rrfs,1:ny_rrfs)
-        slmsk_source(4:nx_rrfs+3,4:ny_rrfs+3)=slmsk_target(1:nx_rrfs,1:ny_rrfs)
-        land_frac_source(4:nx_rrfs+3,4:ny_rrfs+3)=land_frac_target(1:nx_rrfs,1:ny_rrfs)
+!        slmsk_source(4:nx_rrfs+3,4:ny_rrfs+3)=slmsk_target(1:nx_rrfs,1:ny_rrfs)
+!        land_frac_source(4:nx_rrfs+3,4:ny_rrfs+3)=land_frac_target(1:nx_rrfs,1:ny_rrfs)
 
         rrfsfile_target=trim(rrfs_lam_target)//"/"//gridid//'_oro_data.tile7.'//haloid//'.nc'
         call rrfs%open(trim(rrfsfile_target),"w",200)
         call rrfs%replace_var("lake_frac",nx_rrfs4,ny_rrfs4,lakemask_rrfs_source)
         call rrfs%replace_var("lake_depth",nx_rrfs4,ny_rrfs4,lake_depth_source)
-        call rrfs%replace_var("slmsk",nx_rrfs4,ny_rrfs4,slmsk_source)
-        call rrfs%replace_var("land_frac",nx_rrfs4,ny_rrfs4,land_frac_source)
+!        call rrfs%replace_var("slmsk",nx_rrfs4,ny_rrfs4,slmsk_source)
+!        call rrfs%replace_var("land_frac",nx_rrfs4,ny_rrfs4,land_frac_source)
         call rrfs%close()
 
         deallocate(lakemask_rrfs_source)

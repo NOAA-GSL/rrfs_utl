@@ -15,8 +15,8 @@ program lake_surgery_hrrr
 !
 !  namelist files
 !
-  character*180 :: rrfs_lam_source
-  character*180 :: rrfs_lam_target
+  character*80 :: rrfs_lam_source
+  character*80 :: rrfs_lam_target
   namelist/setup/ rrfs_lam_source,rrfs_lam_target
 !
 ! MPI variables
@@ -91,10 +91,6 @@ program lake_surgery_hrrr
 ! facsf
   real(r_single),allocatable :: facsf_source(:,:)
   real(r_single),allocatable :: facsf_target(:,:)
-! C3463.maximum_snow_albedo.tile7.halo0.nc 
-! maximum_snow_albedo
-  real(r_single),allocatable :: maximum_snow_albedo_source(:,:)
-  real(r_single),allocatable :: maximum_snow_albedo_target(:,:)
 !
 !  temperal arrary
   real(r_single),allocatable :: r4d2(:,:),r4d3(:,:,:), r4d4(:,:,:,:)
@@ -112,7 +108,7 @@ program lake_surgery_hrrr
   real :: xc,yc
   integer :: ii,jj,iii,jjj,ndist,mindist,nsearch
   integer :: n_lake2land,n_land2lake
-  integer :: vegenum, albdonum, facnum
+  integer :: vegenum, albdonum
   logical :: l_lake_surgery, l_consist
   logical :: update_halo4,update_halo3
 
@@ -177,6 +173,7 @@ program lake_surgery_hrrr
      write(*,*) 'rrfs lon=',maxval(rlon2d_rrfs),minval(rlon2d_rrfs)
      write(*,*) 'rrfs lat=',maxval(rlat2d_rrfs),minval(rlat2d_rrfs)
      write(*,*) 'rrfs lake fraction=',maxval(lakemask_rrfs),minval(lakemask_rrfs)
+     write(*,*) '1811,783=',rlon2d_rrfs(1811,783),rlat2d_rrfs(1811,783)
 !
 ! read in HRRR dimension, latlon, and lake mask
 !
@@ -309,14 +306,6 @@ program lake_surgery_hrrr
      call rrfs%get_var("facsf",nx_rrfs,ny_rrfs,facsf_source(:,:))
      facsf_target=facsf_source
      call rrfs%close()
-     ! maximum_snow_albedo
-     allocate(maximum_snow_albedo_source(nx_rrfs,ny_rrfs))
-     allocate(maximum_snow_albedo_target(nx_rrfs,ny_rrfs))
-     rrfsfile_source=trim(rrfs_lam_source)//"/"//gridid//'.maximum_snow_albedo.tile7.'//haloid//'.nc'
-     call rrfs%open(trim(rrfsfile_source),"r",200)
-     call rrfs%get_var("maximum_snow_albedo",nx_rrfs,ny_rrfs,maximum_snow_albedo_source(:,:))
-     maximum_snow_albedo_target=maximum_snow_albedo_source
-     call rrfs%close()
 !
 !  convert 
 !
@@ -330,17 +319,16 @@ program lake_surgery_hrrr
           if(abs(slmsk_source(i,j)-1.0) < 0.01) then
              vegenum=0
              albdonum=0
-             facnum=0
              do k=1,num_time
                  if(vegetation_greenness_source(i,j,k) < -100.0) vegenum=vegenum+1
-             enddo
-             do k=1,num_time
+              enddo
+              do k=1,num_time
                  if(sky_albedo_source(i,j,k,1) < -100.0) albdonum=albdonum+1
                  if(sky_albedo_source(i,j,k,2) < -100.0) albdonum=albdonum+1
                  if(sky_albedo_source(i,j,k,3) < -100.0) albdonum=albdonum+1
                  if(sky_albedo_source(i,j,k,4) < -100.0) albdonum=albdonum+1
-             enddo
-             if( vegenum > 0 .or. albdonum > 0 .or. substrate_temperature_source(i,j) < 100.0 ) then
+              enddo
+              if( vegenum > 0 .or. albdonum > 0 .or. substrate_temperature_source(i,j) < 100.0 ) then
                   !need to fix missing values
                   ! find the close land point
                   mindist=9999
@@ -377,7 +365,8 @@ program lake_surgery_hrrr
                   else
                       write(*,*) 'cannot find point to fill in missing point',i,j
                   endif
-             endif
+
+              endif
           endif
        enddo
        enddo
@@ -418,7 +407,6 @@ program lake_surgery_hrrr
               vegetation_type_target(i,j)=17
               sky_albedo_target(i,j,:,:)=-999.9
               facsf_target(i,j)=-999.0
-              maximum_snow_albedo_target(i,j)=-999.0
 
 !  convert lake point to land point
            else
@@ -432,9 +420,6 @@ program lake_surgery_hrrr
                    if(substrate_temperature_source(ii,jj) > 100.0 ) then
                       vegenum=0
                       albdonum=0
-                      facnum=0
-                      if(facsf_target(ii,jj) > -100.0) facnum=facnum+1
-                      if(maximum_snow_albedo_target(ii,jj) > -100.0) facnum=facnum+1
                       do k=1,num_time
                          if(vegetation_greenness_source(ii,jj, k) > -100.0) vegenum=vegenum+1
                       enddo
@@ -444,7 +429,7 @@ program lake_surgery_hrrr
                          if(sky_albedo_source(ii,jj,k,3) > -100.0) albdonum=albdonum+1
                          if(sky_albedo_source(ii,jj,k,4) > -100.0) albdonum=albdonum+1
                       enddo
-                      if( vegenum==num_time .and. albdonum==4*num_time .and. facnum==2 ) then
+                      if( vegenum==num_time .and. albdonum==4*num_time ) then
                          mindist=ndist
                          iii=ii
                          jjj=jj
@@ -488,7 +473,6 @@ program lake_surgery_hrrr
                 vegetation_type_pct_target2(i,j,:)=vegetation_type_pct_source2(iii,jjj,:)
                 sky_albedo_target(i,j,:,:)=sky_albedo_source(iii,jjj,:,:)
                 facsf_target(i,j)=facsf_source(iii,jjj)
-                maximum_snow_albedo_target(i,j)=maximum_snow_albedo_source(iii,jjj)
              else
                 write(*,*) "cannot find nearest land for", i,j
                 do jj=max(j-nsearch,1),min(j+nsearch,ny_rrfs)
@@ -534,7 +518,6 @@ program lake_surgery_hrrr
            vegetation_type_target(i,j)=17
            sky_albedo_target(i,j,:,:)=-999.9
            facsf_target(i,j)=-999.0
-           maximum_snow_albedo_target(i,j)=-999.0
          endif
        enddo
        enddo
@@ -549,15 +532,6 @@ program lake_surgery_hrrr
         call change_Outer_Banks(nx_rrfs,ny_rrfs,lakemask_rrfshrrr,land_frac_rrfs,lake_depth_target)
      endif
 
-     !
-     ! need to change default lake depth from 10 to 10.5 so 
-     ! the model will not change it from 10 to 50m
-     !
-     do j=1,ny_rrfs
-     do i=1,nx_rrfs
-        if(abs(lake_depth_target(i,j)-10.0) < 0.1 ) lake_depth_target(i,j)=10.5
-     enddo
-     enddo
 if(1==1) then
  do n=1,ncheck
      iii=icheck(n)
@@ -670,11 +644,6 @@ if(1==1) then
        write(*,'(9f8.2,5x,9f8.2)') (facsf_target(i,j),i=iii-4,iii+4), &
                             (facsf_source(i,j),i=iii-4,iii+4)
      enddo
-     write(*,*) 'maximum_snow_albedo_target'
-     do j=jjj-4,jjj+4
-       write(*,'(9f8.2,5x,9f8.2)') (maximum_snow_albedo_target(i,j),i=iii-4,iii+4), &
-                            (maximum_snow_albedo_source(i,j),i=iii-4,iii+4)
-     enddo
   enddo
 endif
 
@@ -696,7 +665,6 @@ endif
      deallocate(vegetation_type_source)
      deallocate(sky_albedo_source)
      deallocate(facsf_source)
-     deallocate(maximum_snow_albedo_source)
 
 !
 !  update lake variables
@@ -744,11 +712,6 @@ endif
      rrfsfile_target=trim(rrfs_lam_target)//"/"//gridid//'.facsf.tile7.'//haloid//'.nc'
      call rrfs%open(trim(rrfsfile_target),"w",200)
      call rrfs%replace_var("facsf",nx_rrfs,ny_rrfs,facsf_target)
-     call rrfs%close()
-     !
-     rrfsfile_target=trim(rrfs_lam_target)//"/"//gridid//'.maximum_snow_albedo.tile7.'//haloid//'.nc'
-     call rrfs%open(trim(rrfsfile_target),"w",200)
-     call rrfs%replace_var("maximum_snow_albedo",nx_rrfs,ny_rrfs,maximum_snow_albedo_target)
      call rrfs%close()
 
 !
@@ -899,20 +862,6 @@ endif
         call rrfs%replace_var("facsf",nx_rrfs4,ny_rrfs4,facsf_source)
         call rrfs%close()
         deallocate(facsf_source)
-! maximum_snow_albedo
-        allocate(maximum_snow_albedo_source(nx_rrfs4,ny_rrfs4))
-        rrfsfile_source=trim(rrfs_lam_source)//"/"//gridid//'.maximum_snow_albedo.tile7.'//haloid//'.nc'
-        call rrfs%open(trim(rrfsfile_source),"r",200)
-        call rrfs%get_var("maximum_snow_albedo",nx_rrfs4,ny_rrfs4,maximum_snow_albedo_source)
-        call rrfs%close()
-
-        maximum_snow_albedo_source(5:nx_rrfs+4,5:ny_rrfs+4)=maximum_snow_albedo_target(1:nx_rrfs,1:ny_rrfs)
-
-        rrfsfile_target=trim(rrfs_lam_target)//"/"//gridid//'.maximum_snow_albedo.tile7.'//haloid//'.nc'
-        call rrfs%open(trim(rrfsfile_target),"w",200)
-        call rrfs%replace_var("maximum_snow_albedo",nx_rrfs4,ny_rrfs4,maximum_snow_albedo_source)
-        call rrfs%close()
-        deallocate(maximum_snow_albedo_source)
      endif
 
      if(update_halo3) then
