@@ -1,0 +1,4 @@
+&setup
+rrfs_lam_source='/scratch1/BMC/wrfruc/mhu/rrfs/v0.9.9/RRFS_NA_3km_C3463_Lake_fracSV_fix_fill'
+rrfs_lam_target='/scratch1/BMC/wrfruc/mhu/rrfs/v0.9.9/RRFS_NA_3km_C3463_Lake_fracSV_HRRRLake_fix_fill'
+/
