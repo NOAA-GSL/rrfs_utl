@@ -10,10 +10,9 @@ list(APPEND src_pre_blending
 find_library(LIBIOMP5_PATH NAMES libiomp5.so)
 
 if(CMAKE_Fortran_COMPILER_ID MATCHES "^(Intel)$")
-  set(CMAKE_Fortran_FLAGS
-  "-fp-model precise --f90flags='-fopenmp' -L${LIBIOMP5_PATH} -liomp5")
-   set(CMAKE_Fortran_FLAGS_RELEASE "-O2 --f90flags='-fopenmp' -L${LIBIOMP5_PATH} -liomp5")
-   set(CMAKE_Fortran_FLAGS_DEBUG "-O0 -g -traceback -fp-model precise --f90flags='-fopenmp' -L${LIBIOMP5_PATH} -liomp5")
+   set(CMAKE_Fortran_FLAGS "-fp-model precise -L${LIBIOMP5_PATH} -liomp5")
+   set(CMAKE_Fortran_FLAGS_RELEASE "-O2 -L${LIBIOMP5_PATH} -liomp5")
+   set(CMAKE_Fortran_FLAGS_DEBUG "-O0 -g -traceback -fp-model precise -L${LIBIOMP5_PATH} -liomp5")
 endif()
 
 add_executable(fv3lam_pre_blending.exe ${src_pre_blending})
