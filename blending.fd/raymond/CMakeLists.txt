@@ -24,12 +24,6 @@ ${BPY} -m numpy.f2py -c -m raymond ${FCODE} \
 -DF2PY_REPORT_ATEXIT
 ")
 
-#set(F2PY_CMD
-#    "CFLAGS='${CFLAGS}' FFLAGS='${FFLAGS}' FCFLAGS='${FFLAGS}' "
-#    "${BPY} -m numpy.f2py -DF2PY_REPORT_ATEXIT --fcompiler=intelem "
-#    "--build-dir \"${CMAKE_CURRENT_BINARY_DIR}\" -c -m raymond \"${FCODE}\""
-#)
-
 # Execute the build
 execute_process(
     COMMAND /bin/sh -c "${F2PY_CMD}"
