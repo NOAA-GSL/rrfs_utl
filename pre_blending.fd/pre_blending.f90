@@ -591,16 +591,32 @@ PROGRAM pre_blending
   !
   allocate(lvl2core(100))
   lvl2core=-1
+  us_1st=-1
+  vs_1st=-1
+  uw_1st=-1
+  vw_1st=-1
   if(mype==0) then
      do n=1,npe
         do k=mpiioarg%lvlbegin(n),mpiioarg%lvlend(n)
            if(lvl2core(k)==-1) lvl2core(k)=n
         enddo
+        if(us_1st==-1 .and. trim(mpiioarg%varname(n))=='u_s') us_1st=n-1
+        if(vs_1st==-1 .and. trim(mpiioarg%varname(n))=='v_s') vs_1st=n-1
+        if(uw_1st==-1 .and. trim(mpiioarg%varname(n))=='u_w') uw_1st=n-1
+        if(vw_1st==-1 .and. trim(mpiioarg%varname(n))=='v_w') vw_1st=n-1
      enddo
   endif
   call MPI_Bcast(lvl2core, 100, mpi_integer, 0, MPI_COMM_WORLD,ierror)
+  call MPI_Bcast(us_1st, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
+  call MPI_Bcast(vs_1st, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
+  call MPI_Bcast(uw_1st, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
+  call MPI_Bcast(vw_1st, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
 
   if(mype==0) call mpiioarg%close()
+  if(mype==1) then
+     write(6,*) "The first core of u_s,v_s,u_w,v_w:",us_1st,vs_1st,uw_1st,vw_1st
+     write(6,*) "The core id matchies level:",lvl2core
+  endif
   call mpi_barrier(MPI_COMM_WORLD,ierror)
 
 ! Create sub-communicator to handle each file
@@ -651,10 +667,6 @@ PROGRAM pre_blending
 !  send u_s,v_s,u_w,v_w to the core with v_w. So those 4 fields in the same 
 !
   if(mype==0) write(6,*) "start collect u_s, v_s, u_w, v_w in the same level"
-  us_1st=0
-  vs_1st=npe/4
-  uw_1st=npe/4*2
-  vw_1st=npe/4*3
   if(trim(mype_varname)=='v_w') then
      allocate(d3r4_us(nlon,nlatp,mype_lbegin:mype_lend))
      allocate(d3r4_vs(nlon,nlatp,mype_lbegin:mype_lend))
@@ -691,11 +703,6 @@ PROGRAM pre_blending
 !     write(6,*) 'receive  u_w', mype, uw_1st+(mype-vw_1st), nlon*nlatp*(mype_lend-mype_lbegin+1)
      call MPI_Recv(d3r4_uw, nlonp*nlat*(mype_lend-mype_lbegin+1), MPI_real, uw_1st+(mype-vw_1st), 0, mpi_comm_world,MPI_STATUS_IGNORE,ierror)
   endif
-!  if(mype==100) then
-!     do k=1,nlev
-!        write(6,*) 'level 2 core=',k,lvl2core(k)
-!     enddo
-!  endif
   call mpi_barrier(MPI_COMM_WORLD,ierror)
 !  if(trim(mype_varname)=='v_w') then
 !     do k=mype_lbegin,mype_lend
@@ -769,7 +776,8 @@ PROGRAM pre_blending
   endif
 
   if(mype < nlev) then
-     write(6,'(I10,8f20.6)') mype,maxval(u_s),minval(u_s),maxval(v_s),minval(v_s),maxval(u_w),minval(u_w),maxval(v_w),minval(v_w)
+     if(mype==0) write(6,'(10a15)') 'level/core id', 'u_s max', 'u_s min', 'v_s max', 'v_s min', 'u_w max', 'u_w min', 'v_w max', 'v_w min'
+     write(6,'(I15,8f15.6)') mype,maxval(u_s),minval(u_s),maxval(v_s),minval(v_s),maxval(u_w),minval(u_w),maxval(v_w),minval(v_w)
   endif
 
   allocate(ud_local(nlon,nlatp,1))
