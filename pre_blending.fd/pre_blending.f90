@@ -512,7 +512,7 @@ PROGRAM pre_blending
 
   deallocate(d3r4)
 !  
-  if(mype==0) write(*,*) "done with T Q and delp remap"
+  write(*,*)"mype0=",mype, "done with T Q and delp remap"
   call mpi_barrier(MPI_COMM_WORLD,ierror)
 !
 !-------------------------------------------------------------------
@@ -551,6 +551,7 @@ PROGRAM pre_blending
      call check(nf90_close(cdfid))
   endif
   deallocate(d2r4)
+  write(*,*)"mype1=",mype, "read ps geolon geolat for U and V"
 
   call mpi_barrier(MPI_COMM_WORLD,ierror)
   call MPI_Bcast(psc, nlon*nlat, MPI_DOUBLE , 0, MPI_COMM_WORLD, ierr)
