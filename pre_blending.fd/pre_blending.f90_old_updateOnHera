@@ -70,7 +70,6 @@ PROGRAM pre_blending
   integer :: mype_vartype
   integer :: mype_nx,mype_ny
   integer :: mype_lbegin,mype_lend
-  integer,allocatable,dimension(:) :: lvl2core
 
   integer :: lon2, lat2, nsig
   integer :: mype_istart,mype_jstart
@@ -105,15 +104,11 @@ PROGRAM pre_blending
  real,allocatable, dimension(:,:)     ::  d2r4
  real,allocatable, dimension(:,:,:)   ::  d3r4
  real,allocatable, dimension(:,:,:)   ::  sub_vars
- !
- real,allocatable, dimension(:,:,:)   ::  d3r4_us,d3r4_vs,d3r4_uw
- integer :: us_1st,vs_1st,uw_1st,vw_1st
 
 !
   integer :: n,i,j,k,iret,ilev,ierr
   integer :: grid_cdfid,cdfid,oldMode
 ! dimensions
-  TYPE(MPI_Status) :: istatus
   integer :: nlev, nlat, nlon, nlatp, nlonp, nlevp
   integer :: dimid_lev, dimid_lat, dimid_lon, dimid_latp, dimid_lonp, dimid_nlev
   integer :: local_nx,local_ny
@@ -138,7 +133,7 @@ PROGRAM pre_blending
 !
   filecold(1)='out.atm.tile7.nc'
 !
-  call check(nf90_open(trim(filecold(1)), IOR(NF90_NOWRITE, NF90_MPIIO), cdfid, &
+  call check(nf90_open(trim(filecold(1)), IOR(NF90_WRITE, NF90_MPIIO), cdfid, &
                        comm=MPI_COMM_WORLD, info=MPI_INFO_NULL))
     call check(nf90_inq_dimid(cdfid, "lev", dimid_lev))
     call check(nf90_inquire_dimension(cdfid, dimid_lev, len=nlev))    ! 66
@@ -512,11 +507,11 @@ PROGRAM pre_blending
 
   deallocate(d3r4)
 !  
-  write(*,*)"mype0=",mype, "done with T Q and delp remap"
+  if(mype==0) write(*,*) "done with T Q and delp remap"
   call mpi_barrier(MPI_COMM_WORLD,ierror)
 !
 !-------------------------------------------------------------------
-! now working on wind 
+! now working on scalars 
 !-------------------------------------------------------------------
 !
   filecold(1)='out.atm.tile7.nc'
@@ -551,7 +546,6 @@ PROGRAM pre_blending
      call check(nf90_close(cdfid))
   endif
   deallocate(d2r4)
-  write(*,*)"mype1=",mype, "read ps geolon geolat for U and V"
 
   call mpi_barrier(MPI_COMM_WORLD,ierror)
   call MPI_Bcast(psc, nlon*nlat, MPI_DOUBLE , 0, MPI_COMM_WORLD, ierr)
@@ -565,8 +559,8 @@ PROGRAM pre_blending
 
   call mpi_barrier(MPI_COMM_WORLD,ierror)
 
-  numvar(1)=4
-  varlist(1)='u_s v_s u_w v_w'
+  numvar(1)=1
+  varlist(1)='u_s' ! v_s u_w v_w'
   if(mype==0) then
 !
 ! find dimension of each field
@@ -589,35 +583,8 @@ PROGRAM pre_blending
   call MPI_Scatter(mpiioarg%ny, 1, mpi_integer, mype_ny, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
   call MPI_Scatter(mpiioarg%lvlbegin, 1, mpi_integer, mype_lbegin, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
   call MPI_Scatter(mpiioarg%lvlend, 1, mpi_integer, mype_lend, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
-  !
-  allocate(lvl2core(100))
-  lvl2core=-1
-  us_1st=-1
-  vs_1st=-1
-  uw_1st=-1
-  vw_1st=-1
-  if(mype==0) then
-     do n=1,npe
-        do k=mpiioarg%lvlbegin(n),mpiioarg%lvlend(n)
-           if(lvl2core(k)==-1) lvl2core(k)=n
-        enddo
-        if(us_1st==-1 .and. trim(mpiioarg%varname(n))=='u_s') us_1st=n-1
-        if(vs_1st==-1 .and. trim(mpiioarg%varname(n))=='v_s') vs_1st=n-1
-        if(uw_1st==-1 .and. trim(mpiioarg%varname(n))=='u_w') uw_1st=n-1
-        if(vw_1st==-1 .and. trim(mpiioarg%varname(n))=='v_w') vw_1st=n-1
-     enddo
-  endif
-  call MPI_Bcast(lvl2core, 100, mpi_integer, 0, MPI_COMM_WORLD,ierror)
-  call MPI_Bcast(us_1st, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
-  call MPI_Bcast(vs_1st, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
-  call MPI_Bcast(uw_1st, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
-  call MPI_Bcast(vw_1st, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
 
   if(mype==0) call mpiioarg%close()
-  if(mype==1) then
-     write(6,*) "The first core of u_s,v_s,u_w,v_w:",us_1st,vs_1st,uw_1st,vw_1st
-     write(6,*) "The core id matchies level:",lvl2core
-  endif
   call mpi_barrier(MPI_COMM_WORLD,ierror)
 
 ! Create sub-communicator to handle each file
@@ -633,14 +600,9 @@ PROGRAM pre_blending
      write(6,'(a,i5)')'***ERROR*** after mpi_comm_create with iret = ',ierror
      call mpi_abort(mpi_comm_world,101,ierror)
   endif
-  if(npe <= nlev ) then
-     write(6,'(a,i5)')'***ERROR*** need more than nlev cores to run nlev = ',nlev
-     call mpi_abort(mpi_comm_world,102,1)
-  endif
 !
 ! read 2D field from each file using sub communicator
 !
-  allocate(d3r4(mype_nx,mype_ny,mype_lbegin:mype_lend))
   if (MPI_COMM_NULL /= new_comm) then
 
      iret=nf90_open(trim(filecold(1)),nf90_nowrite,ncioid,comm=new_comm,info=MPI_INFO_NULL)
@@ -648,216 +610,100 @@ PROGRAM pre_blending
            write(6,*)' problem opening ', trim(filecold(1)), ' Status =',iret
            write(6,*)  nf90_strerror(iret)
            call flush(6)
-           call mpi_abort(new_comm,103,1)
+           stop 333
      endif
 
-     call mype_read(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
-     do k=mype_lbegin,mype_lend
-        write(6,'(a,a10,i10,2f20.6)') 'reading wind=',trim(adjustl(mype_varname)),k,maxval(d3r4(:,:,:)),minval(d3r4(:,:,:))
-     enddo
+     if(trim(mype_varname)=='u_s')then
+        allocate(u_s(nlon,nlatp,mype_lbegin:mype_lend))
+        allocate(v_s(nlon,nlatp,mype_lbegin:mype_lend))
+        allocate(u_w(nlonp,nlat,mype_lbegin:mype_lend))
+        allocate(v_w(nlonp,nlat,mype_lbegin:mype_lend))
+        allocate(ud_local(nlon,nlatp,mype_lbegin:mype_lend))
+        allocate(vd_local(nlonp,nlat,mype_lbegin:mype_lend))
 
-     call check(nf90_close(ncioid))
-  endif
+        write(*,*) "read wind from:",mype
+        local_nx=nlon
+        local_ny=nlatp
+        allocate(d3r4(local_nx,local_ny,mype_lbegin:mype_lend))
+        local_varname="u_s"
+        call mype_read(ncioid,local_nx,local_ny,mype_lbegin,mype_lend,mype_vartype,local_varname,d3r4)
+        u_s=d3r4
+        local_varname="v_s"
+        call mype_read(ncioid,local_nx,local_ny,mype_lbegin,mype_lend,mype_vartype,local_varname,d3r4)
+        v_s=d3r4
+        deallocate(d3r4)
 
-  if (MPI_COMM_NULL /= new_comm) then
-     call MPI_Comm_free(new_comm,iret)
-  endif
+        local_nx=nlonp
+        local_ny=nlat
+        allocate(d3r4(local_nx,local_ny,mype_lbegin:mype_lend))
+        local_varname="u_w"
+        call mype_read(ncioid,local_nx,local_ny,mype_lbegin,mype_lend,mype_vartype,local_varname,d3r4)
+        u_w=d3r4
+        local_varname="v_w"
+        call mype_read(ncioid,local_nx,local_ny,mype_lbegin,mype_lend,mype_vartype,local_varname,d3r4)
+        v_w=d3r4
+        deallocate(d3r4)
 
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-!
-!  send u_s,v_s,u_w,v_w to the core with v_w. So those 4 fields in the same 
-!
-  if(mype==0) write(6,*) "start collect u_s, v_s, u_w, v_w in the same level"
-  if(trim(mype_varname)=='v_w') then
-     allocate(d3r4_us(nlon,nlatp,mype_lbegin:mype_lend))
-     allocate(d3r4_vs(nlon,nlatp,mype_lbegin:mype_lend))
-     allocate(d3r4_uw(nlonp,nlat,mype_lbegin:mype_lend))
-  endif
-! send u_s to v_w cores
-  if(trim(mype_varname)=='u_s') then
-!     write(6,*) 'send u_s', mype, vw_1st+mype,nlon*nlatp*(mype_lend-mype_lbegin+1)
-     call MPI_Send(d3r4, nlon*nlatp*(mype_lend-mype_lbegin+1), MPI_real,  vw_1st+mype, 0, mpi_comm_world, ierror)
-  endif
-  if(trim(mype_varname)=='v_w') then
-!     write(6,*) 'receive  u_s', mype, mype-vw_1st, nlon*nlatp*(mype_lend-mype_lbegin+1)
-     call MPI_Recv(d3r4_us, nlon*nlatp*(mype_lend-mype_lbegin+1), MPI_real, mype-vw_1st, 0, mpi_comm_world,MPI_STATUS_IGNORE,ierror)
-  endif
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-
-! send v_s to v_w cores
-  if(trim(mype_varname)=='v_s') then
-!     write(6,*) 'send v_s', mype, vw_1st+(mype-vs_1st),nlon*nlatp*(mype_lend-mype_lbegin+1)
-     call MPI_Send(d3r4, nlon*nlatp*(mype_lend-mype_lbegin+1), MPI_real,  vw_1st+(mype-vs_1st), 0, mpi_comm_world, ierror)
-  endif
-  if(trim(mype_varname)=='v_w') then
-!     write(6,*) 'receive  v_s', mype, vs_1st+(mype-vw_1st), nlon*nlatp*(mype_lend-mype_lbegin+1)
-     call MPI_Recv(d3r4_vs, nlon*nlatp*(mype_lend-mype_lbegin+1), MPI_real, vs_1st+(mype-vw_1st), 0, mpi_comm_world,MPI_STATUS_IGNORE,ierror)
-  endif
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-
-! send u_s to v_w cores
-  if(trim(mype_varname)=='u_w') then
-!     write(6,*) 'send u_w', mype, vw_1st+(mype-uw_1st),nlon*nlatp*(mype_lend-mype_lbegin+1)
-     call MPI_Send(d3r4, nlonp*nlat*(mype_lend-mype_lbegin+1), MPI_real,  vw_1st+(mype-uw_1st), 0, mpi_comm_world, ierror)
-  endif
-  if(trim(mype_varname)=='v_w') then
-!     write(6,*) 'receive  u_w', mype, uw_1st+(mype-vw_1st), nlon*nlatp*(mype_lend-mype_lbegin+1)
-     call MPI_Recv(d3r4_uw, nlonp*nlat*(mype_lend-mype_lbegin+1), MPI_real, uw_1st+(mype-vw_1st), 0, mpi_comm_world,MPI_STATUS_IGNORE,ierror)
-  endif
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-!  if(trim(mype_varname)=='v_w') then
-!     do k=mype_lbegin,mype_lend
-!        write(6,'(2I10,8f20.6)') mype,k,maxval(d3r4(:,:,k)),minval(d3r4(:,:,k)),maxval(d3r4_us(:,:,k)),minval(d3r4_us(:,:,k)),&
-!                          maxval(d3r4_vs(:,:,k)),minval(d3r4_vs(:,:,k)),maxval(d3r4_uw(:,:,k)),minval(d3r4_uw(:,:,k))
-!     enddo
-!  endif
-
-  allocate(u_s(nlon,nlatp,1))
-  allocate(v_s(nlon,nlatp,1))
-  allocate(u_w(nlonp,nlat,1))
-  allocate(v_w(nlonp,nlat,1))
-
-! send u_s to each level u_s (1-66 level)
-  allocate(d2r4(nlon,nlatp))
-  if(trim(mype_varname)=='v_w') then
-     do k=mype_lbegin,mype_lend
-        call MPI_Send(d3r4_us(:,:,k), nlon*nlatp, MPI_real,  k-1, 0, mpi_comm_world, ierror)
-     enddo
-  endif
-  if(mype < nlev) then
-     call MPI_Recv(d2r4, nlon*nlatp, MPI_real, lvl2core(mype+1)+vw_1st-1, 0, mpi_comm_world,MPI_STATUS_IGNORE,ierror)
-     u_s(:,:,1)=d2r4
-  endif
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-  deallocate(d2r4)
-! send v_s to each level v_s (1-66 level)
-  allocate(d2r4(nlon,nlatp))
-  if(trim(mype_varname)=='v_w') then
-     do k=mype_lbegin,mype_lend
-        call MPI_Send(d3r4_vs(:,:,k), nlon*nlatp, MPI_real,  k-1, 0, mpi_comm_world, ierror)
-     enddo
-  endif
-  if(mype < nlev) then
-     call MPI_Recv(d2r4, nlon*nlatp, MPI_real, lvl2core(mype+1)+vw_1st-1, 0, mpi_comm_world,MPI_STATUS_IGNORE,ierror)
-     v_s(:,:,1)=d2r4
-  endif
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-  deallocate(d2r4)
-! send u_w to each level u_w
-  allocate(d2r4(nlonp,nlat))
-  if(trim(mype_varname)=='v_w') then
-     do k=mype_lbegin,mype_lend
-        call MPI_Send(d3r4_uw(:,:,k), nlonp*nlat, MPI_real,  k-1, 0, mpi_comm_world, ierror)
-     enddo
-  endif
-  if(mype < nlev) then
-     call MPI_Recv(d2r4, nlonp*nlat, MPI_real, lvl2core(mype+1)+vw_1st-1, 0, mpi_comm_world,MPI_STATUS_IGNORE,ierror)
-     u_w(:,:,1)=d2r4
-  endif
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-  deallocate(d2r4)
-! send v_w to each level v_w
-  allocate(d2r4(nlonp,nlat))
-  if(trim(mype_varname)=='v_w') then
-     do k=mype_lbegin,mype_lend
-        call MPI_Send(d3r4(:,:,k), nlonp*nlat, MPI_real,  k-1, 0, mpi_comm_world, ierror)
-     enddo
-  endif
-  if(mype < nlev) then
-     call MPI_Recv(d2r4, nlonp*nlat, MPI_real, lvl2core(mype+1)+vw_1st-1, 0, mpi_comm_world,MPI_STATUS_IGNORE,ierror)
-     v_w(:,:,1)=d2r4
-  endif
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-  deallocate(d2r4)
-  deallocate(d3r4)
-  if(trim(mype_varname)=='v_w') then
-     deallocate(d3r4_us)
-     deallocate(d3r4_vs)
-     deallocate(d3r4_uw)
-  endif
-
-  if(mype < nlev) then
-     if(mype==0) write(6,'(10a15)') 'level/core id', 'u_s max', 'u_s min', 'v_s max', 'v_s min', 'u_w max', 'u_w min', 'v_w max', 'v_w min'
-     write(6,'(I15,8f15.6)') mype,maxval(u_s),minval(u_s),maxval(v_s),minval(v_s),maxval(u_w),minval(u_w),maxval(v_w),minval(v_w)
-  endif
-
-  allocate(ud_local(nlon,nlatp,1))
-  allocate(vd_local(nlonp,nlat,1))
-!
-! Create sub-communicator to handle each file
-  key=mype+1
-  if(mype < nlev) then
-     color = 1
-  else
-     color = MPI_UNDEFINED
-  endif
-
-  call MPI_Comm_split(mpi_comm_world,color,key,new_comm,ierror)
-  if ( ierror /= 0 ) then
-     write(6,'(a,i5)')'***ERROR*** after mpi_comm_create with iret = ',ierror
-     call mpi_abort(mpi_comm_world,104,ierror)
-  endif
-
-  ud_local = 0.0
-  vd_local = 0.0
-  if (MPI_COMM_NULL /= new_comm) then
-     write(*,*) " chgres winds ",mype
-     call chgres_winds_main(gridx, gridy, u_s, v_s, u_w, v_w, ud_local, vd_local)
-  endif
-
-  deallocate(u_s)
-  deallocate(v_s)
-  deallocate(u_w)
-  deallocate(v_w)
+        write(*,*) " chgres winds ",mype
+        ud_local = 0.0
+        vd_local = 0.0
+        call chgres_winds_main(gridx, gridy, u_s, v_s, u_w, v_w, ud_local, vd_local)
+        write(*,*) " after chgres winds ",mype
+        deallocate(u_s)
+        deallocate(v_s)
+        deallocate(u_w)
+        deallocate(v_w)
 !
 ! collect all ud vd to root
 !
-  if(mype==0) then
-     allocate(ud(nlon,nlatp,nlev))
-     allocate(vd(nlonp,nlat,nlev))
-  endif
+        if(mype==0) then
+           allocate(ud(nlon,nlatp,nlev))
+           allocate(vd(nlonp,nlat,nlev))
+        endif
 !
-  if (MPI_COMM_NULL /= new_comm) then
-     write(*,*) " gather winds ",mype
-     call MPI_Gather(ud_local, nlon*nlatp, MPI_DOUBLE, ud, nlon*nlatp, MPI_DOUBLE, 0, new_comm, ierr)
-     call MPI_Gather(vd_local, nlonp*nlat, MPI_DOUBLE, vd, nlonp*nlat, MPI_DOUBLE, 0, new_comm, ierr)
-  end if
+        write(*,*) "before MPI_Gather",mype
+        call MPI_Gather(ud_local, nlon*nlatp, MPI_DOUBLE, ud, nlon*nlatp, MPI_DOUBLE, 0, new_comm, ierr)
+        call MPI_Gather(vd_local, nlonp*nlat, MPI_DOUBLE, vd, nlonp*nlat, MPI_DOUBLE, 0, new_comm, ierr)
+        write(*,*) "after MPI_Gather",mype
 !
-  if (MPI_COMM_NULL /= new_comm) then
-     call MPI_Comm_free(new_comm,iret)
-  endif
-
-  deallocate(ud_local)
-  deallocate(vd_local)
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-  !
-  if(mype==0) then
-    do k=1,nlev
-      write(*,*) "ud=",k,maxval(ud(:,:,k)),minval(ud(:,:,k))
-    enddo
-    do k=1,nlev
-      write(*,*) "vd=",k,maxval(vd(:,:,k)),minval(vd(:,:,k))
-    enddo
+        deallocate(ud_local)
+        deallocate(vd_local)
+        if(mype==0) then
+           do k=1,nlev
+              write(*,*) "ud=",k,maxval(ud(:,:,k)),minval(ud(:,:,k))
+           enddo
+           do k=1,nlev
+              write(*,*) "vd=",k,maxval(vd(:,:,k)),minval(vd(:,:,k))
+           enddo
 !
 !           allocate(Atm_ps(nlon,nlat))
-    allocate(Atm_u(nlon,nlatp,nlev-1))
-    allocate(Atm_v(nlonp,nlat,nlev-1))
+           allocate(Atm_u(nlon,nlatp,nlev-1))
+           allocate(Atm_v(nlonp,nlat,nlev-1))
 !           Atm_ps=psc
 !
 ! wind vertical remap
 !
-    write(*,*) " vertical remap the wind"
-    call remap_dwinds_main(nlev, nlev-1, ak0, bk0, Atm_ak, Atm_bk, psc, ud, vd, &
-                      1, nlon, 1, nlat, Atm_u, Atm_v, Atm_ps)
-    deallocate(ud)
-    deallocate(vd)
+           write(*,*) " vertical remap the wind"
+           call remap_dwinds_main(nlev, nlev-1, ak0, bk0, Atm_ak, Atm_bk, psc, ud, vd, &
+                           1, nlon, 1, nlat, Atm_u, Atm_v, Atm_ps)
+           deallocate(ud)
+           deallocate(vd)
+        endif
+     else
+        allocate(d3r4(mype_nx,mype_ny,mype_lbegin:mype_lend))
+        call mype_read(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
+        deallocate(d3r4)
+     endif
+
+     iret=nf90_close(ncioid)
 !
-    do k=1,nlev-1
-       write(*,*) "Atm_u=",k,maxval(Atm_u(:,:,k)),minval(Atm_u(:,:,k))
-    enddo
-    do k=1,nlev-1
-       write(*,*) "Atm_v=",k,maxval(Atm_v(:,:,k)),minval(Atm_v(:,:,k))
-    enddo
+     if(mype==0) then
+          do k=1,nlev-1
+              write(*,*) "Atm_u=",k,maxval(Atm_u(:,:,k)),minval(Atm_u(:,:,k))
+          enddo
+          do k=1,nlev-1
+              write(*,*) "Atm_v=",k,maxval(Atm_v(:,:,k)),minval(Atm_v(:,:,k))
+          enddo
 
 !          call check(nf90_open(trim(filecold(1)),IOR(NF90_WRITE, NF90_MPIIO), cdfid))
 !          call check(nf90_inq_dimid(cdfid, "lat", dimid_lat))
@@ -911,19 +757,26 @@ PROGRAM pre_blending
           deallocate(d3r4)
 
           iret=nf90_close(cdfid)
+     endif
 
+     if(mype==0) then
           deallocate(Atm_u)
           deallocate(Atm_v)
-  endif
+     endif
 !
 ! release memory
 !
-  deallocate(psc)
-  deallocate(gridx)
-  deallocate(gridy)
+     deallocate(psc)
+     deallocate(gridx)
+     deallocate(gridy)
+  endif
+
+  if (MPI_COMM_NULL /= new_comm) then
+     call MPI_Comm_free(new_comm,iret)
+  endif
+
   deallocate(Atm_ps)
   if(mype==0) write(*,*) "done with wind remap"
-
   call mpi_barrier(MPI_COMM_WORLD,ierror)
 !
   if(mype==0)  write(6,*) "=== RRFS PRE_BLENDING SUCCESS ==="

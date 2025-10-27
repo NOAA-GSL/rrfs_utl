@@ -194,327 +194,16 @@ PROGRAM pre_blending
 !-------------------------------------------------------------------
 !
 !
-  numvar(1)=6
-  numvar(2)=1
-  varlist(1)='ps o3mr delp t sphum zh'
-  varlist(2)='orog_filt'
-  filecold(1)='out.atm.tile7.nc'
-  filecold(2)='C3463_oro_data.tile7.halo0.nc'
-  if(mype==0) then
-!
-! find dimension of each field
-!
-     call ncfs_all%init(2,filecold, numvar, varlist)
-     call ncfs_all%fill_dims()
-!
-!  distibute variables to each core
-!
-     call mpiioarg%init(npe)
-     call mpiioarg%arrange(ncfs_all)
-     ntotalcore=mpiioarg%ntotalcore
-     num_fields=ncfs_all%num_totalvl
-     nsig=nlev
-
-     call ncfs_all%close()
-  endif
-
-  call MPI_Scatter(mpiioarg%fileid, 1, mpi_integer, mype_fileid, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
-  call MPI_Scatter(mpiioarg%varname, 20, mpi_character, mype_varname, 20, mpi_character, 0, MPI_COMM_WORLD,ierror)
-  call MPI_Scatter(mpiioarg%vartype, 1, mpi_integer, mype_vartype, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
-  call MPI_Scatter(mpiioarg%nx, 1, mpi_integer, mype_nx, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
-  call MPI_Scatter(mpiioarg%ny, 1, mpi_integer, mype_ny, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
-  call MPI_Scatter(mpiioarg%lvlbegin, 1, mpi_integer, mype_lbegin, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
-  call MPI_Scatter(mpiioarg%lvlend, 1, mpi_integer, mype_lend, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
-!
-  call MPI_Bcast(ntotalcore, 1, mpi_integer, 0, mpi_comm_world, ierror)
-  call MPI_Bcast(num_fields, 1, mpi_integer, 0, mpi_comm_world, ierror)
-  call MPI_Bcast(nsig, 1, mpi_integer, 0, mpi_comm_world, ierror)
-  allocate(kbegin(ntotalcore))
-  allocate(kend(ntotalcore))
-  allocate(varname(ntotalcore))
-  if(mype==0) then
-     kbegin=mpiioarg%lvlbegin
-     kend=mpiioarg%lvlend
-     varname=mpiioarg%varname
-  endif
-  call MPI_Bcast(kbegin, ntotalcore, mpi_integer, 0, mpi_comm_world, ierror)
-  call MPI_Bcast(kend, ntotalcore, mpi_integer, 0, mpi_comm_world, ierror)
-  call MPI_Bcast(varname, ntotalcore*20, mpi_character, 0, mpi_comm_world, ierror)
-
-  if(mype==0) call mpiioarg%close()
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-
-! Create sub-communicator to handle each file
-  key=mype+1
-  if(mype_fileid > 0 .and. mype_fileid <= 2) then
-     color = mype_fileid
-  else
-     color = MPI_UNDEFINED
-  endif
-
-  call MPI_Comm_split(mpi_comm_world,color,key,new_comm,ierror)
-  if ( ierror /= 0 ) then
-     write(6,'(a,i5)')'***ERROR*** after mpi_comm_create with iret = ',ierror
-     call mpi_abort(mpi_comm_world,101,ierror)
-  endif
-!
-! read 2D field from each file using sub communicator
-!
-  allocate(d3r4(mype_nx,mype_ny,mype_lbegin:mype_lend))
-  if (MPI_COMM_NULL /= new_comm) then
-
-     iret=nf90_open(trim(filecold(mype_fileid)),nf90_nowrite,ncioid,comm=new_comm,info=MPI_INFO_NULL)
-     if(iret/=nf90_noerr) then
-           write(6,*)' problem opening ', trim(filecold(1)), ' Status =',iret
-           write(6,*)  nf90_strerror(iret)
-           call flush(6)
-           stop 333
-     endif
-
-     call mype_read(ncioid,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
-     write(6,'(a10,2f20.6)') trim(adjustl(mype_varname)),maxval(d3r4(:,:,:)),minval(d3r4(:,:,:))
-
-     call check(nf90_close(ncioid))
-  endif
-
-  if (MPI_COMM_NULL /= new_comm) then
-     call MPI_Comm_free(new_comm,iret)
-  endif
-
-  if(mype==0) write(6,*)"all scalers are read in====="
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-
-  call general_sub2grid_create_info(s,mype,ntotalcore,mype_nx,mype_ny,nsig,num_fields,kbegin,kend)
-
-  mype_istart=s%istart(mype+1)
-  mype_jstart=s%jstart(mype+1)
-
-  allocate(sub_vars(s%lat2,s%lon2,s%num_fields))
-  call general_grid2sub(s,d3r4,sub_vars)
-  deallocate(d3r4)
-
-  lon2=s%lon2
-  lat2=s%lat2
-  nsig=s%nsig
-
-  allocate(ps_local(lon2,lat2))
-  allocate(delp_local(lon2,lat2,nsig))
-  allocate(zh_local(lon2,lat2,nsig+1))
-  allocate(omga_local(lon2,lat2,nsig))
-  allocate(t_local(lon2,lat2,nsig))
-  allocate(qa_local(lon2,lat2,nsig,1))
-  allocate(Atm_phis_local(lon2,lat2))
-
-  write(*,*) mype,lon2,lat2,nsig,mype_istart,mype_jstart
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-  i=0
-  do n=1,ntotalcore
-     do ilev=kbegin(n),kend(n)
-        i=i+1
-        if(trim(varname(n))=="ps") call reorg(lon2,lat2,sub_vars(:,:,i),ps_local(:,:))
-        if(trim(varname(n))=="orog_filt") then
-            call reorg(lon2,lat2,sub_vars(:,:,i),Atm_phis_local(:,:))
-            Atm_phis_local(:,:)=Atm_phis_local(:,:)*9.80665
-        endif
-
-        k=ilev
-        if(trim(varname(n))=="o3mr") call reorg(lon2,lat2,sub_vars(:,:,i),omga_local(:,:,k))
-        if(trim(varname(n))=="delp") call reorg(lon2,lat2,sub_vars(:,:,i),delp_local(:,:,k))
-        if(trim(varname(n))=="t") call reorg(lon2,lat2,sub_vars(:,:,i),t_local(:,:,k))
-        if(trim(varname(n))=="sphum") call reorg(lon2,lat2,sub_vars(:,:,i),qa_local(:,:,k,1))
-        if(trim(varname(n))=="zh") call reorg(lon2,lat2,sub_vars(:,:,i),zh_local(:,:,k))
-     enddo
-  enddo
-
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-  deallocate(sub_vars)
-  if(mype==0) then
-    write(*,*) "ps=",maxval(ps_local),minval(ps_local)
-    write(*,*) "orog_filt=",maxval(Atm_phis_local),minval(Atm_phis_local)
-    do k=1,nsig
-      write(*,*) "w=",k,maxval(omga_local(:,:,k)),minval(omga_local(:,:,k))
-    enddo
-    do k=1,nsig
-      write(*,*) "delp=",k,maxval(delp_local(:,:,k)),minval(delp_local(:,:,k))
-    enddo
-    do k=1,nsig
-      write(*,*) "t=",k,maxval(t_local(:,:,k)),minval(t_local(:,:,k))
-    enddo
-    do k=1,nsig
-      write(*,*) "sphum=",k,maxval(qa_local(:,:,k,1)),minval(qa_local(:,:,k,1))
-    enddo
-    do k=1,nsig+1
-      write(*,*) "zh=",k,maxval(zh_local(:,:,k)),minval(zh_local(:,:,k))
-    enddo
-  endif
-
-  allocate(Atm_ps(lon2,lat2))
-  allocate(Atm_delp(lon2,lat2,nsig-1))
-  allocate(Atm_pt(lon2,lat2,nsig-1))
-  allocate(Atm_q(lon2,lat2,nsig-1,1))
-
-  call remap_scalar_main(nlev, nlev-1, 1, ak0, bk0, Atm_ak, Atm_bk, ps_local, qa_local, &
-                           zh_local, omga_local, t_local, 1, lon2, 1, lat2, &
-                           Atm_pt, Atm_q, Atm_delp, Atm_phis_local, Atm_ps)
-
-  ps_local=Atm_ps                    
-  do k=1,nsig-1
-     qa_local(:,:,k,1)=Atm_q(:,:,k,1)
-     t_local(:,:,k)=Atm_pt(:,:,k)
-     delp_local(:,:,k)=Atm_delp(:,:,k)
-  enddo
-
-  if(mype==0) then
-    do k=1,nsig-1
-      write(*,*) "pt=",k,maxval(Atm_pt(:,:,k)),minval(Atm_pt(:,:,k))
-    enddo
-    do k=1,nsig-1
-      write(*,*) "q=",k,maxval(Atm_q(:,:,k,1)),minval(Atm_q(:,:,k,1))
-    enddo
-    do k=1,nsig-1
-      write(*,*) "delp=",k,maxval(Atm_delp(:,:,k)),minval(Atm_delp(:,:,k))
-    enddo
-  endif
-  deallocate(Atm_ps)
-  deallocate(Atm_delp)
-  deallocate(Atm_pt)
-  deallocate(Atm_q)
-!
-!
-!
-  allocate(sub_vars(lat2,lon2,s%num_fields))
-  sub_vars=0.0
-
-  i=0
-  do n=1,ntotalcore
-     do ilev=kbegin(n),kend(n)
-        i=i+1
-        k=ilev
-        if(k<nsig) then
-           if(trim(varname(n))=="delp") call reorg_ad(lon2,lat2,sub_vars(:,:,i),delp_local(:,:,k))
-           if(trim(varname(n))=="t") call reorg_ad(lon2,lat2,sub_vars(:,:,i),t_local(:,:,k))
-           if(trim(varname(n))=="sphum") call reorg_ad(lon2,lat2,sub_vars(:,:,i),qa_local(:,:,k,1))
-           if(trim(varname(n))=="ps") call reorg_ad(lon2,lat2,sub_vars(:,:,i),ps_local(:,:))
-        endif
-     enddo
-  enddo
-!
-!  release memory
-!
-  deallocate(Atm_phis_local)
-  deallocate(qa_local)
-  deallocate(t_local)
-  deallocate(omga_local)
-  deallocate(zh_local)
-  deallocate(delp_local)
-  deallocate(ps_local)
-!
-! distribute from sub to full grid
-!
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-  allocate(d3r4(mype_nx,mype_ny,mype_lbegin:mype_lend))
-  call general_sub2grid(s,sub_vars,d3r4)
-  deallocate(sub_vars)
-
-  call general_sub2grid_destroy_info(s)
-!  write(6,'(a10,2i10,2f15.7)') trim(adjustl(mype_varname)),mype_lbegin,mype_lend,maxval(d3r4(:,:,:)),minval(d3r4(:,:,:))
-
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-!
-!  write to the file
-!
 ! get atm_ps, this will be used for wind
-  allocate(Atm_ps(mype_nx,mype_ny))
-  if(trim(adjustl(mype_varname))=="ps") then
-     Atm_ps(:,:)=d3r4(:,:,mype_lbegin)
+  if(mype==0) then
+      open(12,file='Atm_ps.bin',form='unformatted',status='old')
+         read(12) mype_nx,mype_ny
+         allocate(Atm_ps(mype_nx,mype_ny))
+         read(12) Atm_ps
+     close(12)
      write(*,*) mype, "ps=",maxval(Atm_ps), minval(Atm_ps)
   endif
-!
-! Create sub-communicator to handle each file
-!
-  create_new_file=.false.
-  key=mype+1
-  if(mype_fileid > 0 .and. mype_fileid <= 1 ) then
-     if(trim(adjustl(mype_varname))=="delp" .or. &
-        trim(adjustl(mype_varname))=="t" .or. &
-        trim(adjustl(mype_varname))=="sphum") then
-        color = mype_fileid
-     else
-        color = MPI_UNDEFINED
-     endif
-  else
-     color = MPI_UNDEFINED
-  endif
-
-  call MPI_Comm_split(mpi_comm_world,color,key,new_comm,ierror)
-  if ( ierror /= 0 ) then
-     write(6,'(a,i5)')'***ERROR*** after mpi_comm_create with iret = ',ierror
-     call mpi_abort(mpi_comm_world,101,ierror)
-  endif
-!
-! read 2D field from each file using sub communicator
-!
-  if (MPI_COMM_NULL /= new_comm) then
-
-     if(create_new_file) then
-        call check(nf90_create("cold2warm_all.nc",IOR(nf90_netcdf4, nf90_clobber), &
-                               comm=new_comm, info=MPI_INFO_NULL, ncid=cdfid))
-        if(iret/=nf90_noerr) then
-            write(6,*)' problem creating cold2warm_all.nc ', ', Status =',iret
-            write(6,*)  nf90_strerror(iret)
-            call flush(6)
-            stop(444)
-        endif
-
-        call check(nf90_set_fill(cdfid, NF90_NOFILL, oldMode))
-
-        call check(nf90_redef(cdfid))
-          call check( nf90_def_dim(cdfid, "lat",  nlat,   dimid_lat))
-          call check( nf90_def_dim(cdfid, "lon",  nlon,   dimid_lon))
-          call check( nf90_def_dim(cdfid, "nlev", nlev-1, nlevid))
-        ! t_cold2fv3 (nlev, lat, lon)
-          dimids(1:3) = [dimid_lon, dimid_lat, nlevid]
-          chunksizes(1:4) = [nlon, nlat, 1, 1]
-          call check(nf90_def_var(cdfid, "t_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
-          call check(nf90_def_var_chunking(cdfid, varid, NF90_CHUNKED, chunksizes(1:3)))
-          call check(nf90_var_par_access(cdfid, varid, NF90_COLLECTIVE))
-
-        ! delp_cold2fv3 (nlev, lat, lon)
-          call check(nf90_def_var(cdfid, "delp_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
-          call check(nf90_def_var_chunking(cdfid, varid, NF90_CHUNKED, chunksizes(1:3)))
-          call check(nf90_var_par_access(cdfid, varid, NF90_COLLECTIVE))
-
-        ! sphum_cold2fv3 (nlev, lat, lon)
-          call check(nf90_def_var(cdfid, "sphum_cold2fv3", NF90_FLOAT, dimids(1:3), varid))
-          call check(nf90_def_var_chunking(cdfid, varid, NF90_CHUNKED, chunksizes(1:3)))
-          call check(nf90_var_par_access(cdfid, varid, NF90_COLLECTIVE))
-
-        call check(nf90_enddef(cdfid))
-        call mype_write(cdfid,nsig,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
-        call check(nf90_close(cdfid))
-     else
-        iret=nf90_open("cold2warm_all.nc",nf90_write,cdfid,comm=new_comm,info=MPI_INFO_NULL)
-        if(iret/=nf90_noerr) then
-            write(6,*)' problem opening cold2warm_all.nc', ' Status =',iret
-            write(6,*)  nf90_strerror(iret)
-            call flush(6)
-            stop(444)
-        endif
-        call mype_write2(cdfid,nsig,mype_nx,mype_ny,mype_lbegin,mype_lend,mype_vartype,mype_varname,d3r4)
-        call check(nf90_close(cdfid))
-     endif
-
-  endif
-
-  if (MPI_COMM_NULL /= new_comm) then
-     call MPI_Comm_free(new_comm,iret)
-  endif
-
-  deallocate(d3r4)
 !  
-  write(*,*)"mype0=",mype, "done with T Q and delp remap"
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-!
 !-------------------------------------------------------------------
 ! now working on wind 
 !-------------------------------------------------------------------
@@ -526,31 +215,31 @@ PROGRAM pre_blending
   allocate(gridy(nlon,nlat))
   allocate(psc(nlon,nlat))
 
-  allocate(d2r4(nlon,nlat))
+  allocate(d3r4(nlon,nlat,1))
   if(mype==0) then
      call check(nf90_open(trim(filecold(1)), nf90_nowrite, cdfid))
 
-     start = [1, 1, 0, 0]
-     count = [nlon, nlat, 0, 0]
+     start = [1, 1, 1, 1]
+     count = [nlon, nlat, 1, 1]
 
      call check(nf90_inq_varid(cdfid, "ps", varid))
-     call check(nf90_get_var(cdfid, varid, d2r4, start=start(1:2), count=count(1:2)))
-     psc=d2r4
+     call check(nf90_get_var(cdfid, varid, d3r4, start=start(1:3), count=count(1:3)))
+     psc=d3r4(:,:,1)
 
      call check(nf90_inq_varid(cdfid, "geolon", varid))
-     call check(nf90_get_var(cdfid, varid, d2r4, start=start(1:2), count=count(1:2)))
-     gridx=d2r4
+     call check(nf90_get_var(cdfid, varid, d3r4, start=start(1:3), count=count(1:3)))
+     gridx=d3r4(:,:,1)
 
      call check(nf90_inq_varid(cdfid, "geolat", varid))
-     call check(nf90_get_var(cdfid, varid, d2r4, start=start(1:2), count=count(1:2)))
-     gridy=d2r4
+     call check(nf90_get_var(cdfid, varid, d3r4, start=start(1:3), count=count(1:3)))
+     gridy=d3r4(:,:,1)
      write(*,*) maxval(psc),minval(psc)
      write(*,*) maxval(gridx),minval(gridx)
      write(*,*) maxval(gridy),minval(gridy)
 
      call check(nf90_close(cdfid))
   endif
-  deallocate(d2r4)
+  deallocate(d3r4)
   write(*,*)"mype1=",mype, "read ps geolon geolat for U and V"
 
   call mpi_barrier(MPI_COMM_WORLD,ierror)
@@ -818,7 +507,7 @@ PROGRAM pre_blending
   endif
 !
   if (MPI_COMM_NULL /= new_comm) then
-     write(*,*) " gather winds ",mype
+     write(*,*) " gather winds ",mype,maxval(ud_local),maxval(vd_local)
      call MPI_Gather(ud_local, nlon*nlatp, MPI_DOUBLE, ud, nlon*nlatp, MPI_DOUBLE, 0, new_comm, ierr)
      call MPI_Gather(vd_local, nlonp*nlat, MPI_DOUBLE, vd, nlonp*nlat, MPI_DOUBLE, 0, new_comm, ierr)
   end if
@@ -921,7 +610,7 @@ PROGRAM pre_blending
   deallocate(psc)
   deallocate(gridx)
   deallocate(gridy)
-  deallocate(Atm_ps)
+  if(mype==0) deallocate(Atm_ps)
   if(mype==0) write(*,*) "done with wind remap"
 
   call mpi_barrier(MPI_COMM_WORLD,ierror)
