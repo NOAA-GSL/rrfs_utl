@@ -138,7 +138,7 @@ PROGRAM pre_blending
 !
   filecold(1)='out.atm.tile7.nc'
 !
-  call check(nf90_open(trim(filecold(1)), IOR(NF90_WRITE, NF90_MPIIO), cdfid, &
+  call check(nf90_open(trim(filecold(1)), IOR(NF90_NOWRITE, NF90_MPIIO), cdfid, &
                        comm=MPI_COMM_WORLD, info=MPI_INFO_NULL))
     call check(nf90_inq_dimid(cdfid, "lev", dimid_lev))
     call check(nf90_inquire_dimension(cdfid, dimid_lev, len=nlev))    ! 66
