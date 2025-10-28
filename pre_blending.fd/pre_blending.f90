@@ -110,6 +110,7 @@ PROGRAM pre_blending
  integer :: us_1st,vs_1st,uw_1st,vw_1st
 
 !
+  logical :: lexist
   integer :: n,i,j,k,iret,ilev,ierr
   integer :: grid_cdfid,cdfid,oldMode
 ! dimensions
@@ -136,7 +137,42 @@ PROGRAM pre_blending
   call MPI_COMM_SIZE(mpi_comm_world,npe,ierror)
   call MPI_COMM_RANK(mpi_comm_world,mype,ierror)
 !
+! check file existing status
+!
   filecold(1)='out.atm.tile7.nc'
+  inquire(file=trim(filecold(1)),exist=lexist)
+  if(lexist) then
+    if(mype==0) write(6,*) "file out.atm.tile7.nc exists"
+  else
+     write(6,*) "Error, out.atm.tile7.nc does not exist",mype
+     call mpi_abort(mpi_comm_world,101,ierror)
+  endif
+
+  inquire(file="gfs_ctrl.nc",exist=lexist)
+  if(lexist) then
+    if(mype==0) write(6,*) "file gfs_ctrl.nc exists"
+  else
+     write(6,*) "Error, gfs_ctrl.nc does not exist",mype
+     call mpi_abort(mpi_comm_world,101,ierror)
+  endif
+
+  inquire(file="fv_core.res.nc",exist=lexist)
+  if(lexist) then
+    if(mype==0) write(6,*) "file fv_core.res.nc exists"
+  else
+     write(6,*) "Error, fv_core.res.nc does not exist",mype
+     call mpi_abort(mpi_comm_world,101,ierror)
+  endif
+
+  inquire(file="C3463_oro_data.tile7.halo0.nc",exist=lexist)
+  if(lexist) then
+    if(mype==0) write(6,*) "file C3463_oro_data.tile7.halo0.nc exists"
+  else
+     write(6,*) "Error, C3463_oro_data.tile7.halo0.nc does not exist",mype
+     call mpi_abort(mpi_comm_world,101,ierror)
+  endif
+!
+! read dimensions
 !
   call check(nf90_open(trim(filecold(1)), IOR(NF90_NOWRITE, NF90_MPIIO), cdfid, &
                        comm=MPI_COMM_WORLD, info=MPI_INFO_NULL))
@@ -188,6 +224,7 @@ PROGRAM pre_blending
   call MPI_Bcast(bk0, nlevp, MPI_DOUBLE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(Atm_ak, nlev, MPI_DOUBLE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(Atm_bk, nlev, MPI_DOUBLE, 0, MPI_COMM_WORLD, ierr)
+  call mpi_barrier(MPI_COMM_WORLD,ierror)
 !
 !-------------------------------------------------------------------
 ! now working on scalars 
