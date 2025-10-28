@@ -108,7 +108,7 @@ PROGRAM pre_blending
  !
  real,allocatable, dimension(:,:,:)   ::  d3r4_us,d3r4_vs,d3r4_uw
  integer :: us_1st,vs_1st,uw_1st,vw_1st
-
+ integer :: ps_core,gridx_core,gridy_core
 !
   integer :: n,i,j,k,iret,ilev,ierr
   integer :: grid_cdfid,cdfid,oldMode
@@ -209,53 +209,8 @@ PROGRAM pre_blending
 !-------------------------------------------------------------------
 !
   filecold(1)='out.atm.tile7.nc'
-!
-!
-  allocate(gridx(nlon,nlat))
-  allocate(gridy(nlon,nlat))
-  allocate(psc(nlon,nlat))
-
-  allocate(d3r4(nlon,nlat,1))
-  if(mype==0) then
-     call check(nf90_open(trim(filecold(1)), nf90_nowrite, cdfid))
-
-     start = [1, 1, 1, 1]
-     count = [nlon, nlat, 1, 1]
-
-     call check(nf90_inq_varid(cdfid, "ps", varid))
-     call check(nf90_get_var(cdfid, varid, d3r4, start=start(1:3), count=count(1:3)))
-     psc=d3r4(:,:,1)
-
-     call check(nf90_inq_varid(cdfid, "geolon", varid))
-     call check(nf90_get_var(cdfid, varid, d3r4, start=start(1:3), count=count(1:3)))
-     gridx=d3r4(:,:,1)
-
-     call check(nf90_inq_varid(cdfid, "geolat", varid))
-     call check(nf90_get_var(cdfid, varid, d3r4, start=start(1:3), count=count(1:3)))
-     gridy=d3r4(:,:,1)
-     write(*,*) maxval(psc),minval(psc)
-     write(*,*) maxval(gridx),minval(gridx)
-     write(*,*) maxval(gridy),minval(gridy)
-
-     call check(nf90_close(cdfid))
-  endif
-  deallocate(d3r4)
-  write(*,*)"mype1=",mype, "read ps geolon geolat for U and V"
-
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-  call MPI_Bcast(psc, nlon*nlat, MPI_DOUBLE , 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(gridx, nlon*nlat, MPI_DOUBLE , 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(gridy, nlon*nlat, MPI_DOUBLE , 0, MPI_COMM_WORLD, ierr)
-  if(mype==3) then
-     write(*,*) 'psc=',maxval(psc),minval(psc)
-     write(*,*) 'gridx=',maxval(gridx),minval(gridx)
-     write(*,*) 'gridy=',maxval(gridy),minval(gridy)
-  endif
-
-  call mpi_barrier(MPI_COMM_WORLD,ierror)
-
-  numvar(1)=4
-  varlist(1)='u_s v_s u_w v_w'
+  numvar(1)=8
+  varlist(1)='ps geolon geolat geolon_s u_s v_s u_w v_w'
   if(mype==0) then
 !
 ! find dimension of each field
@@ -285,15 +240,28 @@ PROGRAM pre_blending
   vs_1st=-1
   uw_1st=-1
   vw_1st=-1
+  ps_core=-1
+  gridx_core=-1
+  gridy_core=-1
   if(mype==0) then
      do n=1,npe
         do k=mpiioarg%lvlbegin(n),mpiioarg%lvlend(n)
-           if(lvl2core(k)==-1) lvl2core(k)=n
+           if(trim(mpiioarg%varname(n))=='u_s' .and. lvl2core(k)==-1) lvl2core(k)=n
         enddo
+     enddo
+     do k=1,100
+        if(lvl2core(k) > -1 ) lvl2core(k)=lvl2core(k)-4
+     enddo
+     do n=1,npe
         if(us_1st==-1 .and. trim(mpiioarg%varname(n))=='u_s') us_1st=n-1
         if(vs_1st==-1 .and. trim(mpiioarg%varname(n))=='v_s') vs_1st=n-1
         if(uw_1st==-1 .and. trim(mpiioarg%varname(n))=='u_w') uw_1st=n-1
         if(vw_1st==-1 .and. trim(mpiioarg%varname(n))=='v_w') vw_1st=n-1
+     enddo
+     do n=1,npe
+        if(ps_core==-1 .and. trim(mpiioarg%varname(n))=='ps') ps_core=n-1
+        if(gridx_core==-1 .and. trim(mpiioarg%varname(n))=='geolon') gridx_core=n-1
+        if(gridy_core==-1 .and. trim(mpiioarg%varname(n))=='geolat') gridy_core=n-1
      enddo
   endif
   call MPI_Bcast(lvl2core, 100, mpi_integer, 0, MPI_COMM_WORLD,ierror)
@@ -301,11 +269,15 @@ PROGRAM pre_blending
   call MPI_Bcast(vs_1st, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
   call MPI_Bcast(uw_1st, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
   call MPI_Bcast(vw_1st, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
+  call MPI_Bcast(ps_core, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
+  call MPI_Bcast(gridx_core, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
+  call MPI_Bcast(gridy_core, 1, mpi_integer, 0, MPI_COMM_WORLD,ierror)
 
   if(mype==0) call mpiioarg%close()
   if(mype==1) then
      write(6,*) "The first core of u_s,v_s,u_w,v_w:",us_1st,vs_1st,uw_1st,vw_1st
      write(6,*) "The core id matchies level:",lvl2core
+     write(6,*) "The core for ps, gridx,gridy:",ps_core,gridx_core,gridy_core
   endif
   call mpi_barrier(MPI_COMM_WORLD,ierror)
 
@@ -354,6 +326,37 @@ PROGRAM pre_blending
 
   call mpi_barrier(MPI_COMM_WORLD,ierror)
 !
+  allocate(gridx(nlon,nlat))
+  allocate(gridy(nlon,nlat))
+  allocate(psc(nlon,nlat))
+  if(mype==ps_core) then
+      psc=d3r4(:,:,1)
+      write(6,*) 'psc=',mype,maxval(psc),minval(psc)
+  endif
+  call MPI_Bcast(psc, nlon*nlat, MPI_DOUBLE , ps_core, MPI_COMM_WORLD, ierr)
+  call mpi_barrier(MPI_COMM_WORLD,ierror)
+
+  if(mype==gridx_core) then
+     gridx=d3r4(:,:,1)
+     write(6,*) 'gridx=',mype,maxval(gridx),minval(gridx)
+  endif
+  call MPI_Bcast(gridx, nlon*nlat, MPI_DOUBLE , gridx_core, MPI_COMM_WORLD, ierr)
+  call mpi_barrier(MPI_COMM_WORLD,ierror)
+
+  if(mype==gridy_core) then
+     gridy=d3r4(:,:,1)
+     write(6,*) 'gridy=',mype,maxval(gridy),minval(gridy)
+  endif
+  call MPI_Bcast(gridy, nlon*nlat, MPI_DOUBLE , gridy_core, MPI_COMM_WORLD, ierr)
+  call mpi_barrier(MPI_COMM_WORLD,ierror)
+
+  if(mype==4) then
+     write(*,*) 'psc=',maxval(psc),minval(psc)
+     write(*,*) 'gridx=',maxval(gridx),minval(gridx)
+     write(*,*) 'gridy=',maxval(gridy),minval(gridy)
+  endif
+!
+!
 !  send u_s,v_s,u_w,v_w to the core with v_w. So those 4 fields in the same 
 !
   if(mype==0) write(6,*) "start collect u_s, v_s, u_w, v_w in the same level"
@@ -364,12 +367,12 @@ PROGRAM pre_blending
   endif
 ! send u_s to v_w cores
   if(trim(mype_varname)=='u_s') then
-!     write(6,*) 'send u_s', mype, vw_1st+mype,nlon*nlatp*(mype_lend-mype_lbegin+1)
-     call MPI_Send(d3r4, nlon*nlatp*(mype_lend-mype_lbegin+1), MPI_real,  vw_1st+mype, 0, mpi_comm_world, ierror)
+!     write(6,*) 'send u_s', mype, vw_1st+(mype-us_1st),nlon*nlatp*(mype_lend-mype_lbegin+1)
+     call MPI_Send(d3r4, nlon*nlatp*(mype_lend-mype_lbegin+1), MPI_real,  vw_1st+(mype-us_1st), 0, mpi_comm_world, ierror)
   endif
   if(trim(mype_varname)=='v_w') then
-!     write(6,*) 'receive  u_s', mype, mype-vw_1st, nlon*nlatp*(mype_lend-mype_lbegin+1)
-     call MPI_Recv(d3r4_us, nlon*nlatp*(mype_lend-mype_lbegin+1), MPI_real, mype-vw_1st, 0, mpi_comm_world,MPI_STATUS_IGNORE,ierror)
+!     write(6,*) 'receive  u_s', mype, us_1st+(mype-vw_1st), nlon*nlatp*(mype_lend-mype_lbegin+1)
+     call MPI_Recv(d3r4_us, nlon*nlatp*(mype_lend-mype_lbegin+1), MPI_real, us_1st+(mype-vw_1st), 0, mpi_comm_world,MPI_STATUS_IGNORE,ierror)
   endif
   call mpi_barrier(MPI_COMM_WORLD,ierror)
 
