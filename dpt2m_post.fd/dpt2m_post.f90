@@ -83,8 +83,12 @@ do i=1,nx
       ! convert q2m to dpt2m
       qv  = max(1.0e-8,(q2m(i,j)/(1.-q2m(i,j))))
       tem = max(psfc(i,j) * qv/( 0.622+0.378 *qv), 1.0e-8)
-      dpt2m(i,j) = 243.5/( ( 17.67 /       &
+      if (abs(log(tem/611.2)) .lt. 1e-20) then ! avoid divide by zero
+        dpt2m(i,j) = 273.15
+      else
+        dpt2m(i,j) = 243.5/( ( 17.67 /       &
     &             log(tem/611.2) ) - 1) + 273.15 
+      end if
       dpt2m(i,j) = min(dpt2m(i,j),t2m(i,j))
     end if
   enddo
