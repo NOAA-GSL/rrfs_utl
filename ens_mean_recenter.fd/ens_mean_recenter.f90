@@ -239,6 +239,11 @@ PROGRAM ens_mean_recenter
         iret=nf90_close(ncioid)
 
      enddo ! iens
+  endif
+
+  call mpi_barrier(mpi_comm_world,ierror)
+
+  if (MPI_COMM_NULL /= new_comm) then
 !
 !  calculate ensemble mean
 !
@@ -255,7 +260,7 @@ PROGRAM ens_mean_recenter
      d3r8_mean=d3r8_mean*average
 !
 !     do ilev=mype_lbegin,mype_lend
-!        write(6,'(I5,A10,I5,2f25.9)') mype_fileid,trim(adjustl(mype_varname)),ilev,  &
+!        write(6,'(I10,A,I5,A10,I5,2f25.9)') mype, "mean field=",mype_fileid,trim(adjustl(mype_varname)),ilev,  &
 !                   maxval(d3r8_mean(:,:,ilev)),minval(d3r8_mean(:,:,ilev))
 !     enddo  ! ilev
 ! write mean
@@ -287,6 +292,11 @@ PROGRAM ens_mean_recenter
 
         iret=nf90_close(ncioid)
      endif
+  endif
+
+  call mpi_barrier(mpi_comm_world,ierror)
+
+  if (MPI_COMM_NULL /= new_comm) then
 !
 ! recenter  
 !
@@ -303,16 +313,23 @@ PROGRAM ens_mean_recenter
            l_positive=.true.
         endif
 
-     if(mype==0) write(*,*) 'calculate ensemble perturbations and add it to base state'
-     do iens=1,ens_size
-        do ilev=mype_lbegin,mype_lend
-           d4r4(:,:,ilev,iens)=d4r4(:,:,ilev,iens)-d3r8_mean(:,:,ilev)+d4r4(:,:,ilev,0)
-           if(l_positive) d4r4(:,:,ilev,iens)=max(d4r4(:,:,ilev,iens), 0.0)
+        write(*,*) 'calculate ensemble perturbations and add it to base state',mype
+        do iens=1,ens_size
+           do ilev=mype_lbegin,mype_lend
+              d4r4(:,:,ilev,iens)=d4r4(:,:,ilev,iens)-d3r8_mean(:,:,ilev)+d4r4(:,:,ilev,0)
+              if(l_positive) d4r4(:,:,ilev,iens)=max(d4r4(:,:,ilev,iens), 0.0)
+           enddo
         enddo
-     enddo
+     endif ! l_recenter
+  endif
+
+  call mpi_barrier(mpi_comm_world,ierror)
+
+  if (MPI_COMM_NULL /= new_comm) then
 !
 !  write to each member
 !
+     if(l_recenter) then
         do iens=1,ens_size
 
            write(UNIT=memnun,FMT='(i3.3)') iens
@@ -326,6 +343,7 @@ PROGRAM ens_mean_recenter
            endif
            if(mype==0) write(*,*) 'update ensemble member =',iens
 
+           write(6,'(I10,a,a10,2I10)') mype,"  writing=",trim(adjustl(mype_varname)),mype_lbegin,mype_lend
            do ilev=mype_lbegin,mype_lend
               startloc=(/1,1,ilev/)
               countloc=(/mype_nx,mype_ny,1/)
@@ -344,7 +362,7 @@ PROGRAM ens_mean_recenter
 
         enddo ! iens
 
-     endif
+     endif  ! l_recenter
 
 ! release memory
      deallocate(d3r8_mean)
