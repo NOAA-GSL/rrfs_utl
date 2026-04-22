@@ -11,7 +11,7 @@ target_link_libraries(process_imssnow_fv3lam.exe PRIVATE ${PROJECT_NAME}::ncio
                                                  PRIVATE g2::g2_4
                                                  PRIVATE g2tmpl::g2tmpl
                                                  PRIVATE bacio::bacio_4
-                                                 PRIVATE ip::ip_4
+                                                 PRIVATE ip::ip_d
                                                  PRIVATE sp::sp_4
                                                  PRIVATE MPI::MPI_Fortran)
 
