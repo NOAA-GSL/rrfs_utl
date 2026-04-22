@@ -256,7 +256,8 @@ contains
     REAL :: XPNMC8,YPNMC8,ENNMC8,ALNMC8,ORIENT8
     REAL :: XPNMCAF,YPNMCAF,ENNMCAF,ALNMCAF,ORIENTAF
 
-    real :: YYLAT(1),XLONG(1), RM, RAD, XX(1),YY(1),X, Y
+    real :: RM, RAD, X, Y
+    real(8) :: YYLAT(1),XLONG(1),XX(1),YY(1)
     integer :: IS,IP1,JS,JP1, IPOINT, JPOINT
 !
     integer :: iland,KOUNT
@@ -266,7 +267,7 @@ contains
 !
     integer                   :: nret,nout
     real                      :: dum
-    real, parameter           :: undefined_value = -1.0
+    real(8), parameter           :: undefined_value = -1.0
 
 !
     kgds_src=this%kgds
