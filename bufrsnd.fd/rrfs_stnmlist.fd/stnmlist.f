@@ -149,7 +149,7 @@ C  -----------------------------------------------------------------
 
 C  COPY OFF STATIONS ON THE LIST INTO THEIR OWN FILES
 C  --------------------------------------------------
-
+      JDATE=0
       DO N=1,NTAB
          IF(TAB(1,N).GE.BMISS) CYCLE
          print *, 'IDNM, IREC, ISUB: ',TAB(1,N),TAB(2,N),TAB(3,N)
