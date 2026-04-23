@@ -72,6 +72,7 @@ C$$$
       CHARACTER*80  FMTO,TSTR
       CHARACTER*8   SUBSET
       REAL*8	    TAB(MXTS,MXTB)
+      INTEGER::     JDATE_INIT
       DIMENSION     LIST(MXLS)
       LOGICAL       ONLIST
 
@@ -90,6 +91,7 @@ C-----------------------------------------------------------------------
       READ (5,'(I1)') IOTYPE
       READ (5,'(A)') BFRFIL
       READ (5,'(A)') DIRD
+      READ (5, '(I10)') JDATE_INIT
       LSS = LEN(DIRD)
       DO WHILE(DIRD(LSS:LSS).EQ.' ')
 	 LSS = LSS - 1
@@ -149,7 +151,7 @@ C  -----------------------------------------------------------------
 
 C  COPY OFF STATIONS ON THE LIST INTO THEIR OWN FILES
 C  --------------------------------------------------
-      JDATE=0
+      JDATE=JDATE_INIT
       DO N=1,NTAB
          IF(TAB(1,N).GE.BMISS) CYCLE
          print *, 'IDNM, IREC, ISUB: ',TAB(1,N),TAB(2,N),TAB(3,N)
