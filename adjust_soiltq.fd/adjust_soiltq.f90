@@ -26,6 +26,7 @@ PROGRAM check_process_imssnow
 
   use mpi
   use kinds, only: r_kind
+  use module_ncio, only: ncio
   use module_bkio_fv3lam_parall, only : bkio_fv3lam
   use constants, only : init_constants,init_constants_derived
   use gsl_update_mod, only: gsl_update_soil_tq
@@ -33,6 +34,7 @@ PROGRAM check_process_imssnow
   implicit none
 ! MPI variables
   type(bkio_fv3lam) :: fv3bk
+  type(ncio) :: fv3io
 !
 ! MPI variables
   integer :: npe, mype, mypeLocal,ierror
@@ -52,9 +54,13 @@ PROGRAM check_process_imssnow
   real(r_kind),allocatable,dimension(:,:)  :: ges_tsk
   real(r_kind),allocatable,dimension(:,:)  :: ges_soilt1
   real(r_kind),allocatable,dimension(:,:)  :: tsk_comp
-  integer :: k
+  real,allocatable :: lakedepth(:,:)
+  real,allocatable :: lake_tsfc(:,:)
+
+  integer :: k,i,j
 !
   integer,dimension(8) :: values
+  logical :: bound_soil_t,merge_lake_T
 !
 !**********************************************************************
 !
@@ -165,6 +171,41 @@ PROGRAM check_process_imssnow
      deallocate(ges_smois)
      deallocate(delta)
      deallocate(deltaT)
+
+    ! merge lake surface temperature with soil temperature over lake area
+     merge_lake_T=.true.
+     if(merge_lake_T) then
+       allocate(lakedepth(fv3bk%nlon,fv3bk%nlat))
+       allocate(lake_tsfc(fv3bk%nlon,fv3bk%nlat))
+       call fv3io%open("sfc_data.nc",'r',200)
+         call fv3io%get_var("clm_lakedepth",fv3bk%nlon,fv3bk%nlat,lakedepth)
+         call fv3io%get_var("lake_tsfc",fv3bk%nlon,fv3bk%nlat,lake_tsfc)
+       call fv3io%close
+       do j=1,fv3bk%nlat
+       do i=1,fv3bk%nlon
+       if(lakedepth(i,j) > 0.5) then ! if this is a lake, use lake T
+             fv3bk%ges_tsk(i,j)=lake_tsfc(i,j)
+             fv3bk%ges_soilt1(i,j)=lake_tsfc(i,j)
+             fv3bk%ges_tslb(i,j,:)=lake_tsfc(i,j)
+          endif
+       enddo
+       enddo
+       deallocate(lakedepth)
+       deallocate(lake_tsfc)
+     endif
+     ! bound the soil tmperature to 220k to 350k.
+     bound_soil_t=.true.
+     if(bound_soil_t) then
+       do j=1,fv3bk%nlat
+       do i=1,fv3bk%nlon
+          fv3bk%ges_tsk(i,j)=min(max(fv3bk%ges_tsk(i,j),220.0_r_kind),350.0_r_kind)
+          fv3bk%ges_soilt1(i,j)=min(max(fv3bk%ges_soilt1(i,j),220.0_r_kind),350.0_r_kind)
+          do k=1,fv3bk%nsoil
+            fv3bk%ges_tslb(i,j,k)=min(max(fv3bk%ges_tslb(i,j,k),220.0_r_kind),350.0_r_kind)
+          enddo
+       enddo
+       enddo
+     endif
 
      call date_and_time(VALUES=values)
      write(*,'(A20,8I5)') 'start write=',values
