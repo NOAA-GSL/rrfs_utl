@@ -17,8 +17,8 @@ else()
   find_program(BPY python3)
 endif()
 
-if(NOT BPY)
-  message(FATAL_ERROR "Unable to locate Python for building raymond")
+if(NOT BPY OR NOT EXISTS "${BPY}")
+  message(FATAL_ERROR "Unable to locate a valid Python executable for building raymond (BPY='${BPY}')")
 endif()
 
 # Force CMake to use the same Python selected for the blending build.
